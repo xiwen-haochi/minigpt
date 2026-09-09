@@ -24,7 +24,7 @@ TOKENIZER_FILE = Path("tokenizer/tokenizer.json")  # 分词器（03 站产出）
 CKPT_FILE = Path("checkpoint.pt")  # 存档：只存验证 loss 最佳的那一刻
 
 SEQ_LEN = 512  # 训练窗口长度：与模型 max_seq_len 一致
-BATCH_SIZE = 32  # 每批抽 32 个窗口
+BATCH_SIZE = 256  # 每批抽 256 个窗口：0.01B 模型很小，16G 显存只吃零头；吃不满就继续加倍
 TOTAL_STEPS = 300  # 总步数：试跑改 50，小数据 2000 步足够收敛
 LR = 4e-4  # 峰值学习率（比一代低一个量级）
 WARMUP_STEPS = 100  # 预热步数：学习率从 0 线性爬到峰值
@@ -156,8 +156,12 @@ class Trainer:
                     best_val, bad_rounds = val, 0
                     torch.save(
                         {
-                            "model": self.model.state_dict(),
-                            "config": vars(self.model.cfg),
+                            # torch.compile 会给参数名加 "_orig_mod." 前缀，
+                            # 存档时剥掉，保证评估脚本能直接加载
+                            "model": getattr(self.model, "_orig_mod", self.model).state_dict(),
+                            "config": vars(self.model.cfg)
+                            if hasattr(self.model, "cfg")
+                            else vars(self.model._orig_mod.cfg),
                         },
                         CKPT_FILE,
                     )
