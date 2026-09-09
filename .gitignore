@@ -1,0 +1,13 @@
+*.pth
+*.pt
+
+*.pyc
+
+*.env
+
+.venv/
+
+
+*.jsonl
+
+demo.py

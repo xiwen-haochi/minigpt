@@ -1,0 +1,1764 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>0.01B 自训对话模型 · 完整作战手册</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+        --term: #15130e;
+        --termtxt: #e8e2d2;
+        --termmut: #7a7261;
+      }
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .sf {
+        fill: var(--ink);
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tg {
+        fill: #2e7d4f;
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2.5rem 4rem;
+        margin: 2.5rem 0 3.5rem;
+      }
+      .stat b {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2rem, 4.2vw, 3.2rem);
+        line-height: 1.25;
+        transition: 0.25s;
+      }
+      .stat:hover b {
+        color: var(--verm);
+      }
+      .stat em {
+        display: block;
+        font-style: normal;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .fin-sum {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 定标</span></a>
+      <a href="#p1"><span>1 蒸馏</span></a>
+      <a href="#p2"><span>2 洗数据</span></a>
+      <a href="#p3"><span>3 分词器</span></a>
+      <a href="#p4"><span>4 模型配置</span></a>
+      <a href="#p5"><span>5 训练</span></a>
+      <a href="#p6"><span>6 评估</span></a>
+      <a href="#p7"><span>7 迭代</span></a>
+      <a href="#time"><span>时间表</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">0.01B · 蒸馏流水线 · 只讲流程与原理</p>
+      <h1>第二代小智<br /><span class="red">作战手册</span></h1>
+      <p class="sub">
+        目标：1000 万参数、能进行数轮自然对话。路线：让本地 Gemma
+        当老师，蒸馏出几万条对话当教材；分词器升级为 BPE，取数升级为标准
+        DataLoader，训练升级为带验证集监控的正经流程。每一步只讲"做什么、为什么"。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">参数 ×12（86万 → 1000万）</span>
+        <span class="hb">语料 ×100+（221条 → 数万条）</span>
+        <span class="hb">字符级 → BPE</span>
+        <span class="hb">手工 batch → 标准流水线</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 八个阶段一条河</h2>
+      <p class="cap reveal">
+        上游是数据和分词器，中游是模型和训练，下游是评估和迭代
+      </p>
+      <svg
+        viewBox="0 0 1150 190"
+        class="reveal"
+        role="img"
+        aria-label="八个阶段流程图"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="122" y1="80" x2="172" y2="80" />
+          <line x1="252" y1="80" x2="302" y2="80" />
+          <line x1="382" y1="80" x2="432" y2="80" />
+          <line x1="512" y1="80" x2="562" y2="80" />
+          <line x1="642" y1="80" x2="692" y2="80" />
+          <line x1="772" y1="80" x2="822" y2="80" />
+          <line x1="902" y1="80" x2="952" y2="80" />
+        </g>
+        <g
+          font-family="'Noto Serif SC',serif"
+          font-weight="900"
+          font-size="22"
+          text-anchor="middle"
+        >
+          <circle
+            cx="72"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="72" y="88" fill="#191611">00</text>
+          <circle
+            cx="212"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="212" y="88" fill="#191611">01</text>
+          <circle
+            cx="342"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="342" y="88" fill="#191611">02</text>
+          <circle cx="472" cy="80" r="40" fill="#E8432C" />
+          <text x="472" y="88" fill="#fff">03</text>
+          <circle cx="602" cy="80" r="40" fill="#E8432C" />
+          <text x="602" y="88" fill="#fff">04</text>
+          <circle cx="732" cy="80" r="40" fill="#E8432C" />
+          <text x="732" y="88" fill="#fff">05</text>
+          <circle
+            cx="862"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="862" y="88" fill="#191611">06</text>
+          <circle
+            cx="1002"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="1002" y="88" fill="#191611">07</text>
+        </g>
+        <g
+          class="ts"
+          text-anchor="middle"
+          font-size="12.5"
+          style="fill: #8a8271"
+        >
+          <text x="72" y="148">能力定标</text>
+          <text x="212" y="148">Gemma 蒸馏</text>
+          <text x="342" y="148">清洗与格式化</text>
+          <text x="472" y="148" style="fill: #e8432c; font-weight: 700">
+            BPE 分词器
+          </text>
+          <text x="602" y="148" style="fill: #e8432c; font-weight: 700">
+            0.01B 配置
+          </text>
+          <text x="732" y="148" style="fill: #e8432c; font-weight: 700">
+            训练
+          </text>
+          <text x="862" y="148">评估调错</text>
+          <text x="1002" y="148">迭代与部署</text>
+        </g>
+        <text x="575" y="180" text-anchor="middle" class="ts" font-size="12">
+          红色的三个阶段，是相对小智一代升级最大的地方
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 定标 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 350"
+            role="img"
+            aria-label="0.01B 的能力边界：能与不能"
+          >
+            <rect x="30" y="40" width="195" height="250" rx="14" class="sw" />
+            <text x="50" y="72" class="tg" font-size="13">它能做到 ✓</text>
+            <text x="50" y="102" class="ts" font-size="12.5">
+              · 3~5 轮连贯闲聊
+            </text>
+            <text x="50" y="128" class="ts" font-size="12.5">
+              · 稳定的人设与语气
+            </text>
+            <text x="50" y="154" class="ts" font-size="12.5">
+              · 学会固定的问答套路
+            </text>
+            <text x="50" y="180" class="ts" font-size="12.5">
+              · 正确的对话格式
+            </text>
+            <text x="50" y="206" class="ts" font-size="12.5">
+              · 简单的复述与改写
+            </text>
+            <rect x="238" y="40" width="195" height="250" rx="14" class="sw" />
+            <text x="258" y="72" class="ta" font-size="13">它做不到 ✗</text>
+            <text x="258" y="102" class="ts" font-size="12.5">
+              · 知识问答（会一本正经胡说）
+            </text>
+            <text x="258" y="128" class="ts" font-size="12.5">
+              · 数学与逻辑推理
+            </text>
+            <text x="258" y="154" class="ts" font-size="12.5">
+              · 长文理解与总结
+            </text>
+            <text x="258" y="180" class="ts" font-size="12.5">
+              · 记住几十轮之前的话
+            </text>
+            <text x="258" y="206" class="ts" font-size="12.5">
+              · 听懂没见过的话题深聊
+            </text>
+            <text x="230" y="322" text-anchor="middle" class="ta">
+              先定标准，再动手：验收时只考"能"的那一栏
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">00</div>
+          <h2>能力定标 · 写下成功标准</h2>
+          <div class="whyl">作用：防止训练完不知道算不算成功</div>
+          <p class="lead">
+            动手前先写一张"验收考卷"：30~50 个测试问题 +
+            每题的合格标准。训练是长跑，这张考卷是你全程唯一的锚。
+          </p>
+          <p class="detail">
+            <b>建议的合格线：</b>连续 3 轮对话不跑题、不复读；人设回答 10 次里 8
+            次一致；对话格式错误率 &lt;
+            2%。没见过的话题能礼貌地"打太极"也算合格——<b
+              >对 0.01B 来说，得体的"不知道"是核心竞争力</b
+            >。
+          </p>
+          <p class="note">
+            为什么知识问答不行：1000
+            万参数连一部《新华字典》的"知识量"都装不满，它学的是"对话的形状"，不是事实。所有事实性内容都应该靠蒸馏数据里"以查证为准"式的安全回答兜底。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 蒸馏 ============ -->
+    <section class="stage dark" id="p1">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 360"
+            role="img"
+            aria-label="蒸馏：种子问题让 Gemma 扩写，双向生成，输出jsonl"
+          >
+            <!-- 种子 -->
+            <rect x="26" y="40" width="120" height="90" rx="12" class="sw" />
+            <text x="86" y="68" text-anchor="middle" class="ta">种子库</text>
+            <text
+              x="86"
+              y="90"
+              text-anchor="middle"
+              class="ts"
+              font-size="11.5"
+            >
+              几百个人工问题
+            </text>
+            <text
+              x="86"
+              y="110"
+              text-anchor="middle"
+              class="ts"
+              font-size="11.5"
+            >
+              话题×风格×人设
+            </text>
+            <!-- Gemma 熔炉 -->
+            <line x1="152" y1="85" x2="200" y2="85" class="s" />
+            <circle cx="256" cy="85" r="46" class="sw" />
+            <text x="256" y="80" text-anchor="middle" class="tt" font-size="13">
+              Gemma
+            </text>
+            <text x="256" y="98" text-anchor="middle" class="ts">本地老师</text>
+            <text
+              x="256"
+              y="150"
+              text-anchor="middle"
+              class="ts"
+              font-size="11.5"
+            >
+              温度 0.8~1.0 求多样
+            </text>
+            <!-- 三个箭头出去 -->
+            <g class="s">
+              <line x1="306" y1="60" x2="368" y2="36" />
+              <line x1="308" y1="85" x2="368" y2="85" />
+              <line x1="306" y1="110" x2="368" y2="134" />
+            </g>
+            <g font-family="'Noto Sans SC',sans-serif" text-anchor="start">
+              <rect x="374" y="18" width="86" height="36" rx="8" class="sw" />
+              <text
+                x="417"
+                y="41"
+                text-anchor="middle"
+                class="ts"
+                font-size="11.5"
+              >
+                自问自答
+              </text>
+              <rect x="374" y="67" width="86" height="36" rx="8" class="sw" />
+              <text
+                x="417"
+                y="90"
+                text-anchor="middle"
+                class="ts"
+                font-size="11.5"
+              >
+                扩写变体
+              </text>
+              <rect x="374" y="116" width="86" height="36" rx="8" class="sw" />
+              <text
+                x="417"
+                y="139"
+                text-anchor="middle"
+                class="ts"
+                font-size="11.5"
+              >
+                多轮续写
+              </text>
+            </g>
+            <!-- 数据池 -->
+            <rect x="70" y="200" width="340" height="80" rx="14" class="ac" />
+            <text
+              x="240"
+              y="232"
+              text-anchor="middle"
+              font-size="14"
+              fill="#fff"
+              font-family="'Noto Serif SC',serif"
+              font-weight="900"
+            >
+              蒸馏数据池
+            </text>
+            <text
+              x="240"
+              y="258"
+              text-anchor="middle"
+              font-size="11.5"
+              fill="#fff"
+            >
+              数万条对话 · jsonl · 多样性是生命线
+            </text>
+            <text x="240" y="316" text-anchor="middle" class="ts">
+              关键：学生模型会忠实复制老师的数据分布——
+            </text>
+            <text x="240" y="338" text-anchor="middle" class="ts">
+              老师的数据有多偏，学生就有多偏
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">01</div>
+          <h2>蒸馏 · Gemma 写教材</h2>
+          <div class="whyl">作用：小模型吃不下互联网，只能吃"定制教材"</div>
+          <p class="lead">
+            核心思想：1000 万参数学不了万亿
+            token，但可以学会"某一类对话的分布"。让 Gemma 针对你的目标批量生成
+            2~5
+            万条高质量对话——它相当于把大模型里与你目标相关的行为，"压缩抄写"给小模型。
+          </p>
+          <p class="detail">
+            <b>三种生成模式要混着用：</b>① 给种子问题，Gemma
+            生成回答（覆盖知识型套路）；② 让 Gemma 一次写 10
+            个同主题不同问法（问法多样性）；③ 给开头两句，让它续写完整 3~6
+            轮多轮对话（多轮能力的关键来源）。
+          </p>
+          <p class="detail">
+            <b>多样性三板斧：</b>话题维度（日常/情绪/爱好/求助…至少 30 类）×
+            风格维度（正式/俏皮/简短/详细）×
+            人设维度（学生/上班族/好奇宝宝）。三维交叉抽样去调
+            Gemma，避免数据全是"一种腔调"。
+          </p>
+          <p class="note">
+            生成参数：温度 0.8~1.0 偏高一些换取多样性；每条数据人工抽检
+            5%，发现跑偏立刻改提示词。另外务必蒸馏一批"拒答/转移话题"样本（约
+            5~10%）——它们是小智面对不会的问题时的安全网。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 洗数据 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 350"
+            role="img"
+            aria-label="数据清洗流水线：去重、过滤、模板化、切分"
+          >
+            <text x="40" y="36" class="ta">数据流水线（顺序很重要）</text>
+            <!-- 四步竖排 -->
+            <rect x="40" y="56" width="380" height="52" rx="10" class="sw" />
+            <text
+              x="60"
+              y="78"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              ① 精确去重
+            </text>
+            <text x="200" y="78" class="ts" font-size="11.5">
+              整条对话哈希相同 → 只留一条
+            </text>
+            <text x="200" y="94" class="ts" font-size="10.5">
+              Gemma 采样会大量撞车，通常能删 10~30%
+            </text>
+            <rect x="40" y="118" width="380" height="52" rx="10" class="sw" />
+            <text
+              x="60"
+              y="140"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              ② 近似去重
+            </text>
+            <text x="200" y="140" class="ts" font-size="11.5">
+              只改一两个字的"伪多样"也要清
+            </text>
+            <text x="200" y="156" class="ts" font-size="10.5">
+              简单做法：按前 N 字符分组抽查
+            </text>
+            <rect x="40" y="180" width="380" height="52" rx="10" class="sw" />
+            <text
+              x="60"
+              y="202"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              ③ 质量过滤
+            </text>
+            <text x="200" y="202" class="ts" font-size="11.5">
+              太短/太长/中英混杂/残缺截断 → 丢弃
+            </text>
+            <text x="200" y="218" class="ts" font-size="10.5">
+              垃圾进垃圾出：宁可少一万条，不要一条脏的
+            </text>
+            <rect x="40" y="242" width="380" height="52" rx="10" class="ac" />
+            <text
+              x="60"
+              y="264"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="#fff"
+            >
+              ④ 模板化 + 切分
+            </text>
+            <text x="200" y="264" class="ts" font-size="11.5" fill="#fff">
+              统一聊天模板 → 训练/验证按 98:2 切开
+            </text>
+            <text x="200" y="280" class="ts" font-size="10.5" fill="#fff">
+              验证集必须是清洗后数据的"镜像"，不能有泄漏
+            </text>
+            <text x="230" y="330" text-anchor="middle" class="ta">
+              产出：train.jsonl + val.jsonl 两份成品教材
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">02</div>
+          <h2>清洗与格式化 · 教材编辑室</h2>
+          <div class="whyl">作用：决定模型上限的往往是数据，不是模型</div>
+          <p class="lead">
+            Gemma
+            的产出不能直接用：采样撞车、截断残句、格式漂移都需要清洗。这步的黄金法则是<b>顺序不能乱</b>——先去重再过滤再模板化，最后切分验证集，任何颠倒都会造成验证集泄漏，训练指标好看但实际变差。
+          </p>
+          <p class="detail">
+            <b>聊天模板是本项目最重要的决定之一：</b>定义统一的特殊标记（如 user
+            / assistant 两类标记 +
+            对话结束符），多轮对话序列化成一条"带标记的长文本"。最关键的纪律：<b>训练时用什么模板，推理时就要一字不差地用什么模板</b>——90%
+            的"模型胡言乱语"其实是模板不一致。
+          </p>
+          <p class="note">
+            规模建议：2~5 万条对话、其中多轮对话占一半以上，总量约 3000 万~1
+            亿字符。这个量对 0.01B
+            是"吃得下又吃不腻"的区间。别忘了把你一代小智的身份问答（10
+            种自我介绍）也格式化后混进去——人设要靠它传承。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 BPE ============ -->
+    <section class="stage dark" id="p3">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 360"
+            role="img"
+            aria-label="BPE 分词：高频字词合并成词块，序列变短"
+          >
+            <text x="40" y="40" class="ta">同一个句子，两种切法</text>
+            <!-- 字符级 -->
+            <text x="40" y="74" class="ts" font-size="12.5">
+              字符级（一代）：15 个 token，序列长、注意力贵
+            </text>
+            <g>
+              <rect x="40" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="54"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                今
+              </text>
+              <rect x="70" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="84"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                天
+              </text>
+              <rect x="100" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="114"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                天
+              </text>
+              <rect x="130" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="144"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                气
+              </text>
+              <rect x="160" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="174"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                真
+              </text>
+              <rect x="190" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="204"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                好
+              </text>
+              <rect x="220" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="234"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                ，
+              </text>
+              <rect x="250" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="264"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                我
+              </text>
+              <rect x="280" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="294"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                们
+              </text>
+              <rect x="310" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="324"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                出
+              </text>
+              <rect x="340" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="354"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                去
+              </text>
+              <rect x="370" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="384"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                玩
+              </text>
+              <rect x="400" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="414"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                吧
+              </text>
+              <rect x="430" y="86" width="28" height="28" rx="5" class="sw" />
+              <text
+                x="444"
+                y="106"
+                text-anchor="middle"
+                class="tt"
+                font-size="14"
+              >
+                。
+              </text>
+            </g>
+            <!-- BPE -->
+            <text x="40" y="160" class="ts" font-size="12.5">
+              BPE（二代）：高频组合合并成词块，约 6 个 token
+            </text>
+            <rect x="40" y="172" width="94" height="34" rx="7" class="ac" />
+            <text
+              x="87"
+              y="194"
+              text-anchor="middle"
+              font-size="13"
+              fill="#fff"
+            >
+              今天
+            </text>
+            <rect x="140" y="172" width="66" height="34" rx="7" class="ac" />
+            <text
+              x="173"
+              y="194"
+              text-anchor="middle"
+              font-size="13"
+              fill="#fff"
+            >
+              天气
+            </text>
+            <rect x="212" y="172" width="66" height="34" rx="7" class="ac" />
+            <text
+              x="245"
+              y="194"
+              text-anchor="middle"
+              font-size="13"
+              fill="#fff"
+            >
+              真好
+            </text>
+            <rect x="284" y="172" width="28" height="34" rx="7" class="sw" />
+            <text
+              x="298"
+              y="194"
+              text-anchor="middle"
+              class="tt"
+              font-size="13"
+            >
+              ，
+            </text>
+            <rect x="318" y="172" width="94" height="34" rx="7" class="ac" />
+            <text
+              x="365"
+              y="194"
+              text-anchor="middle"
+              font-size="13"
+              fill="#fff"
+            >
+              我们
+            </text>
+            <rect x="418" y="172" width="44" height="34" rx="7" class="sw" />
+            <text
+              x="440"
+              y="194"
+              text-anchor="middle"
+              class="tt"
+              font-size="12"
+            >
+              去吧。
+            </text>
+            <!-- 效果 -->
+            <rect x="40" y="240" width="400" height="90" rx="12" class="sw" />
+            <text x="60" y="270" class="tg">三重收益：</text>
+            <text x="60" y="294" class="ts" font-size="12">
+              ① 同样上下文窗口能装下约 3 倍内容
+            </text>
+            <text x="60" y="312" class="ts" font-size="12">
+              ② 注意力计算量随长度平方下降 → 训练显著提速
+            </text>
+            <text x="60" y="330" class="ts" font-size="12">
+              ③ 生成的每个 token 携带更多语义 → 说话更"成块"
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">03</div>
+          <h2>BPE 分词器 · 换正规军</h2>
+          <div class="whyl">作用：小模型升级的最大单项杠杆</div>
+          <p class="lead">
+            用 HF tokenizers 库在<b>你自己的蒸馏语料</b>上训练一个 BPE
+            分词器（这就是"用现在常用的"做法——所有现代模型都是先在语料上练分词器，再练模型）。注意不要直接用
+            GPT-2 的旧分词器：它对中文几乎不合并，一个汉字拆 3 个字节，太浪费。
+          </p>
+          <p class="detail">
+            <b>关键参数：</b>词表 8000~16000；务必预留特殊标记（聊天模板的
+            user/assistant/结束符等）。训练完做一次<b>压缩率体检</b>：用分词器编码验证集，中文应达到约
+            1~1.5 token/字。压缩率太差就调词表大小重训。
+          </p>
+          <p class="note">
+            为什么词表不能太大：词表直接吃参数预算——嵌入层 = 词表 × 维度。8192
+            词表 × 256 维 = 约 200
+            万参数，已经占掉总预算的两成。小模型配小词表，是有意的取舍。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04 模型配置 ============ -->
+    <section class="stage" id="p4">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 360"
+            role="img"
+            aria-label="参数预算表：10M 怎么分配"
+          >
+            <text x="40" y="40" class="ta">
+              1000 万参数的预算表（参考起点）
+            </text>
+            <rect x="40" y="58" width="400" height="44" rx="9" class="ac" />
+            <text
+              x="58"
+              y="79"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="#fff"
+            >
+              词嵌入（权重共享）
+            </text>
+            <text x="424" y="86" text-anchor="end" font-size="11" fill="#fff">
+              ≈ 2.1M
+            </text>
+            <rect x="40" y="110" width="290" height="44" rx="9" class="sw" />
+            <text
+              x="58"
+              y="131"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              8 层 × 注意力
+            </text>
+            <text x="322" y="138" text-anchor="end" class="ts">≈ 2.6M</text>
+            <rect x="40" y="162" width="330" height="44" rx="9" class="sw" />
+            <text
+              x="58"
+              y="183"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              8 层 × 前馈网络
+            </text>
+            <text x="362" y="190" text-anchor="end" class="ts">≈ 4.2M</text>
+            <rect x="40" y="214" width="80" height="44" rx="9" class="sw" />
+            <text
+              x="80"
+              y="235"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11"
+              fill="var(--ink)"
+            >
+              位置/归一化
+            </text>
+            <text x="80" y="252" text-anchor="middle" class="ts">≈ 0.1M</text>
+            <text x="240" y="292" text-anchor="middle" class="ta">
+              合计 ≈ 9~10M ✓
+            </text>
+            <text
+              x="240"
+              y="330"
+              text-anchor="middle"
+              class="ts"
+              font-size="12"
+            >
+              权重共享：输入嵌入与输出层共用一份矩阵，白省 200 万
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">04</div>
+          <h2>模型配置 · 把预算花在刀刃上</h2>
+          <div class="whyl">作用：0.01B 的每个参数都要精打细算</div>
+          <p class="lead">
+            参考配置：<b
+              >词表 8192 · 维度 256 · 层数 8 · 注意力头 8 · 上下文 512</b
+            >。三个设计决定背后的理由：层数多而维度适中，深网络比宽网络更会"讲条理"；上下文
+            512 个 BPE token 约等于 350~500 个汉字，够 6~8
+            轮对话；嵌入层权重共享，省下的参数让给更多层数。
+          </p>
+          <p class="detail">
+            <b>自检公式：</b>写完配置先算一遍总参数，落在 9M~12M
+            都算达标。注意按 0.01B 标准算的是<b>非嵌入参数约 7M</b>
+            也有另一种口径——两种算法都行，但自己要统一口径，训练前后对比才有意义。
+          </p>
+          <p class="note">
+            RoPE 位置编码 + RMSNorm + SwiGLU
+            是当代标配，直接照抄现代开源小模型（如 Qwen
+            系列小尺寸版）的配置表最稳——你是在"复刻一条被验证过的路线"，不需要发明新东西。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 05 训练 ============ -->
+    <section class="stage dark" id="p5">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 370"
+            role="img"
+            aria-label="现代训练流程：预打包、DataLoader、监控验证集"
+          >
+            <text x="40" y="40" class="ta">数据侧（取代手工 get_batch）</text>
+            <rect x="40" y="54" width="190" height="66" rx="10" class="sw" />
+            <text
+              x="58"
+              y="78"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              预分词 + 打包
+            </text>
+            <text x="58" y="98" class="ts" font-size="10.5">
+              全语料拼成一条 token 流
+            </text>
+            <rect x="250" y="54" width="190" height="66" rx="10" class="sw" />
+            <text
+              x="268"
+              y="78"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              DataLoader 随机切片
+            </text>
+            <text x="268" y="98" class="ts" font-size="10.5">
+              每次抽 批大小×512 的窗口
+            </text>
+            <text x="40" y="150" class="ts" font-size="11.5">
+              好处：不浪费一个 token，批次内容永远随机 → 相当于无限套题
+            </text>
+            <!-- 训练侧 -->
+            <text x="40" y="192" class="ta">训练侧</text>
+            <rect x="40" y="206" width="400" height="120" rx="12" class="sw" />
+            <text
+              x="60"
+              y="234"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              AdamW · 学习率 3e-4~6e-4
+            </text>
+            <text
+              x="60"
+              y="256"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              预热 + 余弦退火 · 梯度裁剪 1.0
+            </text>
+            <text
+              x="60"
+              y="278"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              混合精度 · 每 500 步跑一次验证集
+            </text>
+            <text x="60" y="304" class="tg" font-size="12">
+              验证 loss 不再下降 → 存档，这就是"早停"
+            </text>
+            <text
+              x="240"
+              y="356"
+              text-anchor="middle"
+              class="ts"
+              font-size="12"
+            >
+              训练/验证两条曲线一起看：分叉 = 开始过拟合
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">05</div>
+          <h2>训练 · 上标准流水线</h2>
+          <div class="whyl">作用：让每一份算力都花在新知识上</div>
+          <p class="lead">
+            一代的手工 get_batch
+            有两个隐患：语料重复采样浪费、无验证集监控。二代的标准做法：<b>全语料预分词并拼接打包</b>成一条长
+            token 流，DataLoader 负责随机切片组批——这是 nanoGPT
+            到所有大厂都在用的"打包流"方案。
+          </p>
+          <p class="detail">
+            <b>超参数起点：</b>批次 32~64 × 序列 512；学习率 3e-4~6e-4（比一代的
+            3e-3 低一个量级——模型大了、数据多了，大学习率会震荡）；预热几百步 +
+            余弦退火；训练 2~3 个 epoch。
+          </p>
+          <p class="detail">
+            <b>时间预估（M1 · 16G · MPS）：</b>0.01B 前后向大约每秒几十万
+            token，按 5000 万 token × 3 epoch 算，粗估
+            <b>3~8 小时</b>。建议睡前挂机；每 30 分钟存一次断点，训练中断可续。
+          </p>
+          <p class="note">
+            MPS 提醒：混合精度在 Apple GPU 上支持不完整，浮点 32
+            稳妥但慢约一倍；可以先小步数试跑标定速度，再决定精度方案。loss 落到
+            2.0~2.8 区间且验证集不再下降，就是合理的停机点。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 06 评估 ============ -->
+    <section class="stage" id="p6">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="常见故障与对应的修复"
+          >
+            <text x="40" y="40" class="ta">四种典型病症 · 对症下药</text>
+            <rect x="40" y="58" width="400" height="60" rx="10" class="sw" />
+            <text x="60" y="82" class="tt" font-size="12.5">
+              复读机：同一句话循环输出
+            </text>
+            <text x="60" y="102" class="ts" font-size="11">
+              药方：提高采样温度/加重复惩罚；反复出现则是数据多样性不足
+            </text>
+            <rect x="40" y="128" width="400" height="60" rx="10" class="sw" />
+            <text x="60" y="152" class="tt" font-size="12.5">
+              格式漏出：回答里出现模板标记符号
+            </text>
+            <text x="60" y="172" class="ts" font-size="11">
+              药方：推理时禁止生成特殊标记；严重则说明训练模板不统一
+            </text>
+            <rect x="40" y="198" width="400" height="60" rx="10" class="sw" />
+            <text x="60" y="222" class="tt" font-size="12.5">
+              答非所问：问东答西但语句通顺
+            </text>
+            <text x="60" y="242" class="ts" font-size="11">
+              药方：查推理模板是否与训练一致；一致则补该话题的蒸馏数据
+            </text>
+            <rect x="40" y="268" width="400" height="60" rx="10" class="sw" />
+            <text x="60" y="292" class="tt" font-size="12.5">
+              一本正经胡说：编造不存在的知识
+            </text>
+            <text x="60" y="312" class="ts" font-size="11">
+              药方：补充"不知道/转移话题"样本的比例，教它认怂
+            </text>
+            <text
+              x="240"
+              y="344"
+              text-anchor="middle"
+              class="ts"
+              font-size="12"
+            >
+              评估主要靠人工：0.01B 没有 cheat-proof 的自动指标
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">06</div>
+          <h2>评估调错 · 当一次医生</h2>
+          <div class="whyl">作用：把"感觉不太行"变成可执行的修复项</div>
+          <p class="lead">
+            用阶段 00 的 50
+            题考卷逐题打分，把失败案例归类——大部分故障都能映射到"数据、模板、采样"三个源头之一。左图是四种最常见病症的速查表。
+          </p>
+          <p class="detail">
+            <b>一个重要的心态：</b>0.01B 的评估没有自动分数可看（BLEU
+            之类与对话体验几乎不相关），<b>你自己的耳朵就是唯一可靠的指标</b>。建议每次评估都录音式记录：题目、回答、你的
+            1~10 分、归因。这些记录就是下一轮迭代的路标。
+          </p>
+          <p class="note">
+            分辨率参考：50 题里 ≥40
+            题达标、且复读和格式错误基本消失，就可以进入部署；否则按归因回到阶段
+            01/02 补数据，回到 05
+            重训——注意是"回到数据"而不是"继续训练"，数据是因，能力是果。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 07 迭代 ============ -->
+    <section class="stage dark" id="p7">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="飞轮：部署收集坏例，反哺数据，再训练"
+          >
+            <circle
+              cx="240"
+              cy="185"
+              r="120"
+              fill="none"
+              stroke="var(--soft)"
+              stroke-width="2"
+              stroke-dasharray="6 8"
+            />
+            <g
+              font-family="'Noto Serif SC',serif"
+              font-weight="700"
+              text-anchor="middle"
+            >
+              <rect x="180" y="25" width="120" height="52" rx="12" class="sw" />
+              <text x="240" y="56" font-size="14" fill="#191611">补数据</text>
+              <rect
+                x="322"
+                y="130"
+                width="130"
+                height="52"
+                rx="12"
+                class="sw"
+              />
+              <text x="387" y="161" font-size="14" fill="#191611">重训</text>
+              <rect
+                x="180"
+                y="285"
+                width="120"
+                height="52"
+                rx="12"
+                class="sw"
+              />
+              <text x="240" y="316" font-size="14" fill="#191611">再评估</text>
+              <rect x="28" y="130" width="130" height="52" rx="12" class="ac" />
+              <text x="93" y="155" font-size="13.5" fill="#fff">部署使用</text>
+              <text x="93" y="172" font-size="10.5" fill="#fff">
+                收集真实坏例
+              </text>
+            </g>
+            <g class="acs" fill="none">
+              <path d="M305 62 A 118 118 0 0 1 352 122" />
+              <path d="M387 190 A 118 118 0 0 1 350 262" />
+              <path d="M292 322 A 118 118 0 0 1 172 314" />
+              <path d="M62 258 A 118 118 0 0 1 70 172" />
+            </g>
+            <text
+              x="240"
+              y="192"
+              text-anchor="middle"
+              class="ta"
+              font-size="13"
+            >
+              能力飞轮
+            </text>
+            <text x="240" y="214" text-anchor="middle" class="ts">
+              每一圈，小智就更像样一点
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">07</div>
+          <h2>迭代与部署 · 让飞轮转起来</h2>
+          <div class="whyl">作用：好模型不是一次训出来的，是循环出来的</div>
+          <p class="lead">
+            部署用你上一页学过的铁路：mini_hf → GGUF / MLX
+            一行转换。真正的增量价值在部署之后——真实使用中遇到的坏例，是全世界最珍贵的训练数据，因为它们正好是你的模型"最缺的那一块"。
+          </p>
+          <p class="detail">
+            <b>飞轮的节奏：</b
+            >每轮迭代只修"出现频率最高的一类问题"（比如这轮只治复读），改动控制在数据与采样层面；架构和超参确定后就冻结，避免每次都推翻重来。
+          </p>
+          <p class="note">
+            进阶里程碑（按序解锁）：① SFT 后接一轮 DPO/RLHF 式偏好微调；② 字节级
+            → 更大词表 + 更长上下文；③ 参数爬到 0.05B~0.1B（16G
+            训练的舒适区上限）。每一步的流程都和本页完全相同——变的只是数字。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 时间表 + 陷阱 ============ -->
+    <section class="tsec" id="time">
+      <h2 class="reveal">总时间表 · 与高频陷阱</h2>
+      <p class="cap reveal">全程约一周的业余时间 · 大头在数据而不是训练</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th>阶段</th>
+            <th>产出物</th>
+            <th>耗时（业余时间）</th>
+            <th>检查点</th>
+          </tr>
+          <tr>
+            <td>00 定标</td>
+            <td>50 题验收考卷</td>
+            <td>1~2 小时</td>
+            <td>每题有明确的合格标准</td>
+          </tr>
+          <tr>
+            <td>01 蒸馏</td>
+            <td>2~5 万条原始对话</td>
+            <td>挂机生成 1~2 天 + 抽检</td>
+            <td>话题分布抽查无单一话题 &gt;10%</td>
+          </tr>
+          <tr>
+            <td>02 清洗</td>
+            <td>train.jsonl / val.jsonl</td>
+            <td>半天</td>
+            <td>去重率、验证集无泄漏</td>
+          </tr>
+          <tr class="hl">
+            <td>03 BPE</td>
+            <td>tokenizer 目录</td>
+            <td>1~2 小时</td>
+            <td>压缩率 ≈ 1~1.5 token/字</td>
+          </tr>
+          <tr class="hl">
+            <td>04 配置</td>
+            <td>模型代码 + 预算表</td>
+            <td>半天</td>
+            <td>总参数 9~12M，前向跑通</td>
+          </tr>
+          <tr class="hl">
+            <td>05 训练</td>
+            <td>checkpoint + loss 曲线</td>
+            <td><b>挂机 3~8 小时</b></td>
+            <td>验证 loss 平台期后早停</td>
+          </tr>
+          <tr>
+            <td>06 评估</td>
+            <td>评估记录表</td>
+            <td>2~3 小时</td>
+            <td>≥40/50 达标</td>
+          </tr>
+          <tr>
+            <td>07 部署</td>
+            <td>gguf / mlx 产物</td>
+            <td>1 小时</td>
+            <td>转换后抽查回答一致性</td>
+          </tr>
+        </table>
+      </div>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th>高频陷阱</th>
+            <th>后果与预防</th>
+          </tr>
+          <tr>
+            <td>训练与推理模板不一致</td>
+            <td>
+              最常见故障，模型"胡言乱语"多半是它 → 把模板写成一份常量，两边共用
+            </td>
+          </tr>
+          <tr>
+            <td>验证集泄漏（切分前去重）</td>
+            <td>指标虚高、实际变差 → 切分永远是流水线最后一步</td>
+          </tr>
+          <tr>
+            <td>蒸馏数据腔调单一</td>
+            <td>小智只会一种语气 → 话题×风格×人设三维交叉抽样</td>
+          </tr>
+          <tr>
+            <td>学习率沿用一代的 3e-3</td>
+            <td>loss 剧烈震荡不收敛 → 模型大一个量级，学习率小一个量级</td>
+          </tr>
+          <tr>
+            <td>只看训练 loss 不看验证</td>
+            <td>
+              背熟数据还以为在进步 → 每 500 步跑一次验证集，两条曲线并排看
+            </td>
+          </tr>
+          <tr>
+            <td>急着加参数不加数据</td>
+            <td>
+              更大的模型背更少的数据 = 更严重的复读 → 先让数据翻倍，再考虑模型
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">一代学的是"接话"，二代学的是"对话"</h2>
+        <div class="stats reveal">
+          <div class="stat"><b>×12</b><em>参数规模 · 86 万 → 1000 万</em></div>
+          <div class="stat">
+            <b>×100+</b><em>语料规模 · 且由大模型蒸馏保证质量</em>
+          </div>
+          <div class="stat"><b>1 周</b><em>业余时间的完整迭代周期</em></div>
+          <div class="stat">
+            <b>1 个飞轮</b><em>部署 → 坏例 → 补数据 → 重训</em>
+          </div>
+        </div>
+        <p class="fin-sum reveal">
+          这套流程与训练 ChatGPT 的工序同构：蒸馏数据对应预训练语料的策划，BPE
+          与打包流对应工程基建，验证集监控对应 RLHF 之前的全部纪律。你在 16G 的
+          Mac
+          上以一周为单位走完的，是一条被千亿美元验证过的路——只是这一次，每一步的"为什么"你都知道。
+        </p>
+        <footer class="reveal">
+          <span>0.01B 自训对话模型 · 作战手册</span>
+          <span>蒸馏 × BPE × 打包流 × 飞轮 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "time"].forEach((id) =>
+        io2.observe(document.getElementById(id)),
+      );
+    </script>
+  </body>
+</html>

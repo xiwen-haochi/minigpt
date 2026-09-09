@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>数据蒸馏 · 怎么把另一个模型「掏空」成训练数据</title>
+<style>
+  :root{
+    --paper:#F6F1E7;
+    --card:#FFFDF8;
+    --ink:#171512;
+    --ink2:#5C544A;
+    --teal:#0E7C6B;
+    --amber:#E08A32;
+    --clay:#C4643C;
+    --sand:#F7E2B8;
+    --mint:#BFE0D6;
+    --shadow:8px 8px 0 var(--ink);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    color:var(--ink);
+    font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.65;
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(rgba(23,21,18,.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(23,21,18,.055) 1px, transparent 1px);
+    background-size:34px 34px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+
+  /* ---------- hero ---------- */
+  .hero{padding:70px 0 30px}
+  .kicker{
+    display:inline-block;margin:0 0 18px;
+    font-size:14px;letter-spacing:.22em;font-weight:700;
+    color:var(--teal);text-transform:uppercase;
+    border:2px solid var(--teal);border-radius:999px;padding:5px 16px;
+  }
+  h1{
+    margin:0 0 16px;
+    font-size:clamp(32px,5.4vw,60px);
+    line-height:1.15;letter-spacing:-.01em;font-weight:800;
+  }
+  .hl{
+    background:var(--sand);
+    box-shadow:inset 0 -.26em 0 rgba(224,138,50,.6);
+    border-radius:6px;padding:0 .1em;
+  }
+  .sub{max-width:640px;margin:0;font-size:clamp(16px,1.9vw,20px);color:var(--ink2)}
+
+  /* ---------- generic ---------- */
+  section{padding:44px 0}
+  .card{
+    background:var(--card);
+    border:3px solid var(--ink);
+    border-radius:22px;
+    box-shadow:var(--shadow);
+    padding:26px 26px 22px;
+  }
+  .sec-head{display:flex;align-items:center;gap:14px;margin:0 0 8px}
+  .num{
+    flex:0 0 auto;width:46px;height:46px;border-radius:50%;
+    background:var(--teal);color:var(--card);
+    border:3px solid var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:17px;box-shadow:4px 4px 0 var(--ink);
+  }
+  h2{margin:0;font-size:clamp(21px,3vw,30px);font-weight:800;letter-spacing:-.01em}
+  .lede{margin:10px 0 26px;color:var(--ink2);font-size:clamp(15px,1.8vw,18px);max-width:760px}
+  .fig{display:block;width:100%;height:auto}
+  svg text{fill:var(--ink);font-family:inherit}
+  .caption{margin:16px 0 0;text-align:center;font-size:15px;color:var(--ink2)}
+
+  .grid3{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+  .grid2{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+
+  .fact{background:var(--card);border:3px solid var(--ink);border-radius:20px;padding:24px;box-shadow:var(--shadow)}
+  .fact .big{font-size:34px;font-weight:800;line-height:1;color:var(--amber)}
+  .fact h3{margin:14px 0 8px;font-size:19px}
+  .fact p{margin:0;color:var(--ink2);font-size:15px}
+
+  /* ---------- technique cards ---------- */
+  .tech{
+    background:var(--card);border:3px solid var(--ink);border-radius:18px;
+    padding:20px;box-shadow:6px 6px 0 var(--ink);
+    display:flex;gap:16px;align-items:flex-start;
+  }
+  .tech svg{flex:0 0 48px}
+  .tech h3{margin:0 0 4px;font-size:17px}
+  .tech p{margin:0;font-size:14.5px;color:var(--ink2)}
+
+  /* ---------- pitfalls ---------- */
+  .pit{
+    background:var(--card);border:3px solid var(--ink);border-left-width:12px;
+    border-left-color:var(--clay);border-radius:14px;padding:18px 20px;
+    box-shadow:6px 6px 0 var(--ink);
+  }
+  .pit h3{margin:0 0 4px;font-size:17px}
+  .pit p{margin:0;font-size:14.5px;color:var(--ink2)}
+
+  /* ---------- closing ---------- */
+  .closing{
+    background:var(--ink);color:var(--paper);
+    border-radius:26px;padding:clamp(28px,5vw,54px);
+    margin:20px 0 80px;
+  }
+  .closing .big{font-size:clamp(22px,3.6vw,38px);font-weight:800;line-height:1.35;margin:0 0 20px}
+  .closing .big em{font-style:normal;color:var(--sand);box-shadow:inset 0 -.22em 0 rgba(224,138,50,.45);border-radius:5px;padding:0 .08em}
+  .closing ul{margin:0;padding-left:1.2em;color:#D9D2C6;font-size:clamp(14px,1.7vw,17px)}
+  .closing li{margin:6px 0}
+  .closing li b{color:#fff}
+
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){
+    .reveal{opacity:1;transform:none;transition:none}
+    html{scroll-behavior:auto}
+  }
+  @media (max-width:560px){
+    .card{padding:20px 16px}
+    .sec-head{gap:10px}
+    .num{width:38px;height:38px;font-size:15px}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ================= HERO ================= -->
+  <header class="hero">
+    <p class="kicker">大模型训练 · 数据蒸馏</p>
+    <h1>把另一个模型<br><span class="hl">「掏空」</span>成一份训练数据</h1>
+    <p class="sub">你不能把它的数据导出来 —— 只能不停地问它，把它的回答攒成教材。下面这张图，就是全部流程。</p>
+  </header>
+
+  <section class="reveal">
+    <div class="card">
+      <svg class="fig" viewBox="0 0 1040 260" role="img" aria-label="蒸馏流程：造问题 → 教师作答 → 得到回答与推理 → 筛选清洗 → 训练学生模型">
+        <!-- 1 造问题 -->
+        <rect x="10" y="55" width="168" height="180" rx="18" fill="#FFFDF8" stroke="#171512" stroke-width="4"/>
+        <circle cx="36" cy="81" r="17" fill="#E08A32" stroke="#171512" stroke-width="3"/>
+        <text x="36" y="87" text-anchor="middle" font-size="18" font-weight="700">1</text>
+        <rect x="70" y="105" width="48" height="56" rx="7" fill="#F7E2B8" stroke="#171512" stroke-width="3"/>
+        <line x1="82" y1="124" x2="106" y2="124" stroke="#171512" stroke-width="3" stroke-linecap="round"/>
+        <line x1="82" y1="137" x2="106" y2="137" stroke="#171512" stroke-width="3" stroke-linecap="round"/>
+        <line x1="82" y1="150" x2="97" y2="150" stroke="#171512" stroke-width="3" stroke-linecap="round"/>
+        <text x="94" y="200" text-anchor="middle" font-size="22" font-weight="700">造问题</text>
+        <text x="94" y="226" text-anchor="middle" font-size="15" fill="#5C544A">种子提示池</text>
+
+        <!-- 2 教师作答 -->
+        <rect x="218" y="55" width="168" height="180" rx="18" fill="#FFFDF8" stroke="#171512" stroke-width="4"/>
+        <circle cx="244" cy="81" r="17" fill="#E08A32" stroke="#171512" stroke-width="3"/>
+        <text x="244" y="87" text-anchor="middle" font-size="18" font-weight="700">2</text>
+        <line x1="302" y1="113" x2="280" y2="133" stroke="#171512" stroke-width="2.5"/>
+        <line x1="302" y1="113" x2="324" y2="133" stroke="#171512" stroke-width="2.5"/>
+        <line x1="280" y1="133" x2="290" y2="155" stroke="#171512" stroke-width="2.5"/>
+        <line x1="324" y1="133" x2="314" y2="155" stroke="#171512" stroke-width="2.5"/>
+        <line x1="280" y1="133" x2="324" y2="133" stroke="#171512" stroke-width="2.5"/>
+        <line x1="290" y1="155" x2="314" y2="155" stroke="#171512" stroke-width="2.5"/>
+        <circle cx="302" cy="113" r="10" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+        <circle cx="280" cy="133" r="10" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+        <circle cx="324" cy="133" r="10" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+        <circle cx="290" cy="155" r="10" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+        <circle cx="314" cy="155" r="10" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+        <text x="302" y="200" text-anchor="middle" font-size="22" font-weight="700">教师作答</text>
+        <text x="302" y="226" text-anchor="middle" font-size="15" fill="#5C544A">强模型</text>
+
+        <!-- 3 回答 + 推理 -->
+        <rect x="426" y="55" width="168" height="180" rx="18" fill="#FFFDF8" stroke="#171512" stroke-width="4"/>
+        <circle cx="452" cy="81" r="17" fill="#E08A32" stroke="#171512" stroke-width="3"/>
+        <text x="452" y="87" text-anchor="middle" font-size="18" font-weight="700">3</text>
+        <path d="M494,107 H526 A12,12 0 0 1 538,119 V143 A12,12 0 0 1 526,155 H510 L494,169 V155 A12,12 0 0 1 482,143 V119 A12,12 0 0 1 494,107 Z"
+              fill="#F5C98B" stroke="#171512" stroke-width="3" stroke-linejoin="round"/>
+        <line x1="496" y1="126" x2="524" y2="126" stroke="#171512" stroke-width="3" stroke-linecap="round"/>
+        <line x1="496" y1="140" x2="518" y2="140" stroke="#171512" stroke-width="3" stroke-linecap="round"/>
+        <text x="510" y="200" text-anchor="middle" font-size="22" font-weight="700">回答+推理</text>
+        <text x="510" y="226" text-anchor="middle" font-size="15" fill="#5C544A">带过程更好学</text>
+
+        <!-- 4 筛选清洗 -->
+        <rect x="634" y="55" width="168" height="180" rx="18" fill="#FFFDF8" stroke="#171512" stroke-width="4"/>
+        <circle cx="660" cy="81" r="17" fill="#E08A32" stroke="#171512" stroke-width="3"/>
+        <text x="660" y="87" text-anchor="middle" font-size="18" font-weight="700">4</text>
+        <polygon points="686,105 750,105 728,133 728,161 708,161 708,133" fill="#F2C3A8" stroke="#171512" stroke-width="3" stroke-linejoin="round"/>
+        <text x="718" y="200" text-anchor="middle" font-size="22" font-weight="700">筛选清洗</text>
+        <text x="718" y="226" text-anchor="middle" font-size="15" fill="#5C544A">去错 · 去重 · 配比</text>
+
+        <!-- 5 学生模型 -->
+        <rect x="842" y="55" width="168" height="180" rx="18" fill="#FFFDF8" stroke="#171512" stroke-width="4"/>
+        <circle cx="868" cy="81" r="17" fill="#E08A32" stroke="#171512" stroke-width="3"/>
+        <text x="868" y="87" text-anchor="middle" font-size="18" font-weight="700">5</text>
+        <line x1="926" y1="118" x2="906" y2="140" stroke="#171512" stroke-width="2.5"/>
+        <line x1="926" y1="118" x2="946" y2="140" stroke="#171512" stroke-width="2.5"/>
+        <line x1="906" y1="140" x2="926" y2="158" stroke="#171512" stroke-width="2.5"/>
+        <line x1="946" y1="140" x2="926" y2="158" stroke="#171512" stroke-width="2.5"/>
+        <circle cx="926" cy="118" r="9" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+        <circle cx="906" cy="140" r="9" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+        <circle cx="946" cy="140" r="9" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+        <circle cx="926" cy="158" r="9" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+        <text x="926" y="200" text-anchor="middle" font-size="22" font-weight="700">训练学生</text>
+        <text x="926" y="226" text-anchor="middle" font-size="15" fill="#5C544A">小模型 · 便宜快</text>
+
+        <!-- arrows -->
+        <line x1="184" y1="145" x2="198" y2="145" stroke="#171512" stroke-width="5" stroke-linecap="round"/>
+        <polygon points="214,145 194,136 194,154" fill="#171512"/>
+        <line x1="390" y1="145" x2="404" y2="145" stroke="#171512" stroke-width="5" stroke-linecap="round"/>
+        <polygon points="422,145 402,136 402,154" fill="#171512"/>
+        <line x1="598" y1="145" x2="612" y2="145" stroke="#171512" stroke-width="5" stroke-linecap="round"/>
+        <polygon points="630,145 610,136 610,154" fill="#171512"/>
+        <line x1="806" y1="145" x2="820" y2="145" stroke="#171512" stroke-width="5" stroke-linecap="round"/>
+        <polygon points="838,145 818,136 818,154" fill="#171512"/>
+      </svg>
+      <p class="caption">老师每答一道题，就给学生多攒一页教材。</p>
+    </div>
+  </section>
+
+  <!-- ================= 01 三句话 ================= -->
+  <section class="reveal">
+    <div class="sec-head"><span class="num">01</span><h2>先说三句大实话</h2></div>
+    <p class="lede">看懂这三句，"能不能把数据全部蒸馏出来"这个问题就已经有答案了。</p>
+    <div class="grid3">
+      <div class="fact">
+        <div class="big">01</div>
+        <h3>模型里没有"数据表"</h3>
+        <p>它的知识被揉碎、压扁，藏进了几千亿个参数里。没有一张表可以另存为。</p>
+      </div>
+      <div class="fact">
+        <div class="big">02</div>
+        <h3>你只能"采样"</h3>
+        <p>给一个 prompt，拿一个回答。想拿多少，就得问多少次。这叫蒸馏，不叫拷贝。</p>
+      </div>
+      <div class="fact">
+        <div class="big">03</div>
+        <h3>"全部"不可能</h3>
+        <p>输入空间是无限的，采样是有限的。能做到的是——把盲区压到尽量小。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 02 数据从哪来 ================= -->
+  <section class="reveal">
+    <div class="sec-head"><span class="num">02</span><h2>第一步：先造一堆问题</h2></div>
+    <p class="lede">没有 prompt，模型一句话都不会说。所以蒸馏的第一件事，是准备"种子问题池"。</p>
+    <div class="card">
+      <svg class="fig" viewBox="0 0 1000 330" role="img" aria-label="六类语料汇入种子问题池，再送给教师模型">
+        <!-- chips -->
+        <g fill="#FFFDF8" stroke="#171512" stroke-width="3">
+          <rect x="20" y="18" width="250" height="40" rx="10"/>
+          <rect x="20" y="66" width="250" height="40" rx="10"/>
+          <rect x="20" y="114" width="250" height="40" rx="10"/>
+          <rect x="20" y="162" width="250" height="40" rx="10"/>
+          <rect x="20" y="210" width="250" height="40" rx="10"/>
+          <rect x="20" y="258" width="250" height="40" rx="10"/>
+        </g>
+        <g font-size="17">
+          <text x="44" y="44">网页 · 书籍</text>
+          <text x="44" y="92">题库 · 考卷</text>
+          <text x="44" y="140">真实用户提问</text>
+          <text x="44" y="188">指令模板</text>
+          <text x="44" y="236">多语言语料</text>
+          <text x="44" y="284">代码仓库</text>
+        </g>
+        <!-- converging lines -->
+        <g stroke="#B4A792" stroke-width="2.5" fill="none">
+          <path d="M272,38 L396,121"/>
+          <path d="M272,86 L396,137"/>
+          <path d="M272,134 L396,154"/>
+          <path d="M272,182 L396,171"/>
+          <path d="M272,230 L396,188"/>
+          <path d="M272,278 L396,205"/>
+        </g>
+        <g fill="#B4A792">
+          <polygon points="396,121 386,115 386,127"/>
+          <polygon points="396,137 386,131 386,143"/>
+          <polygon points="396,154 386,148 386,160"/>
+          <polygon points="396,171 386,165 386,177"/>
+          <polygon points="396,188 386,182 386,194"/>
+          <polygon points="396,205 386,199 386,211"/>
+        </g>
+        <!-- pool -->
+        <rect x="400" y="55" width="250" height="220" rx="22" fill="#D9EFE8" stroke="#171512" stroke-width="4"/>
+        <text x="525" y="148" text-anchor="middle" font-size="26" font-weight="700">种子问题池</text>
+        <text x="525" y="184" text-anchor="middle" font-size="16" fill="#5C544A">几万 ~ 千万条</text>
+        <!-- arrow -->
+        <line x1="654" y1="165" x2="706" y2="165" stroke="#171512" stroke-width="5" stroke-linecap="round"/>
+        <polygon points="726,165 706,156 706,174" fill="#171512"/>
+        <!-- teacher -->
+        <rect x="730" y="85" width="250" height="160" rx="22" fill="#BFE0D6" stroke="#171512" stroke-width="4"/>
+        <text x="855" y="150" text-anchor="middle" font-size="26" font-weight="700">教师模型</text>
+        <text x="855" y="186" text-anchor="middle" font-size="16" fill="#5C544A">答题 · 推理 · 打分</text>
+      </svg>
+      <p class="caption">问题的来源越杂，蒸馏出来的数据覆盖面就越宽。</p>
+    </div>
+  </section>
+
+  <!-- ================= 03 为什么拿不出全部 ================= -->
+  <section class="reveal">
+    <div class="sec-head"><span class="num">03</span><h2>为什么拿不出「全部」</h2></div>
+    <p class="lede">关键区别：数据集是一堆东西，模型是一个函数。东西能搬走，函数只能被调用。</p>
+    <div class="card">
+      <svg class="fig" viewBox="0 0 1000 360" role="img" aria-label="左边是数据集，右边是模型参数，两者不相等">
+        <line x1="500" y1="60" x2="500" y2="320" stroke="#B4A792" stroke-width="3" stroke-dasharray="9 9"/>
+
+        <!-- dataset cylinder -->
+        <path d="M120,110 L120,250 A110,26 0 0 0 340,250 L340,110 Z" fill="#F7E2B8" stroke="#171512" stroke-width="3"/>
+        <ellipse cx="230" cy="110" rx="110" ry="26" fill="#FBEED2" stroke="#171512" stroke-width="3"/>
+        <g fill="#FFFDF8" stroke="#171512" stroke-width="2">
+          <rect x="165" y="142" width="130" height="15" rx="4"/>
+          <rect x="165" y="170" width="130" height="15" rx="4"/>
+          <rect x="165" y="198" width="130" height="15" rx="4"/>
+          <rect x="165" y="226" width="130" height="15" rx="4"/>
+        </g>
+        <text x="230" y="304" text-anchor="middle" font-size="24" font-weight="700">数据集</text>
+        <text x="230" y="332" text-anchor="middle" font-size="16" fill="#5C544A">看得见 · 能复制 · 能搬走</text>
+
+        <!-- not equal -->
+        <circle cx="500" cy="180" r="36" fill="#F6F1E7" stroke="#171512" stroke-width="4"/>
+        <text x="500" y="197" text-anchor="middle" font-size="42" font-weight="700">≠</text>
+
+        <!-- model -->
+        <rect x="580" y="70" width="370" height="200" rx="24" fill="#FFFDF8" stroke="#171512" stroke-width="4"/>
+        <g stroke="#171512" stroke-width="2">
+          <line x1="650" y1="115" x2="725" y2="115"/><line x1="725" y1="115" x2="800" y2="115"/><line x1="800" y1="115" x2="875" y2="115"/>
+          <line x1="650" y1="175" x2="725" y2="175"/><line x1="725" y1="175" x2="800" y2="175"/><line x1="800" y1="175" x2="875" y2="175"/>
+          <line x1="650" y1="235" x2="725" y2="235"/><line x1="725" y1="235" x2="800" y2="235"/><line x1="800" y1="235" x2="875" y2="235"/>
+          <line x1="650" y1="115" x2="650" y2="175"/><line x1="650" y1="175" x2="650" y2="235"/>
+          <line x1="725" y1="115" x2="725" y2="175"/><line x1="725" y1="175" x2="725" y2="235"/>
+          <line x1="800" y1="115" x2="800" y2="175"/><line x1="800" y1="175" x2="800" y2="235"/>
+          <line x1="875" y1="115" x2="875" y2="175"/><line x1="875" y1="175" x2="875" y2="235"/>
+          <line x1="650" y1="115" x2="725" y2="175"/>
+          <line x1="800" y1="175" x2="875" y2="235"/>
+        </g>
+        <g fill="#BFE0D6" stroke="#171512" stroke-width="2.5">
+          <circle cx="650" cy="115" r="11"/><circle cx="725" cy="115" r="11"/><circle cx="800" cy="115" r="11"/><circle cx="875" cy="115" r="11"/>
+          <circle cx="650" cy="175" r="11"/><circle cx="725" cy="175" r="11"/><circle cx="800" cy="175" r="11"/><circle cx="875" cy="175" r="11"/>
+          <circle cx="650" cy="235" r="11"/><circle cx="725" cy="235" r="11"/><circle cx="800" cy="235" r="11"/><circle cx="875" cy="235" r="11"/>
+        </g>
+        <text x="765" y="304" text-anchor="middle" font-size="24" font-weight="700">模型参数</text>
+        <text x="765" y="332" text-anchor="middle" font-size="16" fill="#5C544A">知识被打散 · 只能问出来</text>
+
+        <!-- sampling arrows -->
+        <line x1="536" y1="112" x2="570" y2="112" stroke="#C4643C" stroke-width="4" stroke-dasharray="7 6" stroke-linecap="round"/>
+        <polygon points="578,112 564,105 564,119" fill="#C4643C"/>
+        <text x="552" y="98" text-anchor="middle" font-size="14" fill="#C4643C" font-weight="700">提问</text>
+        <line x1="956" y1="238" x2="986" y2="238" stroke="#C4643C" stroke-width="4" stroke-dasharray="7 6" stroke-linecap="round"/>
+        <polygon points="994,238 980,231 980,245" fill="#C4643C"/>
+        <text x="968" y="224" text-anchor="middle" font-size="14" fill="#C4643C" font-weight="700">回答</text>
+      </svg>
+      <p class="caption">同一条问题问两次，答案可能不一样 —— 说明里面"存"的不是数据，是概率。</p>
+    </div>
+  </section>
+
+  <!-- ================= 04 覆盖度 ================= -->
+  <section class="reveal">
+    <div class="sec-head"><span class="num">04</span><h2>那怎么办：把盲区填满</h2></div>
+    <p class="lede">既然不能全拿，目标就变成——用有限的采样点，尽量铺满无限的问题空间。这才是"如何蒸馏出全部数据"的真正答案。</p>
+    <div class="card">
+      <svg class="fig" viewBox="0 0 1000 400" role="img" aria-label="问题空间被采样覆盖的示意，覆盖率约百分之八十一">
+        <defs>
+          <g id="cellOn">
+            <rect width="98" height="56" rx="10" fill="#D9EFE8" stroke="#0E7C6B" stroke-width="2.5"/>
+            <circle cx="24" cy="18" r="4" fill="#0E7C6B"/>
+            <circle cx="49" cy="28" r="4" fill="#0E7C6B"/>
+            <circle cx="74" cy="38" r="4" fill="#0E7C6B"/>
+            <circle cx="24" cy="40" r="4" fill="#0E7C6B"/>
+            <circle cx="74" cy="14" r="4" fill="#0E7C6B"/>
+          </g>
+          <g id="cellOff">
+            <rect width="98" height="56" rx="10" fill="#EFE7DA" stroke="#B4A792" stroke-width="2.5" stroke-dasharray="6 5"/>
+            <text x="49" y="37" text-anchor="middle" font-size="24" font-weight="700" fill="#B4A792">?</text>
+          </g>
+        </defs>
+
+        <text x="40" y="24" font-size="18" font-weight="700">用户可能问的一切</text>
+        <text x="960" y="24" text-anchor="end" font-size="18" font-weight="700" fill="#0E7C6B">覆盖率 ≈ 81%</text>
+
+        <rect x="40" y="36" width="920" height="306" rx="24" fill="#FFFDF8" stroke="#171512" stroke-width="4"/>
+
+        <!-- row 0 -->
+        <use href="#cellOn" x="76" y="62"/><use href="#cellOn" x="183" y="62"/><use href="#cellOn" x="290" y="62"/>
+        <use href="#cellOn" x="397" y="62"/><use href="#cellOn" x="504" y="62"/><use href="#cellOn" x="611" y="62"/>
+        <use href="#cellOn" x="718" y="62"/><use href="#cellOff" x="825" y="62"/>
+        <!-- row 1 -->
+        <use href="#cellOn" x="76" y="130"/><use href="#cellOn" x="183" y="130"/><use href="#cellOff" x="290" y="130"/>
+        <use href="#cellOff" x="397" y="130"/><use href="#cellOn" x="504" y="130"/><use href="#cellOn" x="611" y="130"/>
+        <use href="#cellOn" x="718" y="130"/><use href="#cellOn" x="825" y="130"/>
+        <!-- row 2 -->
+        <use href="#cellOn" x="76" y="198"/><use href="#cellOn" x="183" y="198"/><use href="#cellOn" x="290" y="198"/>
+        <use href="#cellOn" x="397" y="198"/><use href="#cellOn" x="504" y="198"/><use href="#cellOff" x="611" y="198"/>
+        <use href="#cellOn" x="718" y="198"/><use href="#cellOn" x="825" y="198"/>
+        <!-- row 3 -->
+        <use href="#cellOn" x="76" y="266"/><use href="#cellOff" x="183" y="266"/><use href="#cellOn" x="290" y="266"/>
+        <use href="#cellOn" x="397" y="266"/><use href="#cellOn" x="504" y="266"/><use href="#cellOn" x="611" y="266"/>
+        <use href="#cellOff" x="718" y="266"/><use href="#cellOn" x="825" y="266"/>
+
+        <!-- legend -->
+        <rect x="40" y="366" width="22" height="22" rx="6" fill="#D9EFE8" stroke="#0E7C6B" stroke-width="2.5"/>
+        <text x="72" y="383" font-size="16">已采样到</text>
+        <rect x="200" y="366" width="22" height="22" rx="6" fill="#EFE7DA" stroke="#B4A792" stroke-width="2.5" stroke-dasharray="5 4"/>
+        <text x="232" y="383" font-size="16">盲区（学生没学过的）</text>
+      </svg>
+      <p class="caption">一个小格子 = 一批问答。格子越密，学生的"世界"越完整。</p>
+    </div>
+  </section>
+
+  <!-- ================= 05 八个招 ================= -->
+  <section class="reveal">
+    <div class="sec-head"><span class="num">05</span><h2>八个招，专门用来填盲区</h2></div>
+    <p class="lede">想让盲区更小，就在这八件事上下功夫。每一条都是为了提高"采样点"的密度和多样性。</p>
+    <div class="grid3">
+
+      <div class="tech">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M6,24 L20,24" stroke="#171512" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M20,24 L42,8 M20,24 L42,24 M20,24 L42,40" stroke="#0E7C6B" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="42" cy="8" r="4" fill="#E08A32"/><circle cx="42" cy="24" r="4" fill="#E08A32"/><circle cx="42" cy="40" r="4" fill="#E08A32"/>
+        </svg>
+        <div><h3>① 高温采样</h3><p>把温度调高，同一个问题问出十种答法，别让它每次都复制粘贴。</p></div>
+      </div>
+
+      <div class="tech">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <rect x="6" y="18" width="24" height="24" rx="6" fill="#F7E2B8" stroke="#171512" stroke-width="3"/>
+          <rect x="18" y="8" width="24" height="24" rx="6" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+        </svg>
+        <div><h3>② 提示池扩增</h3><p>同一件事换十种说法、换语言、换角色，把问题问"遍"。</p></div>
+      </div>
+
+      <div class="tech">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M10,26 L20,36 L40,12" fill="none" stroke="#0E7C6B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M32,32 l12,12 M44,32 l-12,12" stroke="#C4643C" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <div><h3>③ 拒绝采样</h3><p>答错、跑题、自相矛盾的，直接扔掉。宁缺毋滥。</p></div>
+      </div>
+
+      <div class="tech">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <line x1="10" y1="34" x2="24" y2="24" stroke="#171512" stroke-width="3"/>
+          <line x1="24" y1="24" x2="38" y2="14" stroke="#171512" stroke-width="3"/>
+          <circle cx="10" cy="34" r="6" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+          <circle cx="24" cy="24" r="6" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+          <circle cx="38" cy="14" r="6" fill="#BFE0D6" stroke="#171512" stroke-width="3"/>
+        </svg>
+        <div><h3>④ 思维链蒸馏</h3><p>不只学"答案"，更要学"怎么一步步想到答案"。</p></div>
+      </div>
+
+      <div class="tech">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M14,34 A13,13 0 1 1 34,34" fill="none" stroke="#0E7C6B" stroke-width="4.5" stroke-linecap="round"/>
+          <polygon points="8,34 16,28 16,40" fill="#0E7C6B"/>
+          <polygon points="40,34 32,28 32,40" fill="#0E7C6B"/>
+        </svg>
+        <div><h3>⑤ 自我批判迭代</h3><p>让学生先答，老师来批改，改完再练。一轮一轮往上抬。</p></div>
+      </div>
+
+      <div class="tech">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <rect x="6" y="30" width="9" height="12" fill="#F7E2B8" stroke="#171512" stroke-width="2.5"/>
+          <rect x="19" y="22" width="9" height="20" fill="#F5C98B" stroke="#171512" stroke-width="2.5"/>
+          <rect x="32" y="12" width="9" height="30" fill="#E08A32" stroke="#171512" stroke-width="2.5"/>
+        </svg>
+        <div><h3>⑥ 难度爬坡</h3><p>从简单题一路问到难题，别一上来就让它答超纲题。</p></div>
+      </div>
+
+      <div class="tech">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <circle cx="14" cy="16" r="8" fill="#BFE0D6" stroke="#171512" stroke-width="2.5"/>
+          <circle cx="33" cy="14" r="8" fill="#F7E2B8" stroke="#171512" stroke-width="2.5"/>
+          <circle cx="24" cy="33" r="8" fill="#F2C3A8" stroke="#171512" stroke-width="2.5"/>
+        </svg>
+        <div><h3>⑦ 领域配比</h3><p>数学、代码、写作、常识都要挖，别把铲子只插在一个坑里。</p></div>
+      </div>
+
+      <div class="tech">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <rect x="8" y="8" width="32" height="32" rx="8" fill="none" stroke="#171512" stroke-width="3"/>
+          <path d="M16,24 l6,6 l11,-13" fill="none" stroke="#0E7C6B" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div><h3>⑧ 去重去毒</h3><p>重复样本会让模型变笨，错误样本会让模型学坏，两道都得过。</p></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= 06 软标签 ================= -->
+  <section class="reveal">
+    <div class="sec-head"><span class="num">06</span><h2>进阶：不光学答案，还学"犹豫"</h2></div>
+    <p class="lede">如果拿得到教师的完整概率分布（logits），信息量比一个标准答案大得多。</p>
+    <div class="card">
+      <svg class="fig" viewBox="0 0 1000 360" role="img" aria-label="硬标签只有一个柱子，软标签四个类别都有数值">
+        <line x1="500" y1="40" x2="500" y2="340" stroke="#B4A792" stroke-width="2.5" stroke-dasharray="8 8"/>
+
+        <text x="40" y="58" font-size="19" font-weight="700">硬标签：只告诉你"选 A"</text>
+        <rect x="78" y="120" width="60" height="180" rx="6" fill="#0E7C6B" stroke="#171512" stroke-width="2.5"/>
+        <rect x="176" y="297" width="60" height="3" rx="1.5" fill="#D9CFC0" stroke="#171512" stroke-width="2"/>
+        <rect x="274" y="297" width="60" height="3" rx="1.5" fill="#D9CFC0" stroke="#171512" stroke-width="2"/>
+        <rect x="372" y="297" width="60" height="3" rx="1.5" fill="#D9CFC0" stroke="#171512" stroke-width="2"/>
+        <text x="108" y="110" text-anchor="middle" font-size="16" font-weight="700" fill="#0E7C6B">1.00</text>
+        <text x="206" y="290" text-anchor="middle" font-size="15" fill="#B4A792">0</text>
+        <text x="304" y="290" text-anchor="middle" font-size="15" fill="#B4A792">0</text>
+        <text x="402" y="290" text-anchor="middle" font-size="15" fill="#B4A792">0</text>
+
+        <text x="530" y="58" font-size="19" font-weight="700">软标签：还告诉你"第二像谁"</text>
+        <rect x="568" y="174" width="60" height="126" rx="6" fill="#0E7C6B" stroke="#171512" stroke-width="2.5"/>
+        <rect x="666" y="268" width="60" height="32" rx="6" fill="#4FA898" stroke="#171512" stroke-width="2.5"/>
+        <rect x="764" y="286" width="60" height="14" rx="6" fill="#9CC9BF" stroke="#171512" stroke-width="2.5"/>
+        <rect x="862" y="293" width="60" height="7" rx="3.5" fill="#CFE5DF" stroke="#171512" stroke-width="2.5"/>
+        <text x="598" y="164" text-anchor="middle" font-size="16" font-weight="700" fill="#0E7C6B">0.70</text>
+        <text x="696" y="258" text-anchor="middle" font-size="15" font-weight="700" fill="#4FA898">0.18</text>
+        <text x="794" y="276" text-anchor="middle" font-size="15" fill="#7FA79E">0.08</text>
+        <text x="892" y="283" text-anchor="middle" font-size="15" fill="#9CC9BF">0.04</text>
+
+        <line x1="40" y1="300" x2="960" y2="300" stroke="#171512" stroke-width="2.5"/>
+        <g font-size="16" text-anchor="middle" fill="#5C544A">
+          <text x="108" y="326">A</text><text x="206" y="326">B</text><text x="304" y="326">C</text><text x="402" y="326">D</text>
+          <text x="598" y="326">A</text><text x="696" y="326">B</text><text x="794" y="326">C</text><text x="892" y="326">D</text>
+        </g>
+      </svg>
+      <p class="caption">软标签像老师的"心里话"：我知道是 A，但 B 也沾点边。学生学得更细腻。</p>
+    </div>
+  </section>
+
+  <!-- ================= 07 坑 ================= -->
+  <section class="reveal">
+    <div class="sec-head"><span class="num">07</span><h2>五个最容易踩的坑</h2></div>
+    <p class="lede">蒸馏数据最大的风险是：你造出来的世界，不一定是真实的世界。</p>
+    <div class="grid3">
+      <div class="pit"><h3>分布漂移</h3><p>你造的问题 ≠ 用户真会问的问题。覆盖的是你的想象，不是需求。</p></div>
+      <div class="pit"><h3>幻觉污染</h3><p>老师错了，学生照着学，还会在训练中被放大成"自信的错误"。</p></div>
+      <div class="pit"><h3>偏见继承</h3><p>老师的风格、口味、禁忌，会被原封不动复制进学生脑子里。</p></div>
+      <div class="pit"><h3>同质化</h3><p>温度太低、模板太少，一万条数据读起来像同一条。</p></div>
+      <div class="pit"><h3>评测泄漏</h3><p>用老师答过的题去考学生，分数好看，但那是假的高分。</p></div>
+    </div>
+  </section>
+
+  <!-- ================= 收尾 ================= -->
+  <div class="closing reveal">
+    <p class="big">蒸馏不是拷贝数据，是<em>用提问把模型的能力压成数据</em>。</p>
+    <ul>
+      <li>你拿到的是它的<b>行为</b>，不是它的<b>知识本体</b>。</li>
+      <li>所以目标从来不是"全部"，而是<b>覆盖得足够全</b>。</li>
+      <li>覆盖度 = 问题的多样性 × 采样的数量 × 筛选的质量。</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+  (function () {
+    var items = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) {
+      items.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    items.forEach(function (el) { io.observe(el); });
+  })();
+</script>
+
+</body>
+</html>

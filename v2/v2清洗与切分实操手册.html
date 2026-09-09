@@ -1,0 +1,1454 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小智二代 · 清洗与切分实操手册</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+        --term: #15130e;
+        --termtxt: #e8e2d2;
+        --termmut: #7a7261;
+      }
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .sf {
+        fill: var(--ink);
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tg {
+        fill: #2e7d4f;
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ========== 代码区 ========== */
+      .codesec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        background: var(--term);
+        color: var(--termtxt);
+      }
+      .codesec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        color: var(--termtxt);
+      }
+      .codesec .cap {
+        text-align: center;
+        color: var(--termmut);
+        font-size: 0.9rem;
+        margin-bottom: 2.2rem;
+      }
+      .codewrap {
+        max-width: 980px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .codewrap pre {
+        background: #0e0c08;
+        border: 1px solid #3b372c;
+        border-radius: 14px;
+        padding: 1.6rem 1.4rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+        color: var(--termtxt);
+        max-height: 640px;
+        overflow-y: auto;
+      }
+      .codewrap .c-cm {
+        color: #7a7261;
+      }
+      .codewrap .c-kw {
+        color: #e8432c;
+      }
+      .codewrap .c-str {
+        color: #a8c686;
+      }
+      #copybtn {
+        position: sticky;
+        top: 0.8rem;
+        float: right;
+        margin: 0.8rem 0.8rem 0 0;
+        z-index: 5;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        background: var(--verm);
+        color: #fff;
+        border: none;
+        border-radius: 99px;
+        padding: 0.4rem 1.1rem;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      #copybtn:hover {
+        transform: scale(1.06);
+      }
+
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2.5rem 4rem;
+        margin: 2.5rem 0 3.5rem;
+      }
+      .stat b {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2rem, 4.2vw, 3.2rem);
+        line-height: 1.25;
+        transition: 0.25s;
+      }
+      .stat:hover b {
+        color: var(--verm);
+      }
+      .stat em {
+        display: block;
+        font-style: normal;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .fin-sum {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 为什么要洗</span></a>
+      <a href="#p1"><span>1 三步清洗</span></a>
+      <a href="#p2"><span>2 模板化</span></a>
+      <a href="#p3"><span>3 切分</span></a>
+      <a href="#p4"><span>4 跑脚本</span></a>
+      <a href="#code"><span>完整代码</span></a>
+      <a href="#p5"><span>5 验收</span></a>
+      <a href="#qa"><span>排错表</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">0.01B · 教材编辑室 · 纯标准库 · 含可运行代码</p>
+      <h1>小智二代<br /><span class="red">清洗与切分手册</span></h1>
+      <p class="sub">
+        蒸馏出来的 distill_data.jsonl 还是"原料"，不能直接下锅。这份手册带它走完编辑室的四道工序：去重、过滤、套上统一聊天模板、切成训练/验证两份——出来就是可以喂给训练的正式教材。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">零依赖 · 纯标准库直接跑</span>
+        <span class="hb">输入：distill_data.jsonl</span>
+        <span class="hb">输出：train.jsonl + val.jsonl</span>
+        <span class="hb">铁律：顺序不能乱</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 四道工序一条线</h2>
+      <p class="cap reveal">
+        顺序是本页的灵魂：先去重、再过滤、再模板化、最后才切分
+      </p>
+      <svg
+        viewBox="0 0 1150 190"
+        class="reveal"
+        role="img"
+        aria-label="四步流程图"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="237" y1="80" x2="293" y2="80" />
+          <line x1="512" y1="80" x2="568" y2="80" />
+          <line x1="787" y1="80" x2="843" y2="80" />
+        </g>
+        <g
+          font-family="'Noto Serif SC',serif"
+          font-weight="900"
+          font-size="22"
+          text-anchor="middle"
+        >
+          <circle
+            cx="177"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="177" y="88" fill="#191611">01</text>
+          <circle cx="452" cy="80" r="40" fill="#E8432C" />
+          <text x="452" y="88" fill="#fff">02</text>
+          <circle cx="727" cy="80" r="40" fill="#E8432C" />
+          <text x="727" y="88" fill="#fff">03</text>
+          <circle
+            cx="983"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="983" y="88" fill="#191611">04</text>
+        </g>
+        <g
+          class="ts"
+          text-anchor="middle"
+          font-size="12.5"
+          style="fill: #8a8271"
+        >
+          <text x="177" y="148">读取原料</text>
+          <text x="452" y="148" style="fill: #e8432c; font-weight: 700">
+            三步清洗
+          </text>
+          <text x="727" y="148" style="fill: #e8432c; font-weight: 700">
+            套聊天模板
+          </text>
+          <text x="983" y="148">98:2 切分</text>
+        </g>
+        <text x="575" y="180" text-anchor="middle" class="ts" font-size="12">
+          切分永远是最后一步——先切再洗，验证集就会被"近亲数据"污染
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 为什么要洗 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="直接训原料与先洗再训的对比"
+          >
+            <rect x="30" y="40" width="195" height="250" rx="14" class="sw" />
+            <text x="50" y="72" class="ta" font-size="13">直接训原料 ✗</text>
+            <text x="50" y="102" class="ts" font-size="12.5">
+              · 重复句背成复读机
+            </text>
+            <text x="50" y="128" class="ts" font-size="12.5">
+              · 半截残句学个正着
+            </text>
+            <text x="50" y="154" class="ts" font-size="12.5">
+              · "作为AI"人设漏出
+            </text>
+            <text x="50" y="180" class="ts" font-size="12.5">
+              · 验证集混入近亲数据
+            </text>
+            <text x="50" y="206" class="ts" font-size="12.5">
+              · 指标虚高，实战翻车
+            </text>
+            <rect x="238" y="40" width="195" height="250" rx="14" class="ac" />
+            <text x="258" y="72" font-size="13" fill="#fff" font-weight="700" font-family="'Noto Sans SC',sans-serif">
+              先洗再训 ✓
+            </text>
+            <text x="258" y="102" class="ts" font-size="12.5" fill="#fff">
+              · 每条都是独一份
+            </text>
+            <text x="258" y="128" class="ts" font-size="12.5" fill="#fff">
+              · 长度健康、人设干净
+            </text>
+            <text x="258" y="154" class="ts" font-size="12.5" fill="#fff">
+              · 模板统一，格式稳定
+            </text>
+            <text x="258" y="180" class="ts" font-size="12.5" fill="#fff">
+              · 验证集是诚实的镜子
+            </text>
+            <text x="258" y="206" class="ts" font-size="12.5" fill="#fff">
+              · loss 曲线可以放心看
+            </text>
+            <text x="230" y="322" text-anchor="middle" class="ta">
+              黄金法则：垃圾进，垃圾出——数据决定上限
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">00</div>
+          <h2>为什么要洗 · 原料不等于教材</h2>
+          <div class="whyl">作用：决定模型上限的往往是数据，不是模型</div>
+          <p class="lead">
+            蒸馏脚本连跑几小时，产出里一定混着：<b>采样撞车的重复句、截断的半截残句、没压住人设的"作为AI"腔</b>。这些脏东西按比例进教材，小智就按比例学坏。
+          </p>
+          <p class="detail">
+            更隐蔽的坑是<b>验证集泄漏</b>：如果先切分再清洗，训练集里留着验证集题目的"换皮双胞胎"，验证 loss 会漂亮得虚假——你以为它在进步，其实它在作弊。所以本页的铁律只有四个字：<b>顺序不能乱</b>。
+          </p>
+          <p class="note">
+            好消息是这一步全程本地、纯标准库、几秒钟跑完。模型还没开始训，你已经把最大的风险排掉了。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 三步清洗 ============ -->
+    <section class="stage dark" id="p1">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="三步清洗：精确去重、近似去重、质量过滤"
+          >
+            <text x="40" y="36" class="ta">三步清洗（按序执行，步步有报告）</text>
+            <rect x="40" y="56" width="400" height="72" rx="10" class="sw" />
+            <text
+              x="60"
+              y="82"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              ① 精确去重
+            </text>
+            <text x="60" y="104" class="ts" font-size="11.5">
+              整条问答算 MD5 指纹，完全相同 → 只留一条
+            </text>
+            <text x="60" y="121" class="ts" font-size="10.5">
+              老师采样撞车是常态，这一步通常能删 10~30%
+            </text>
+            <rect x="40" y="140" width="400" height="72" rx="10" class="sw" />
+            <text
+              x="60"
+              y="166"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              ② 近似去重
+            </text>
+            <text x="60" y="188" class="ts" font-size="11.5">
+              问题去掉标点空白后取前 15 字，相同 → 视为"换皮重复"
+            </text>
+            <text x="60" y="205" class="ts" font-size="10.5">
+              「今天天气咋样」和「今天天气怎么样」只留一个
+            </text>
+            <rect x="40" y="224" width="400" height="72" rx="10" class="ac" />
+            <text
+              x="60"
+              y="250"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="#fff"
+            >
+              ③ 质量过滤
+            </text>
+            <text x="60" y="272" class="ts" font-size="11.5" fill="#fff">
+              长度越界 / 人设漏出黑名单 / 模板标记泄漏 → 整条丢弃
+            </text>
+            <text x="60" y="289" class="ts" font-size="10.5" fill="#fff">
+              宁可少一百条，不要一条脏的
+            </text>
+            <text x="240" y="332" text-anchor="middle" class="ta">
+              每一步淘汰多少条，跑完脚本都会打印出来
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">01</div>
+          <h2>三步清洗 · 层层设卡</h2>
+          <div class="whyl">作用：每种脏数据都有对应的闸门</div>
+          <p class="lead">
+            <b>精确去重</b>抓"一字不差的撞车"；<b>近似去重</b>抓"改俩标点又来一条"的伪多样；<b>质量过滤</b>抓长度失控、人设漏出和模板标记泄漏。三道闸互不替代，缺一不可。
+          </p>
+          <p class="detail">
+            <b>为什么近似去重要在质量过滤之前？</b>过滤规则会改判一条数据的去留，但不会改变重复的本质；而先过滤再去重，会让重复统计失真。顺序约定成一句话：<b>先让数据变"纯"，再让数据变"好"</b>。
+          </p>
+          <p class="note">
+            阈值都在脚本参数区：问题 2~200 字、回答 2~500 字是经验起点。如果你的方向是长回答（比如讲故事），把
+            MAX_A_LEN 调大即可，别动流程。
+          </p>
+        </div
+      </div>
+    </section>
+
+    <!-- ============ 02 模板化 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="聊天模板：一问一答序列化成一条带标记的文本"
+          >
+            <text x="40" y="36" class="ta">一条对话 → 一段训练文本</text>
+            <!-- 输入 -->
+            <rect x="40" y="52" width="400" height="76" rx="10" class="sw" />
+            <text x="60" y="78" class="ts" font-size="11.5">user：你是谁？</text>
+            <text x="60" y="100" class="ts" font-size="11.5">
+              assistant：我叫小智，一个迷你中文模型~
+            </text>
+            <text x="60" y="120" class="ts" font-size="10.5">
+              （蒸馏脚本里的 messages 格式）
+            </text>
+            <!-- 箭头 -->
+            <path d="M240 132 L240 160" class="acs" />
+            <path d="M240 160 l-6 -10 l12 0 z" class="ac" />
+            <!-- 输出 -->
+            <rect x="40" y="168" width="400" height="86" rx="10" fill="#15130e" />
+            <g font-family="'JetBrains Mono',monospace" font-size="12">
+              <text x="58" y="196" fill="#e8432c">&lt;|user|&gt;</text>
+              <text x="142" y="196" fill="#e8e2d2">你是谁？</text>
+              <text x="58" y="222" fill="#e8432c">&lt;|assistant|&gt;</text>
+              <text x="196" y="222" fill="#e8e2d2">我叫小智，一个迷你中文模型~</text>
+              <text x="58" y="244" fill="#e8432c">&lt;|end|&gt;</text>
+            </g>
+            <!-- 纪律 -->
+            <rect x="40" y="272" width="400" height="52" rx="10" class="sw" />
+            <text x="60" y="294" class="ta" font-size="12">
+              头号纪律：训练与推理共用同一份模板常量
+            </text>
+            <text x="60" y="313" class="ts" font-size="10.5">
+              90% 的"模型胡言乱语"，其实是两边模板差了一个字符
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">02</div>
+          <h2>模板化 · 套上统一制服</h2>
+          <div class="whyl">作用：教模型"谁在说、说到哪算完"</div>
+          <p class="lead">
+            模型读的不是"对话"，是一条线性文本。我们用三个特殊标记把一问一答缝成固定格式：<b>&lt;|user|&gt; 问题 &lt;|assistant|&gt; 回答 &lt;|end|&gt;</b>。模型学到的不只是内容，还有"看到
+            assistant 标记就该我接话、看到 end 标记就该停"的格式直觉。
+          </p>
+          <p class="detail">
+            <b>这是全项目最重要的常量：</b>脚本顶部的 USER_TOKEN /
+            ASSISTANT_TOKEN /
+            END_TOKEN，将来训练脚本、推理脚本都必须从这里原样照抄。训练时用
+            &lt;|end|&gt;、推理时却拿句号当结束符，小智就会永远喋喋不休。
+          </p>
+          <p class="note">
+            为什么标记长成 &lt;|...|&gt;
+            这样？因为这种尖括号竖线的组合在正常中文里几乎不会出现，模型不会把它和正文搞混——这也是
+            GPT 系列的特殊标记风格，直接沿用最稳。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 切分 ============ -->
+    <section class="stage dark" id="p3">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 330"
+            role="img"
+            aria-label="98比2切分：训练集做题，验证集监考"
+          >
+            <text x="40" y="36" class="ta">洗完才切：98 : 2</text>
+            <!-- 比例条 -->
+            <rect x="40" y="56" width="353" height="56" rx="10" class="ac" />
+            <rect x="393" y="56" width="47" height="56" rx="10" class="sw" />
+            <text
+              x="216"
+              y="90"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="13"
+              fill="#fff"
+            >
+              train.jsonl · 98%
+            </text>
+            <text x="416" y="90" text-anchor="middle" class="ts" font-size="10">
+              val
+            </text>
+            <!-- 两个角色 -->
+            <rect x="40" y="136" width="195" height="96" rx="12" class="sw" />
+            <text x="60" y="164" class="tt" font-size="13">训练集 = 课本</text>
+            <text x="60" y="188" class="ts" font-size="11">
+              模型逐条学习、反复梯度下降
+            </text>
+            <text x="60" y="208" class="ts" font-size="11">
+              看多了会"背下来"
+            </text>
+            <rect x="245" y="136" width="195" height="96" rx="12" class="sw" />
+            <text x="265" y="164" class="tt" font-size="13">验证集 = 监考卷</text>
+            <text x="265" y="188" class="ts" font-size="11">
+              只考试、不参与训练
+            </text>
+            <text x="265" y="208" class="ts" font-size="11">
+              它的 loss 才是真实水平
+            </text>
+            <!-- 纪律 -->
+            <text x="240" y="272" text-anchor="middle" class="ta" font-size="12">
+              为什么放最后切？先切再洗，训练集就会留着
+            </text>
+            <text x="240" y="294" text-anchor="middle" class="ta" font-size="12">
+              验证题的"换皮双胞胎"——监考就失效了
+            </text>
+            <text x="240" y="318" text-anchor="middle" class="ts" font-size="11">
+              固定随机种子 SEED=42：每次重跑切分结果一致，便于复现对比
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">03</div>
+          <h2>切分 · 留一张诚实的考卷</h2>
+          <div class="whyl">作用：没有验证集，训练就是闭眼开车</div>
+          <p class="lead">
+            洗净、套好模板的全量数据，洗牌后按 <b>98 : 2</b>
+            切开：大头是训练集，剩下的一小撮是验证集——它永远不参与训练，只负责在训练过程中"监考"，告诉你模型是真学会了还是背下来了。
+          </p>
+          <p class="detail">
+            <b>为什么只有 2%？</b>数据总共几百上千条，验证集有几十条就足够看出
+            loss
+            趋势，多留纯属浪费教材。等数据量上到几万条，再考虑提到
+            5%。
+          </p>
+          <p class="note">
+            产出是两个新文件：train.jsonl 和
+            val.jsonl，每行一条 {"text": 带模板的文本, "type": 类别}。蒸馏原料
+            distill_data.jsonl 原样保留——它是你唯一的事实来源，别覆盖它。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04 跑脚本 ============ -->
+    <section class="stage" id="p4">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 380"
+            role="img"
+            aria-label="五个类各司其职：读、洗、模板化、切分、编排"
+          >
+            <text x="40" y="36" class="ta">脚本结构：五个类，一个类只做一件事</text>
+            <rect x="40" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              JsonlReader
+            </text>
+            <text x="136" y="100" text-anchor="middle" class="ts" font-size="10.5">
+              只管读原料、挑坏行
+            </text>
+            <rect x="248" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="344"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              DataCleaner
+            </text>
+            <text x="344" y="100" text-anchor="middle" class="ts" font-size="10.5">
+              只管三步清洗出报告
+            </text>
+            <rect x="40" y="136" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              ChatTemplater
+            </text>
+            <text x="136" y="180" text-anchor="middle" class="ts" font-size="10.5">
+              只管套聊天模板
+            </text>
+            <rect x="248" y="136" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="344"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              DataSplitter
+            </text>
+            <text x="344" y="180" text-anchor="middle" class="ts" font-size="10.5">
+              只管洗牌切分写盘
+            </text>
+            <rect x="40" y="216" width="400" height="56" rx="10" class="ac" />
+            <text
+              x="240"
+              y="240"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="#fff"
+            >
+              CleanPipeline
+            </text>
+            <text x="240" y="260" text-anchor="middle" class="ts" font-size="10.5" fill="#fff">
+              只管编排：读 → 洗 → 模板化 → 切分 → 打印体检报告
+            </text>
+            <rect x="40" y="292" width="400" height="56" rx="12" class="sw" />
+            <text x="60" y="316" class="ts" font-size="11.5">
+              运行：conda activate f10 &amp;&amp; python clean_split.py
+            </text>
+            <text x="60" y="336" class="ts" font-size="11.5">
+              纯标准库零依赖，几百条数据秒级跑完
+            </text>
+            <text x="240" y="372" text-anchor="middle" class="ta">
+              改比例只动 VAL_RATIO，改阈值只动参数区，模板常量勿动
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">04</div>
+          <h2>跑起来 · 几秒钟出报告</h2>
+          <div class="whyl">作用：一条命令，原料变教材</div>
+          <p class="lead">
+            把下面的脚本保存为 clean_split.py，和 distill_data.jsonl
+            放同一目录，直接运行即可。<b>不装任何第三方库</b>——这一步全是文本处理，标准库绰绰有余。
+          </p>
+          <p class="detail">
+            <b>跑完看三样东西：</b>① 各环节淘汰了多少条（清洗报告）；② 剩余条数还够不够（如果洗完全剩一半不到，说明原料质量差，该回去补蒸馏）；③
+            类型分布有没有跑偏（比如认怂类被近似去重误伤太多）。
+          </p>
+          <p class="note">
+            这个脚本可以反复跑：它只读原料、重写 train/val
+            两个输出文件，不会累积、不会污染。改了阈值就重跑一次看报告变化，是最直接的调参方式。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 完整代码 ============ -->
+    <section class="codesec" id="code">
+      <h2 class="reveal">完整可运行脚本 · clean_split.py</h2>
+      <p class="cap reveal">
+        复制 → 与 distill_data.jsonl 同目录保存 → conda activate f10 &&
+        python clean_split.py
+      </p>
+      <div class="codewrap reveal">
+        <button id="copybtn">复制代码</button>
+        <pre id="codeblock">
+<span class="c-cm"># -*- coding: utf-8 -*-</span>
+<span class="c-cm">"""
+clean_split.py —— 小智二代 · 数据清洗与切分脚本
+作用：把蒸馏产出的 distill_data.jsonl 清洗、模板化，并切成 train/val 两份教材
+用法：python clean_split.py（纯标准库，无需安装任何依赖）
+"""</span>
+
+<span class="c-kw">import</span> hashlib   <span class="c-cm"># 计算整条对话的指纹，用于精确去重</span>
+<span class="c-kw">import</span> json      <span class="c-cm"># 读写 jsonl 数据行</span>
+<span class="c-kw">import</span> random    <span class="c-cm"># 切分前洗牌，保证训练/验证分布一致</span>
+<span class="c-kw">import</span> re        <span class="c-cm"># 归一化文本（去标点空白），用于近似去重</span>
+<span class="c-kw">from</span> pathlib <span class="c-kw">import</span> Path  <span class="c-cm"># 跨平台路径处理（macOS / Linux 通用）</span>
+
+<span class="c-cm"># ==================== 可调参数区（只改这里） ====================</span>
+IN_FILE = Path(<span class="c-str">"distill_data.jsonl"</span>)  <span class="c-cm"># 输入：蒸馏脚本的产出</span>
+TRAIN_FILE = Path(<span class="c-str">"train.jsonl"</span>)      <span class="c-cm"># 输出：训练集</span>
+VAL_FILE = Path(<span class="c-str">"val.jsonl"</span>)          <span class="c-cm"># 输出：验证集</span>
+VAL_RATIO = <span class="c-kw">0.02</span>   <span class="c-cm"># 验证集占比（98:2 切分）</span>
+SEED = <span class="c-kw">42</span>           <span class="c-cm"># 洗牌随机种子：固定后每次切分结果一致，便于复现</span>
+
+<span class="c-cm"># ==================== 聊天模板（全项目最重要的常量） ====================</span>
+<span class="c-cm"># 纪律：训练时用什么模板，推理时就要一字不差地用什么模板</span>
+USER_TOKEN = <span class="c-str">"&lt;|user|&gt;"</span>          <span class="c-cm"># 用户发言起始标记</span>
+ASSISTANT_TOKEN = <span class="c-str">"&lt;|assistant|&gt;"</span>  <span class="c-cm"># 助手发言起始标记</span>
+END_TOKEN = <span class="c-str">"&lt;|end|&gt;"</span>            <span class="c-cm"># 一轮对话结束标记</span>
+
+<span class="c-cm"># ==================== 质量过滤规则 ====================</span>
+MIN_Q_LEN, MAX_Q_LEN = <span class="c-kw">2</span>, <span class="c-kw">200</span>   <span class="c-cm"># 用户问题长度边界（字符数）</span>
+MIN_A_LEN, MAX_A_LEN = <span class="c-kw">2</span>, <span class="c-kw">500</span>   <span class="c-cm"># 助手回答长度边界</span>
+BAN_WORDS = [  <span class="c-cm"># 人设漏出黑名单：出现即整条丢弃</span>
+    <span class="c-str">"作为AI"</span>, <span class="c-str">"作为一个人工智能"</span>, <span class="c-str">"作为语言模型"</span>, <span class="c-str">"作为聊天机器人"</span>,
+]
+
+
+<span class="c-cm"># ==================== 五个类，一个类只做一件事 ====================</span>
+<span class="c-kw">class</span> JsonlReader:
+    <span class="c-cm">"""职责：只负责读——把原料文件解析成统一的对话列表"""</span>
+
+    <span class="c-kw">def</span> __init__(self, path):
+        <span class="c-cm">"""path：原料文件路径（Path 对象）"""</span>
+        self.path = path
+
+    <span class="c-kw">def</span> load(self):
+        <span class="c-cm">"""读取全部行；返回 (对话列表, 坏行数)
+        对话统一为 {'q': 问题, 'a': 回答, 'type': 类别} 的扁平结构"""</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> self.path.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到原料文件：{self.path}（请先运行 distill.py）"</span>)
+        items, bad = [], <span class="c-kw">0</span>
+        <span class="c-kw">for</span> line <span class="c-kw">in</span> self.path.read_text(encoding=<span class="c-str">"utf-8"</span>).splitlines():
+            <span class="c-kw">try</span>:
+                item = json.loads(line)
+                msgs = item[<span class="c-str">"messages"</span>]
+                items.append({
+                    <span class="c-str">"q"</span>: msgs[<span class="c-kw">0</span>][<span class="c-str">"content"</span>].strip(),
+                    <span class="c-str">"a"</span>: msgs[<span class="c-kw">1</span>][<span class="c-str">"content"</span>].strip(),
+                    <span class="c-str">"type"</span>: item.get(<span class="c-str">"type"</span>, <span class="c-str">"unknown"</span>),
+                })
+            <span class="c-kw">except</span> (json.JSONDecodeError, KeyError, IndexError):
+                bad += <span class="c-kw">1</span>  <span class="c-cm"># 坏行不计入，在报告中体现</span>
+        <span class="c-kw">return</span> items, bad
+
+
+<span class="c-kw">class</span> DataCleaner:
+    <span class="c-cm">"""职责：只负责洗——精确去重 → 近似去重 → 质量过滤（顺序不能乱）"""</span>
+
+    <span class="c-kw">@staticmethod</span>
+    <span class="c-kw">def</span> _norm(text):
+        <span class="c-cm">"""归一化：去掉所有空白和常见标点，用于识别"换皮重复" """</span>
+        <span class="c-kw">return</span> re.sub(<span class="c-str">r"[\s，。！？、：；,.!?:;~…·—'\"\"''（）()【】「」《》&lt;&gt;-]"</span>, <span class="c-str">""</span>, text)
+
+    <span class="c-kw">def</span> clean(self, items):
+        <span class="c-cm">"""
+        依次执行三步清洗；返回 (合格列表, 各环节淘汰统计 dict)
+        顺序纪律：先去重再过滤——先让数据变"纯"，再让数据变"好"
+        """</span>
+        report = {<span class="c-str">"exact_dup"</span>: <span class="c-kw">0</span>, <span class="c-str">"near_dup"</span>: <span class="c-kw">0</span>, <span class="c-str">"bad_quality"</span>: <span class="c-kw">0</span>}
+
+        <span class="c-cm"># ① 精确去重：整条问答算指纹，完全相同只留一条</span>
+        seen_hash, step1 = set(), []
+        <span class="c-kw">for</span> it <span class="c-kw">in</span> items:
+            fp = hashlib.md5((it[<span class="c-str">"q"</span>] + it[<span class="c-str">"a"</span>]).encode(<span class="c-str">"utf-8"</span>)).hexdigest()
+            <span class="c-kw">if</span> fp <span class="c-kw">in</span> seen_hash:
+                report[<span class="c-str">"exact_dup"</span>] += <span class="c-kw">1</span>
+                <span class="c-kw">continue</span>
+            seen_hash.add(fp)
+            step1.append(it)
+
+        <span class="c-cm"># ② 近似去重：问题归一化后取前 15 字，相同视为换皮重复</span>
+        seen_near, step2 = set(), []
+        <span class="c-kw">for</span> it <span class="c-kw">in</span> step1:
+            key = self._norm(it[<span class="c-str">"q"</span>])[:<span class="c-kw">15</span>]
+            <span class="c-kw">if</span> key <span class="c-kw">in</span> seen_near:
+                report[<span class="c-str">"near_dup"</span>] += <span class="c-kw">1</span>
+                <span class="c-kw">continue</span>
+            seen_near.add(key)
+            step2.append(it)
+
+        <span class="c-cm"># ③ 质量过滤：长度越界 / 人设漏出 / 模板标记泄漏 → 整条丢弃</span>
+        kept = []
+        <span class="c-kw">for</span> it <span class="c-kw">in</span> step2:
+            q, a = it[<span class="c-str">"q"</span>], it[<span class="c-str">"a"</span>]
+            <span class="c-kw">if</span> <span class="c-kw">not</span> (MIN_Q_LEN &lt;= <span class="c-kw">len</span>(q) &lt;= MAX_Q_LEN):
+                report[<span class="c-str">"bad_quality"</span>] += <span class="c-kw">1</span>
+                <span class="c-kw">continue</span>
+            <span class="c-kw">if</span> <span class="c-kw">not</span> (MIN_A_LEN &lt;= <span class="c-kw">len</span>(a) &lt;= MAX_A_LEN):
+                report[<span class="c-str">"bad_quality"</span>] += <span class="c-kw">1</span>
+                <span class="c-kw">continue</span>
+            <span class="c-kw">if</span> <span class="c-kw">any</span>(w <span class="c-kw">in</span> q + a <span class="c-kw">for</span> w <span class="c-kw">in</span> BAN_WORDS):
+                report[<span class="c-str">"bad_quality"</span>] += <span class="c-kw">1</span>
+                <span class="c-kw">continue</span>
+            <span class="c-kw">if</span> <span class="c-str">"&lt;|"</span> <span class="c-kw">in</span> q + a:  <span class="c-cm"># 原料里不该出现模板标记，出现即泄漏</span>
+                report[<span class="c-str">"bad_quality"</span>] += <span class="c-kw">1</span>
+                <span class="c-kw">continue</span>
+            kept.append(it)
+        <span class="c-kw">return</span> kept, report
+
+
+<span class="c-kw">class</span> ChatTemplater:
+    <span class="c-cm">"""职责：只负责模板化——把一问一答序列化成带特殊标记的训练文本"""</span>
+
+    <span class="c-kw">def</span> render(self, q, a):
+        <span class="c-cm">"""序列化格式：&lt;|user|&gt;问题&lt;|assistant|&gt;回答&lt;|end|&gt;（单轮对话）"""</span>
+        <span class="c-kw">return</span> <span class="c-str">f"{USER_TOKEN}{q}{ASSISTANT_TOKEN}{a}{END_TOKEN}"</span>
+
+
+<span class="c-kw">class</span> DataSplitter:
+    <span class="c-cm">"""职责：只负责切分——洗牌后按比例切成训练/验证集并写盘"""</span>
+
+    <span class="c-kw">def</span> split_and_write(self, rows):
+        <span class="c-cm">"""
+        参数：rows 模板化后的数据行列表
+        返回：(训练集条数, 验证集条数)
+        纪律：切分永远是流水线最后一步，保证验证集与训练集零重叠
+        """</span>
+        random.Random(SEED).shuffle(rows)       <span class="c-cm"># 固定种子洗牌，结果可复现</span>
+        n_val = <span class="c-kw">max</span>(<span class="c-kw">1</span>, <span class="c-kw">int</span>(<span class="c-kw">len</span>(rows) * VAL_RATIO))  <span class="c-cm"># 至少留 1 条验证</span>
+        val_rows, train_rows = rows[:n_val], rows[n_val:]
+        self._write(TRAIN_FILE, train_rows)
+        self._write(VAL_FILE, val_rows)
+        <span class="c-kw">return</span> <span class="c-kw">len</span>(train_rows), <span class="c-kw">len</span>(val_rows)
+
+    <span class="c-kw">@staticmethod</span>
+    <span class="c-kw">def</span> _write(path, rows):
+        <span class="c-cm">"""按行写入 jsonl（每行一条 JSON，UTF-8 中文不转义）"""</span>
+        <span class="c-kw">with</span> path.open(<span class="c-str">"w"</span>, encoding=<span class="c-str">"utf-8"</span>) <span class="c-kw">as</span> f:
+            <span class="c-kw">for</span> r <span class="c-kw">in</span> rows:
+                f.write(json.dumps(r, ensure_ascii=<span class="c-kw">False</span>) + <span class="c-str">"\n"</span>)
+
+
+<span class="c-kw">class</span> CleanPipeline:
+    <span class="c-cm">"""职责：只负责编排——读 → 洗 → 模板化 → 切分，并打印体检报告"""</span>
+
+    <span class="c-kw">def</span> run(self):
+        <span class="c-cm"># ① 读原料</span>
+        items, bad_lines = JsonlReader(IN_FILE).load()
+        <span class="c-kw">print</span>(<span class="c-str">f"[read] 原料 {len(items)} 条（坏行 {bad_lines} 条已跳过）"</span>)
+
+        <span class="c-cm"># ② 清洗（顺序：精确去重 → 近似去重 → 质量过滤）</span>
+        kept, report = DataCleaner().clean(items)
+        <span class="c-kw">print</span>(<span class="c-str">f"[clean] 精确去重 -{report['exact_dup']}，"</span>
+              <span class="c-str">f"近似去重 -{report['near_dup']}，"</span>
+              <span class="c-str">f"质量过滤 -{report['bad_quality']} → 剩余 {len(kept)} 条"</span>)
+
+        <span class="c-cm"># ③ 模板化：每条对话序列化成带特殊标记的文本</span>
+        templater = ChatTemplater()
+        rows = [{<span class="c-str">"text"</span>: templater.render(it[<span class="c-str">"q"</span>], it[<span class="c-str">"a"</span>]),
+                 <span class="c-str">"type"</span>: it[<span class="c-str">"type"</span>]} <span class="c-kw">for</span> it <span class="c-kw">in</span> kept]
+
+        <span class="c-cm"># ④ 切分（流水线最后一步，防验证集泄漏）</span>
+        n_train, n_val = DataSplitter().split_and_write(rows)
+        <span class="c-kw">print</span>(<span class="c-str">f"[split] 训练集 {n_train} 条 → {TRAIN_FILE}，"</span>
+              <span class="c-str">f"验证集 {n_val} 条 → {VAL_FILE}"</span>)
+
+        <span class="c-cm"># ---- 类型分布体检：帮你发现"配方跑偏" ----</span>
+        dist = {}
+        <span class="c-kw">for</span> it <span class="c-kw">in</span> kept:
+            dist[it[<span class="c-str">"type"</span>]] = dist.get(it[<span class="c-str">"type"</span>], <span class="c-kw">0</span>) + <span class="c-kw">1</span>
+        <span class="c-kw">print</span>(<span class="c-str">f"[dist] 类型分布：{dist}"</span>)
+        <span class="c-kw">print</span>(<span class="c-str">"[done] 清洗切分完成！可进入 BPE 分词与训练阶段"</span>)
+
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    CleanPipeline().run()
+        </pre>
+      </div>
+    </section>
+
+    <!-- ============ 05 验收 ============ -->
+    <section class="stage" id="p5">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="验收：看报告、数行数、抽查文本"
+          >
+            <text x="40" y="36" class="ta">一次健康的运行长这样</text>
+            <rect x="40" y="52" width="400" height="132" rx="12" fill="#15130e" />
+            <g font-family="'JetBrains Mono',monospace" font-size="10.5">
+              <text x="56" y="78" fill="#e8e2d2">[read] 原料 200 条（坏行 0 条已跳过）</text>
+              <text x="56" y="100" fill="#e8e2d2">[clean] 精确去重 -8，近似去重 -21，</text>
+              <text x="56" y="120" fill="#e8e2d2">        质量过滤 -3 → 剩余 168 条</text>
+              <text x="56" y="142" fill="#e8e2d2">[split] 训练集 165 条，验证集 3 条</text>
+              <text x="56" y="164" fill="#a8c686">[dist] {'chitchat': 92, 'unknown': 50, 'self_intro': 26}</text>
+            </g>
+            <rect x="40" y="204" width="400" height="104" rx="12" class="sw" />
+            <text x="60" y="232" class="tg" font-size="12.5">验收三件事：</text>
+            <text x="60" y="256" class="ts" font-size="11.5">
+              ① 剩余率：洗掉超过一半 → 原料质量差，回去补蒸馏
+            </text>
+            <text x="60" y="276" class="ts" font-size="11.5">
+              ② 抽读 train.jsonl：每条都以 &lt;|user|&gt; 开头、&lt;|end|&gt; 结尾
+            </text>
+            <text x="60" y="296" class="ts" font-size="11.5">
+              ③ 类型分布对照 RATIO：某类被误伤过多 → 调规则重跑
+            </text>
+            <text x="240" y="336" text-anchor="middle" class="ta">
+              验证集只有几条是正常的：2% 本来就小，监考不在多在纯
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">05</div>
+          <h2>验收 · 读懂体检报告</h2>
+          <div class="whyl">作用：报告里的每个数字都在说话</div>
+          <p class="lead">
+            重点看两个比例：<b>剩余率</b>（洗完还剩百分之多少）和<b>类型分布</b>（三类是否还符合配方）。剩余率低于
+            60% 说明蒸馏原料本身质量差——别硬训，回去把蒸馏跑好点更省时间。
+          </p>
+          <p class="detail">
+            <b>一个容易误会的点：</b>近似去重对"你是谁"类问题下手最重（问法天然相似），self_intro
+            被多砍是预期行为。如果砍到所剩无几，把近似去重的前 15
+            字改短（比如 10 字）再重跑。
+          </p>
+          <p class="note">
+            全部通过后，train.jsonl / val.jsonl 就移交下一站：BPE
+            分词器训练与模型训练，完整路线见《v2 简单对话模型训练规划》第
+            03~05 阶段。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 排错表 ============ -->
+    <section class="tsec" id="qa">
+      <h2 class="reveal">常见问题 · 一查就好</h2>
+      <p class="cap reveal">清洗阶段没有报错，只有"数字不对劲"</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th>现象</th>
+            <th>原因与处理</th>
+          </tr>
+          <tr class="hl">
+            <td class="mono">找不到原料文件</td>
+            <td>
+              clean_split.py 没和 distill_data.jsonl
+              放同一目录，或蒸馏还没跑 → 先运行蒸馏脚本
+            </td>
+          </tr>
+          <tr>
+            <td>精确去重删了三四成</td>
+            <td>
+              正常：老师采样撞车是常态；如果删超过一半，回去把蒸馏的
+              TEMPERATURE 调高重跑
+            </td>
+          </tr>
+          <tr>
+            <td>self_intro 类几乎被清空</td>
+            <td>
+              近似去重对身份问法误伤 → 把脚本里前
+              <span class="mono">15</span> 字改成 <span class="mono">10</span>
+              字，或为该类型单独放宽
+            </td>
+          </tr>
+          <tr>
+            <td>质量过滤误删好数据</td>
+            <td>
+              阈值太紧 → 按你的方向调整
+              <span class="mono">MAX_Q_LEN / MAX_A_LEN</span>；长回答方向就把上限放大
+            </td>
+          </tr>
+          <tr>
+            <td>text 里出现奇怪的 &lt;| 标记</td>
+            <td>
+              原料里本就带模板标记，会被"模板泄漏"规则拦下 → 如果大量出现，说明蒸馏提示词出了问题，回去改
+              PERSONA
+            </td>
+          </tr>
+          <tr>
+            <td>改了参数想重跑</td>
+            <td>
+              直接重跑即可：脚本只读原料、重写 train/val，可任意次重复执行
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">教材印好了，下一步是分词器</h2>
+        <div class="stats reveal">
+          <div class="stat"><b>4 道</b><em>工序：读 · 洗 · 模板化 · 切分</em></div>
+          <div class="stat"><b>5 个类</b><em>一个类只做一件事</em></div>
+          <div class="stat"><b>0 依赖</b><em>纯标准库 · 秒级跑完</em></div>
+          <div class="stat"><b>2 份</b><em>train.jsonl + val.jsonl 正式教材</em></div>
+        </div>
+        <p class="fin-sum reveal">
+          清洗的全部哲学就八个字：顺序不乱，宁缺毋滥。先去重再过滤、最后才切分——守住这条流水线，小智吃到的每一口教材都是干净的。
+        </p>
+        <footer class="reveal">
+          <span>小智二代 · 清洗与切分实操手册</span>
+          <span>去重 × 模板 × 98:2 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "p4", "code", "p5", "qa"].forEach((id) =>
+        io2.observe(document.getElementById(id)),
+      );
+
+      /* ========== 一键复制代码 ========== */
+      document.getElementById("copybtn").addEventListener("click", async (e) => {
+        const btn = e.target;
+        // 取代码纯文本（去掉高亮 span 标签）
+        const text = document.getElementById("codeblock").innerText;
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = "已复制 ✓";
+        } catch {
+          btn.textContent = "复制失败，请手动全选";
+        }
+        setTimeout(() => (btn.textContent = "复制代码"), 1800);
+      });
+    </script>
+  </body>
+</html>

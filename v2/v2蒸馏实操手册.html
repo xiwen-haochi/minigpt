@@ -1,0 +1,1656 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小智二代 · 蒸馏实操手册（类结构版）</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+        --term: #15130e;
+        --termtxt: #e8e2d2;
+        --termmut: #7a7261;
+      }
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .sf {
+        fill: var(--ink);
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tg {
+        fill: #2e7d4f;
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ========== 代码区 ========== */
+      .codesec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        background: var(--term);
+        color: var(--termtxt);
+      }
+      .codesec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        color: var(--termtxt);
+      }
+      .codesec .cap {
+        text-align: center;
+        color: var(--termmut);
+        font-size: 0.9rem;
+        margin-bottom: 2.2rem;
+      }
+      .codewrap {
+        max-width: 980px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .codewrap pre {
+        background: #0e0c08;
+        border: 1px solid #3b372c;
+        border-radius: 14px;
+        padding: 1.6rem 1.4rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+        color: var(--termtxt);
+        max-height: 640px;
+        overflow-y: auto;
+      }
+      .codewrap .c-cm {
+        color: #7a7261;
+      }
+      .codewrap .c-kw {
+        color: #e8432c;
+      }
+      .codewrap .c-str {
+        color: #a8c686;
+      }
+      #copybtn {
+        position: sticky;
+        top: 0.8rem;
+        float: right;
+        margin: 0.8rem 0.8rem 0 0;
+        z-index: 5;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        background: var(--verm);
+        color: #fff;
+        border: none;
+        border-radius: 99px;
+        padding: 0.4rem 1.1rem;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      #copybtn:hover {
+        transform: scale(1.06);
+      }
+
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2.5rem 4rem;
+        margin: 2.5rem 0 3.5rem;
+      }
+      .stat b {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2rem, 4.2vw, 3.2rem);
+        line-height: 1.25;
+        transition: 0.25s;
+      }
+      .stat:hover b {
+        color: var(--verm);
+      }
+      .stat em {
+        display: block;
+        font-style: normal;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .fin-sum {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 什么是蒸馏</span></a>
+      <a href="#p1"><span>1 定方向</span></a>
+      <a href="#p2"><span>2 配老师</span></a>
+      <a href="#p3"><span>3 数据配方</span></a>
+      <a href="#p4"><span>4 跑脚本</span></a>
+      <a href="#code"><span>完整代码</span></a>
+      <a href="#p5"><span>5 验收</span></a>
+      <a href="#qa"><span>排错表</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">0.01B · 蒸馏实操 · AI 自动出题 · 含可运行代码</p>
+      <h1>小智二代<br /><span class="red">蒸馏实操手册</span></h1>
+      <p class="sub">
+        这份手册只做一件事：手把手带你用强力大模型当老师，AI
+        自动出题、自动写答案，批量"印刷"出人设对话教材。学完之后的小智会做三件事——自我介绍、日常闲聊、对不懂的问题老实说"不知道"。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">条数可调：TARGET_COUNT 一个数搞定</span>
+        <span class="hb">老师：OpenAI 兼容 API</span>
+        <span class="hb">出题：AI 自动构建</span>
+        <span class="hb">认怂：固定话术池兜底</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 五步拿到数据</h2>
+      <p class="cap reveal">
+        蒸馏 = 让大模型替你出题写教材。本手册覆盖从配环境到验收的全部五步
+      </p>
+      <svg
+        viewBox="0 0 1150 190"
+        class="reveal"
+        role="img"
+        aria-label="五步流程图"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="182" y1="80" x2="238" y2="80" />
+          <line x1="402" y1="80" x2="458" y2="80" />
+          <line x1="622" y1="80" x2="678" y2="80" />
+          <line x1="842" y1="80" x2="898" y2="80" />
+        </g>
+        <g
+          font-family="'Noto Serif SC',serif"
+          font-weight="900"
+          font-size="22"
+          text-anchor="middle"
+        >
+          <circle
+            cx="122"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="122" y="88" fill="#191611">01</text>
+          <circle
+            cx="342"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="342" y="88" fill="#191611">02</text>
+          <circle cx="562" cy="80" r="40" fill="#E8432C" />
+          <text x="562" y="88" fill="#fff">03</text>
+          <circle cx="782" cy="80" r="40" fill="#E8432C" />
+          <text x="782" y="88" fill="#fff">04</text>
+          <circle
+            cx="1002"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="1002" y="88" fill="#191611">05</text>
+        </g>
+        <g
+          class="ts"
+          text-anchor="middle"
+          font-size="12.5"
+          style="fill: #8a8271"
+        >
+          <text x="122" y="148">定下方向</text>
+          <text x="342" y="148">配置老师 API</text>
+          <text x="562" y="148" style="fill: #e8432c; font-weight: 700">
+            配好数据配方
+          </text>
+          <text x="782" y="148" style="fill: #e8432c; font-weight: 700">
+            运行脚本挂机
+          </text>
+          <text x="1002" y="148">抽检验收</text>
+        </g>
+        <text x="575" y="180" text-anchor="middle" class="ts" font-size="12">
+          红色两步是本手册的核心：配方决定质量，脚本负责执行
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 什么是蒸馏 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 360"
+            role="img"
+            aria-label="蒸馏的比喻：大老师把说话方式抄送给小学生"
+          >
+            <!-- 老师 -->
+            <circle cx="130" cy="130" r="78" class="sw" />
+            <text
+              x="130"
+              y="118"
+              text-anchor="middle"
+              class="tt"
+              font-size="17"
+            >
+              大模型老师
+            </text>
+            <text x="130" y="142" text-anchor="middle" class="ts">
+              强力 API 模型
+            </text>
+            <text x="130" y="162" text-anchor="middle" class="ts">
+              什么都会说
+            </text>
+            <!-- 抄送箭头 -->
+            <path d="M215 120 C 265 100, 285 110, 320 128" class="acs" />
+            <path d="M320 128 l-14 -2 l6 12 z" class="ac" />
+            <text x="268" y="92" text-anchor="middle" class="ta">
+              照着学 1000 次
+            </text>
+            <!-- 学生 -->
+            <circle cx="380" cy="140" r="42" class="ac" />
+            <text
+              x="380"
+              y="136"
+              text-anchor="middle"
+              font-size="13"
+              fill="#fff"
+              font-family="'Noto Serif SC',serif"
+              font-weight="900"
+            >
+              小智
+            </text>
+            <text
+              x="380"
+              y="154"
+              text-anchor="middle"
+              font-size="10"
+              fill="#fff"
+            >
+              1000万参数
+            </text>
+            <!-- 底部结论 -->
+            <rect x="40" y="240" width="400" height="92" rx="12" class="sw" />
+            <text x="60" y="270" class="tg" font-size="12.5">
+              蒸馏的本质，一句话：
+            </text>
+            <text x="60" y="294" class="ts" font-size="12">
+              学生背不下老师的全部知识，但能学会"某一类问题"
+            </text>
+            <text x="60" y="314" class="ts" font-size="12">
+              该怎么接话——前提是你给它足够多标准示范。
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">00</div>
+          <h2>先懂原理 · 什么是蒸馏</h2>
+          <div class="whyl">30 秒理解，后面全是操作</div>
+          <p class="lead">
+            你的 1000
+            万参数小模型，装不下整个互联网的知识，但它完全学得会"某一类对话的样子"。蒸馏就是：<b>让一个强力大模型当老师，针对你选定的方向，批量写出标准问答</b>，再拿这些问答去教小模型。
+          </p>
+          <p class="detail">
+            打个比方：老师博览群书，学生只准备应付一场"开卷口试"。我们不需要学生复制老师的大脑，只需要老师把<b>这场口试的题库和标准答案</b>写出来——而且这次连"出题"也不用你动手，老师自己出题、自己作答（认怂题除外，后面会讲为什么）。
+          </p>
+          <p class="note">
+            所以本手册的重点不是训练，而是"怎么出题、怎么让老师写答案、怎么保证答案质量"。这一步做得好，后面的训练只是按按钮。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 定方向 ============ -->
+    <section class="stage dark" id="p1">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 360"
+            role="img"
+            aria-label="小智要学会的三件事：自我介绍、闲聊、认怂"
+          >
+            <text x="40" y="38" class="ta">小智的能力边界（就这三样）</text>
+            <!-- 卡片一 -->
+            <rect x="40" y="56" width="400" height="80" rx="12" class="sw" />
+            <text
+              x="62"
+              y="86"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12.5"
+              fill="var(--ink)"
+            >
+              ① 会自我介绍
+            </text>
+            <text x="62" y="110" class="ts" font-size="11.5">
+              「你是谁？」→「我叫小智，一个 1000 万参数的迷你模型…」
+            </text>
+            <text x="62" y="127" class="ts" font-size="10.5">
+              约 15% · AI 自动换着花样问"你是谁"，答案口径一致
+            </text>
+            <!-- 卡片二 -->
+            <rect x="40" y="148" width="400" height="80" rx="12" class="sw" />
+            <text
+              x="62"
+              y="178"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12.5"
+              fill="var(--ink)"
+            >
+              ② 会日常闲聊
+            </text>
+            <text x="62" y="202" class="ts" font-size="11.5">
+              「今天好烦」→「怎么啦？跟我说说，吐槽完会好受点。」
+            </text>
+            <text x="62" y="219" class="ts" font-size="10.5">
+              约 55% · AI 按话题×语气自动出题再作答，覆盖高频场景
+            </text>
+            <!-- 卡片三 -->
+            <rect x="40" y="240" width="400" height="80" rx="12" class="ac" />
+            <text
+              x="62"
+              y="270"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12.5"
+              fill="#fff"
+            >
+              ③ 会老实认怂
+            </text>
+            <text x="62" y="294" class="ts" font-size="11.5" fill="#fff">
+              「量子计算机原理？」→「这个我真不知道诶，脑容量太小啦…」
+            </text>
+            <text x="62" y="311" class="ts" font-size="10.5" fill="#fff">
+              约 30% · AI 出难题，答案直接抽固定话术，不给老师答题机会
+            </text>
+            <text x="240" y="346" text-anchor="middle" class="ta">
+              方向足够小，教材才够覆盖 —— 贪多就样样稀松
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">01</div>
+          <h2>定下方向 · 越小越能打</h2>
+          <div class="whyl">作用：小数据只够干好一件事</div>
+          <p class="lead">
+            已经替你选好的方向：<b>"小智"人设对话</b>——被问"你是谁"能大方自我介绍；日常话题能接得住话；被问到不懂的知识，能礼貌地说"不知道"，而不是一本正经地胡编。
+          </p>
+          <p class="detail">
+            <b>为什么"会说不知道"占三成，而且答案不用老师写？</b
+            >这次的老师很强，超纲难题它也能正确回答——可小智学不会这些知识，只会学会"遇到难题就硬答"的坏习惯。所以认怂题的答案直接从<b>固定话术池</b>里随机抽，从源头上杜绝编造。
+          </p>
+          <p class="note">
+            想换方向（比如"只聊美食的小智"）？完全可行：只需改脚本里的话题池和人设提示词，其余一字不动。但第一版建议先用默认方向跑通全流程。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 配老师 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 360"
+            role="img"
+            aria-label="三步配好 API 老师：装依赖、写 .env、试跑"
+          >
+            <text x="40" y="36" class="ta">终端里依次做三件事</text>
+            <!-- 终端框 -->
+            <rect
+              x="40"
+              y="52"
+              width="400"
+              height="248"
+              rx="12"
+              fill="#15130e"
+            />
+            <circle cx="62" cy="72" r="5" fill="#e8432c" />
+            <circle cx="80" cy="72" r="5" fill="#cfc5ae" />
+            <circle cx="98" cy="72" r="5" fill="#2e7d4f" />
+            <g font-family="'JetBrains Mono',monospace" font-size="11">
+              <text x="58" y="104" fill="#7a7261"># 1. 安装依赖（就两个）</text>
+              <text x="58" y="126" fill="#e8e2d2">
+                pip install requests python-dotenv
+              </text>
+              <text x="58" y="156" fill="#7a7261">
+                # 2. 同目录新建 .env 文件，写入三行
+              </text>
+              <text x="58" y="178" fill="#e8e2d2">
+                API_URL=https://你的接口/v1/chat/completions
+              </text>
+              <text x="58" y="198" fill="#e8e2d2">API_MODEL=你的模型名</text>
+              <text x="58" y="218" fill="#e8e2d2">API_KEY=sk-xxxxxxxx</text>
+              <text x="58" y="248" fill="#7a7261">
+                # 3. TARGET_COUNT 先改成 20，试跑
+              </text>
+              <text x="58" y="270" fill="#e8e2d2">python distill.py</text>
+            </g>
+            <text
+              x="240"
+              y="326"
+              text-anchor="middle"
+              class="tg"
+              font-size="12"
+            >
+              看到 [distill] 进度输出 = 环境就绪 ✓
+            </text>
+            <text
+              x="240"
+              y="348"
+              text-anchor="middle"
+              class="ts"
+              font-size="11.5"
+            >
+              任何 OpenAI 兼容接口都能用：官方、DeepSeek、本地 vLLM 都行
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">02</div>
+          <h2>配置老师 · 一个 .env 文件</h2>
+          <div class="whyl">作用：把强模型变成随叫随到的出题机器</div>
+          <p class="lead">
+            老师走 <b>OpenAI 兼容的 HTTP API</b>：只要在脚本同目录建一个 .env
+            文件，写入接口地址、模型名、密钥三行，脚本启动时会自动读取。<b
+              >换老师不用改代码，改 .env 就行</b
+            >。
+          </p>
+          <p class="detail">
+            <b>老师越强越好吗？出题和写闲聊答案，是。</b
+            >强模型问法更自然、口吻更稳。唯独认怂题例外——它答得越对，对小智越有害，所以那一类的答案我们已经收归"话术池"管了。
+          </p>
+          <p class="note">
+            安全提醒：.env 里是你的密钥，<b>不要提交到 git、不要截图外发</b
+            >。如果密钥泄露过，去服务商后台作废重换一个。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 数据配方 ============ -->
+    <section class="stage dark" id="p3">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 360"
+            role="img"
+            aria-label="数据配方比例图：闲聊55%、认怂30%、自我介绍15%"
+          >
+            <text x="40" y="40" class="ta">
+              数据怎么分配（按 RATIO 自动折算）
+            </text>
+            <!-- 比例条 -->
+            <rect x="40" y="66" width="220" height="52" rx="10" class="sw" />
+            <rect
+              x="260"
+              y="66"
+              width="120"
+              height="52"
+              rx="2"
+              class="ac"
+              opacity="0.75"
+            />
+            <rect x="380" y="66" width="60" height="52" rx="10" class="ac" />
+            <g font-family="'JetBrains Mono',monospace" font-size="11.5">
+              <text x="150" y="98" text-anchor="middle" fill="var(--ink)">
+                闲聊 55%
+              </text>
+              <text x="320" y="98" text-anchor="middle" fill="#fff">
+                认怂 30%
+              </text>
+              <text
+                x="410"
+                y="98"
+                text-anchor="middle"
+                fill="#fff"
+                font-size="10"
+              >
+                介绍
+              </text>
+            </g>
+            <!-- 每类怎么生成 -->
+            <rect x="40" y="140" width="400" height="56" rx="10" class="sw" />
+            <text x="60" y="164" class="tt" font-size="12">自我介绍 ×15%</text>
+            <text x="60" y="184" class="ts" font-size="10.5">
+              AI 每次换一种"你是谁"的新问法 → 老师以小智口吻作答
+            </text>
+            <rect x="40" y="206" width="400" height="56" rx="10" class="sw" />
+            <text x="60" y="230" class="tt" font-size="12">日常闲聊 ×55%</text>
+            <text x="60" y="250" class="ts" font-size="10.5">
+              随机抽话题×语气 → AI 扮演用户出题 → 老师接话 → 一问一答入库
+            </text>
+            <rect x="40" y="272" width="400" height="56" rx="10" class="sw" />
+            <text x="60" y="296" class="tt" font-size="12">老实认怂 ×30%</text>
+            <text x="60" y="316" class="ts" font-size="10.5">
+              AI 出超纲难题 → 答案从固定话术池随机抽（不经过老师）
+            </text>
+            <text x="240" y="350" text-anchor="middle" class="ta">
+              比例写在脚本 RATIO 里，想改随时改
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">03</div>
+          <h2>数据配方 · 比例就是三观</h2>
+          <div class="whyl">作用：模型学成什么样，七成由配方决定</div>
+          <p class="lead">
+            三条铁律：<b>闲聊占大头</b>（决定日常体感）；<b>认怂占三成</b>（决定丢不丢脸）；<b>自我介绍少量但问法极多</b>——问法不由你手写，AI
+            每次现场换一种，模型自然能认出"怎么问都是在问你是谁"。
+          </p>
+          <p class="detail">
+            <b>多样性的来源：</b>话题池、语气池只作为 AI
+            出题的"灵感种子"，真正的句子全靠老师以 1.3
+            的较高温度现场写——同一个话题，每次的题和答案都不一样。这就是为什么生成数据比手抄模板管用得多。
+          </p>
+          <p class="note">
+            数量想改？脚本顶部的 TARGET_COUNT 就是总开关：改成 20
+            可以几分钟试跑验证流程，改成 5000
+            就挂一晚上机。配方比例不变，脚本自动按 RATIO 折算每类的条数。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04 跑脚本 ============ -->
+    <section class="stage" id="p4">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 380"
+            role="img"
+            aria-label="五个类各司其职：通信、出题、写答案、存取、编排"
+          >
+            <text x="40" y="36" class="ta">
+              脚本结构：五个类，一个类只做一件事
+            </text>
+            <!-- 五个类 -->
+            <rect x="40" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              TeacherClient
+            </text>
+            <text
+              x="136"
+              y="100"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管和老师 API 通信
+            </text>
+            <rect x="248" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="344"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              QuestionMaker
+            </text>
+            <text
+              x="344"
+              y="100"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管让 AI 出题
+            </text>
+            <rect x="40" y="136" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              AnswerMaker
+            </text>
+            <text
+              x="136"
+              y="180"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管写答案（含话术池）
+            </text>
+            <rect x="248" y="136" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="344"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              JsonlStore
+            </text>
+            <text
+              x="344"
+              y="180"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管去重与断点续跑
+            </text>
+            <rect x="40" y="216" width="400" height="56" rx="10" class="ac" />
+            <text
+              x="240"
+              y="240"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="#fff"
+            >
+              DistillPipeline
+            </text>
+            <text
+              x="240"
+              y="260"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+              fill="#fff"
+            >
+              只管编排：抽类型 → 出题 → 写答案 → 质检 → 存盘
+            </text>
+            <!-- 底部 -->
+            <rect x="40" y="292" width="400" height="56" rx="12" class="sw" />
+            <text x="60" y="316" class="ts" font-size="11.5">
+              运行：conda activate f10 &amp;&amp; python distill.py
+            </text>
+            <text x="60" y="336" class="ts" font-size="11.5">
+              中途 Ctrl+C 没关系：重新运行会接着上次的进度继续
+            </text>
+            <text x="240" y="372" text-anchor="middle" class="ta">
+              改配比只动 RATIO，改条数只动 TARGET_COUNT，改人设只动 PERSONA
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">04</div>
+          <h2>跑起来 · 一个脚本全包</h2>
+          <div class="whyl">作用：出题、作答、质检、存盘全自动</div>
+          <p class="lead">
+            下面的完整脚本依赖 <b>requests 和 python-dotenv</b> 两个库。保存为
+            distill.py、配好 .env，先装依赖再运行即可。想改条数就改
+            TARGET_COUNT，想换老师就改 .env。
+          </p>
+          <p class="detail">
+            <b>建议先小跑再挂大机：</b>把 TARGET_COUNT 保持 20
+            跑一遍，打开生成的 distill_data.jsonl
+            看看格式和口吻对不对，满意了再调大挂机。<b>先验小样，再放大量</b>，是蒸馏省时间的最大诀窍。
+          </p>
+          <p class="note">
+            产出格式是每行一条 JSON：{"messages": [用户消息, 助手消息], "type":
+            类别}——这是后续 SFT
+            训练最通用的对话格式，下一代训练脚本可以直接读取。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 完整代码 ============ -->
+    <section class="codesec" id="code">
+      <h2 class="reveal">完整可运行脚本 · distill.py</h2>
+      <p class="cap reveal">
+        复制 → 保存 → conda activate f10 && pip install requests python-dotenv
+        && python distill.py
+      </p>
+      <div class="codewrap reveal">
+        <button id="copybtn">复制代码</button>
+        <pre id="codeblock">
+<span class="c-cm"># -*- coding: utf-8 -*-</span>
+<span class="c-cm">"""
+distill.py —— 小智二代 · 蒸馏数据生成脚本（类结构版）
+作用：调用强模型 API 当老师，批量生成"人设对话"教材（jsonl 格式）
+用法：python distill.py（需先在 .env 中配置 API_URL / API_MODEL / API_KEY）
+"""</span>
+
+<span class="c-kw">import</span> json      <span class="c-cm"># 读写 jsonl 数据行</span>
+<span class="c-kw">import</span> os        <span class="c-cm"># 从环境变量读取 API 配置</span>
+<span class="c-kw">import</span> random    <span class="c-cm"># 随机抽话题 / 语气 / 话术</span>
+<span class="c-kw">import</span> time      <span class="c-cm"># 失败重试时做短暂等待</span>
+<span class="c-kw">from</span> pathlib <span class="c-kw">import</span> Path  <span class="c-cm"># 跨平台路径处理（macOS / Linux 通用）</span>
+
+<span class="c-kw">import</span> requests              <span class="c-cm"># 请求老师模型的 HTTP 接口</span>
+<span class="c-kw">from</span> dotenv <span class="c-kw">import</span> load_dotenv  <span class="c-cm"># 从 .env 文件加载 API 配置</span>
+
+load_dotenv()  <span class="c-cm"># 启动时读取同目录下的 .env 文件</span>
+
+<span class="c-cm"># ==================== 可调参数区（只改这里） ====================</span>
+TARGET_COUNT = <span class="c-kw">200</span>  <span class="c-cm"># 目标总条数：想试跑改 20，想多要改 5000</span>
+OUT_FILE = Path(<span class="c-str">"distill_data.jsonl"</span>)  <span class="c-cm"># 产出文件：每行一条对话 JSON</span>
+TEMPERATURE = <span class="c-kw">1.3</span>  <span class="c-cm"># 采样温度：偏高换取多样性（0~1.5）</span>
+
+<span class="c-cm"># 数据配方：三类数据的占比（合计必须是 1.0）</span>
+RATIO = {
+    <span class="c-str">"self_intro"</span>: <span class="c-kw">0.15</span>,  <span class="c-cm"># 自我介绍：被问"你是谁"时能稳定作答</span>
+    <span class="c-str">"chitchat"</span>:   <span class="c-kw">0.55</span>,  <span class="c-cm"># 日常闲聊：接得住高频生活话题</span>
+    <span class="c-str">"unknown"</span>:    <span class="c-kw">0.30</span>,  <span class="c-cm"># 老实认怂：不会的问题礼貌说不知道</span>
+}
+
+<span class="c-cm"># ==================== 人设与素材池 ====================</span>
+<span class="c-cm"># 小智的人设说明：作为 system 提示词喂给老师，约束答案口吻</span>
+PERSONA = (
+    <span class="c-str">"你叫小智，是一个只有 1000 万参数的迷你中文对话模型，由主人亲手训练。"</span>
+    <span class="c-str">"你说话口语化、简短、真诚，像个有点呆萌但很努力的小朋友。"</span>
+    <span class="c-str">"回答控制在 1~3 句话，不要列点，不要拽术语。"</span>
+)
+
+<span class="c-cm"># 闲聊话题池：只作为 AI 出题的"灵感种子"，问题本身由 AI 现场构建</span>
+CHAT_TOPICS = [
+    <span class="c-str">"心情低落想被安慰"</span>, <span class="c-str">"今天遇到开心的事"</span>, <span class="c-str">"讨论吃什么"</span>,
+    <span class="c-str">"聊天气"</span>, <span class="c-str">"周末计划"</span>, <span class="c-str">"熬夜与赖床"</span>, <span class="c-str">"养宠物的趣事"</span>,
+    <span class="c-str">"最近在追的剧"</span>, <span class="c-str">"工作学习压力大"</span>, <span class="c-str">"减肥与健身"</span>,
+    <span class="c-str">"聊喜欢的音乐"</span>, <span class="c-str">"下雨天的心情"</span>, <span class="c-str">"想旅行"</span>,
+    <span class="c-str">"吐槽早起"</span>, <span class="c-str">"分享一道好吃的菜"</span>, <span class="c-str">"玩游戏的日常"</span>,
+    <span class="c-str">"无聊想找人说话"</span>, <span class="c-str">"失眠"</span>, <span class="c-str">"朋友闹矛盾"</span>, <span class="c-str">"发工资的心情"</span>,
+]
+
+<span class="c-cm"># 闲聊的语气风格：同一话题不同腔调，进一步拉开多样性</span>
+STYLES = [<span class="c-str">"随意"</span>, <span class="c-str">"撒娇"</span>, <span class="c-str">"吐槽"</span>, <span class="c-str">"正式一点"</span>, <span class="c-str">"兴奋"</span>, <span class="c-str">"emo"</span>]
+
+<span class="c-cm"># 超纲问题的领域池：专挑小模型不可能知道的事（同样只作为出题种子）</span>
+HARD_TOPICS = [
+    <span class="c-str">"前沿科学"</span>, <span class="c-str">"冷门历史"</span>, <span class="c-str">"高等数学"</span>, <span class="c-str">"实时新闻"</span>,
+    <span class="c-str">"医学诊断"</span>, <span class="c-str">"法律条文"</span>, <span class="c-str">"金融投资"</span>, <span class="c-str">"编程报错"</span>,
+    <span class="c-str">"明天的天气"</span>, <span class="c-str">"明星八卦细节"</span>, <span class="c-str">"外语翻译"</span>, <span class="c-str">"彩票号码"</span>,
+]
+
+<span class="c-cm"># 认怂话术池：unknown 类的答案不经过 AI，直接随机挑一条
+# 原因：这次的老师太强，超纲题它也能答上来——一旦让它作答，
+#       小智学到的就是"不懂也要硬答"，与目标背道而驰。
+# 提示：话术越多越不容易背成"复读机"，可自由增删</span>
+UNKNOWN_ANSWERS = [
+    <span class="c-str">"这个我真不知道诶，我的脑容量只有一点点大，建议你去查查专业资料更靠谱~"</span>,
+    <span class="c-str">"呜……这个问题超出我的能力范围啦，我不敢瞎说，你去搜一下权威答案吧！"</span>,
+    <span class="c-str">"抱歉呀，我只是个迷你模型，这种专业问题我真答不上来，怕误导你。"</span>,
+    <span class="c-str">"不知道不知道~ 我只会聊天打屁，这种硬核问题还是交给大模型吧！"</span>,
+    <span class="c-str">"这个问题我承认我不会，与其瞎编不如老实说：我真的不知道。"</span>,
+    <span class="c-str">"我的知识库里没有这个诶，为了不坑你，建议你查证一下权威来源。"</span>,
+    <span class="c-str">"诶？这个超纲啦！我要是乱说就是骗你了，所以还是坦白：不知道。"</span>,
+    <span class="c-str">"说实话我不会……我的参数太少装不下这些知识，你上网搜一下比较快！"</span>,
+]
+
+
+<span class="c-cm"># ==================== 五个类，一个类只做一件事 ====================</span>
+<span class="c-kw">class</span> TeacherClient:
+    <span class="c-cm">"""职责：只负责和老师模型通信（构造请求、发送、取出回答文本）"""</span>
+
+    <span class="c-kw">def</span> __init__(self):
+        <span class="c-cm">"""从环境变量读取 API 配置，缺配置直接退出并提示"""</span>
+        self.url = os.getenv(<span class="c-str">"API_URL"</span>)
+        self.model = os.getenv(<span class="c-str">"API_MODEL"</span>)
+        self.key = os.getenv(<span class="c-str">"API_KEY"</span>)
+        <span class="c-kw">if</span> <span class="c-kw">not</span> <span class="c-kw">all</span>([self.url, self.model, self.key]):
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">"[stop] 请在 .env 中配置 API_URL / API_MODEL / API_KEY"</span>)
+
+    <span class="c-kw">def</span> ask(self, system_prompt, user_prompt):
+        <span class="c-cm">"""
+        向老师模型发起一次对话请求（OpenAI 兼容接口）。
+        参数：system_prompt 角色设定；user_prompt 具体任务
+        返回：老师生成的文本（str）；失败时抛出异常由上层重试
+        """</span>
+        headers = {
+            <span class="c-str">"Authorization"</span>: <span class="c-str">f"Bearer {self.key}"</span>,
+            <span class="c-str">"Content-Type"</span>: <span class="c-str">"application/json"</span>,
+        }
+        payload = {
+            <span class="c-str">"model"</span>: self.model,
+            <span class="c-str">"messages"</span>: [
+                {<span class="c-str">"role"</span>: <span class="c-str">"system"</span>, <span class="c-str">"content"</span>: system_prompt},
+                {<span class="c-str">"role"</span>: <span class="c-str">"user"</span>, <span class="c-str">"content"</span>: user_prompt},
+            ],
+            <span class="c-str">"temperature"</span>: TEMPERATURE,
+            <span class="c-str">"thinking"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"disabled"</span>},  <span class="c-cm"># 关闭思考模式，加速生成</span>
+        }
+        resp = requests.post(self.url, json=payload, headers=headers, timeout=<span class="c-kw">180</span>)
+        resp.raise_for_status()  <span class="c-cm"># HTTP 错误直接抛出，交给重试逻辑</span>
+        <span class="c-kw">return</span> resp.json()[<span class="c-str">"choices"</span>][<span class="c-kw">0</span>][<span class="c-str">"message"</span>][<span class="c-str">"content"</span>].strip()
+
+
+<span class="c-kw">class</span> QuestionMaker:
+    <span class="c-cm">"""职责：只负责出题——三类问题的"用户提问"全部由 AI 现场构建"""</span>
+
+    <span class="c-kw">def</span> __init__(self, teacher):
+        <span class="c-cm">"""teacher：TeacherClient 实例，所有题目由它代劳生成"""</span>
+        self.teacher = teacher
+
+    <span class="c-kw">def</span> self_intro(self):
+        <span class="c-cm">"""出"你是谁"类问题：让 AI 每次换一种全新的问法"""</span>
+        <span class="c-kw">return</span> self.teacher.ask(
+            <span class="c-str">"你是一个普通用户，正在好奇地打探一个AI助手的身份。"</span>,
+            <span class="c-str">"请换一种全新的问法来询问对方的身份、来历或能力"</span>
+            <span class="c-str">"（比如你是谁、谁做的你、你会什么……自由发挥），只输出问题本身，10~25 字。"</span>,
+        )
+
+    <span class="c-kw">def</span> chitchat(self):
+        <span class="c-cm">"""出闲聊类问题：随机抽话题+语气，让 AI 扮演用户随口说一句"""</span>
+        topic, style = random.choice(CHAT_TOPICS), random.choice(STYLES)
+        <span class="c-kw">return</span> self.teacher.ask(
+            <span class="c-str">"你是一个普通用户，正在和AI助手闲聊。"</span>,
+            <span class="c-str">f"请用{style}的语气，就一个关于「{topic}」的话题，随口说一句话或提一个问题。只输出这句话本身，15~40 字。"</span>,
+        )
+
+    <span class="c-kw">def</span> unknown(self):
+        <span class="c-cm">"""出超纲类问题：让 AI 在指定领域里出一道硬核知识题"""</span>
+        topic = random.choice(HARD_TOPICS)
+        <span class="c-kw">return</span> self.teacher.ask(
+            <span class="c-str">"你负责给迷你AI出考试题。"</span>,
+            <span class="c-str">f"请出一个关于「{topic}」的具体知识性问题，普通人可能会随口问AI的那种。只输出问题本身。"</span>,
+        )
+
+
+<span class="c-kw">class</span> AnswerMaker:
+    <span class="c-cm">"""职责：只负责写答案——会答的问老师，不会答的从话术池随机挑"""</span>
+
+    <span class="c-kw">def</span> __init__(self, teacher):
+        <span class="c-cm">"""teacher：TeacherClient 实例，与出题共用同一份连接配置"""</span>
+        self.teacher = teacher
+
+    <span class="c-kw">def</span> answer(self, kind, question):
+        <span class="c-cm">"""
+        根据数据类型给出答案。
+        参数：kind 数据类型（self_intro/chitchat/unknown）；question 用户问题
+        返回：答案文本（str）
+        """</span>
+        <span class="c-cm"># unknown 类坚决不问老师——老师太强会真的答上来，
+        # 小智就会学会"不懂也要硬答"，直接抽固定认怂话术</span>
+        <span class="c-kw">if</span> kind == <span class="c-str">"unknown"</span>:
+            <span class="c-kw">return</span> random.choice(UNKNOWN_ANSWERS)
+        <span class="c-cm"># 其余两类：老师以小智的人设口吻现场作答</span>
+        <span class="c-kw">return</span> self.teacher.ask(
+            PERSONA, <span class="c-str">f"有人对你说：「{question}」请以小智的身份自然地接话。"</span>
+        )
+
+
+<span class="c-kw">class</span> JsonlStore:
+    <span class="c-cm">"""职责：只负责数据存取——断点续跑、按问题去重、追加写盘"""</span>
+
+    <span class="c-kw">def</span> __init__(self, path):
+        <span class="c-cm">"""path：产出文件路径（Path 对象）"""</span>
+        self.path = path
+
+    <span class="c-kw">def</span> load(self):
+        <span class="c-cm">"""读取已有产出；返回 (已写条数, 已有问题集合)，用于续跑和去重"""</span>
+        done, seen = <span class="c-kw">0</span>, set()
+        <span class="c-kw">if</span> self.path.exists():
+            <span class="c-kw">for</span> line <span class="c-kw">in</span> self.path.read_text(encoding=<span class="c-str">"utf-8"</span>).splitlines():
+                <span class="c-kw">try</span>:
+                    item = json.loads(line)
+                    seen.add(item[<span class="c-str">"messages"</span>][<span class="c-kw">0</span>][<span class="c-str">"content"</span>])  <span class="c-cm"># 按用户问题去重</span>
+                    done += <span class="c-kw">1</span>
+                <span class="c-kw">except</span> (json.JSONDecodeError, KeyError, IndexError):
+                    <span class="c-kw">continue</span>  <span class="c-cm"># 坏行跳过，不影响整体</span>
+        <span class="c-kw">return</span> done, seen
+
+    <span class="c-kw">def</span> append(self, question, answer, kind):
+        <span class="c-cm">"""把一条对话按 SFT 通用格式追加写入文件"""</span>
+        item = {
+            <span class="c-str">"messages"</span>: [
+                {<span class="c-str">"role"</span>: <span class="c-str">"user"</span>, <span class="c-str">"content"</span>: question},
+                {<span class="c-str">"role"</span>: <span class="c-str">"assistant"</span>, <span class="c-str">"content"</span>: answer},
+            ],
+            <span class="c-str">"type"</span>: kind,
+        }
+        <span class="c-kw">with</span> self.path.open(<span class="c-str">"a"</span>, encoding=<span class="c-str">"utf-8"</span>) <span class="c-kw">as</span> f:
+            f.write(json.dumps(item, ensure_ascii=<span class="c-kw">False</span>) + <span class="c-str">"\n"</span>)
+
+
+<span class="c-kw">class</span> DistillPipeline:
+    <span class="c-cm">"""职责：只负责编排——抽类型→出题→写答案→质检→存盘，直到凑够条数"""</span>
+
+    <span class="c-kw">def</span> __init__(self):
+        <span class="c-cm"># 老师只实例化一次，出题和写答案共用（省一次配置校验）</span>
+        teacher = TeacherClient()
+        self.qmaker = QuestionMaker(teacher)
+        self.amaker = AnswerMaker(teacher)
+        self.store = JsonlStore(OUT_FILE)
+        <span class="c-cm"># 类型名 → 出题方法 的分发表（类似 switch 分发）</span>
+        self.router = {
+            <span class="c-str">"self_intro"</span>: self.qmaker.self_intro,
+            <span class="c-str">"chitchat"</span>: self.qmaker.chitchat,
+            <span class="c-str">"unknown"</span>: self.qmaker.unknown,
+        }
+
+    <span class="c-kw">def</span> pick_type(self):
+        <span class="c-cm">"""按配方比例加权随机抽一类，长期看会收敛到 RATIO 设定的比例"""</span>
+        <span class="c-kw">return</span> random.choices(<span class="c-kw">list</span>(RATIO.keys()), weights=<span class="c-kw">list</span>(RATIO.values()), k=<span class="c-kw">1</span>)[<span class="c-kw">0</span>]
+
+    <span class="c-kw">def</span> run(self):
+        <span class="c-cm">"""主循环：不断生成直到凑够 TARGET_COUNT 条，中途失败自动重试"""</span>
+        done, seen = self.store.load()
+        <span class="c-kw">print</span>(<span class="c-str">f"[distill] 已完成 {done}/{TARGET_COUNT} 条，开始生成…"</span>)
+        fail_in_row = <span class="c-kw">0</span>  <span class="c-cm"># 连续失败计数：防止 API 挂掉后死循环</span>
+
+        <span class="c-kw">while</span> done &lt; TARGET_COUNT:
+            kind = self.pick_type()
+            <span class="c-kw">try</span>:
+                q = self.router[kind]()            <span class="c-cm"># ① 出题（AI 现场构建）</span>
+                a = self.amaker.answer(kind, q)    <span class="c-cm"># ② 写答案（认怂题走话术池）</span>
+            <span class="c-kw">except</span> Exception <span class="c-kw">as</span> e:  <span class="c-cm"># 网络/接口异常：等待后重试</span>
+                fail_in_row += <span class="c-kw">1</span>
+                <span class="c-kw">print</span>(<span class="c-str">f"[warn] 第 {fail_in_row} 次失败：{e}（5 秒后重试）"</span>)
+                time.sleep(<span class="c-kw">5</span>)
+                <span class="c-kw">if</span> fail_in_row >= <span class="c-kw">10</span>:
+                    <span class="c-kw">raise</span> SystemExit(<span class="c-str">"[stop] 连续失败 10 次，请检查 API 配置与网络"</span>)
+                <span class="c-kw">continue</span>
+            fail_in_row = <span class="c-kw">0</span>
+            <span class="c-kw">print</span>(<span class="c-str">"-----------------"</span>)
+            <span class="c-kw">print</span>(<span class="c-str">f"[distill][{done}] 生成 [{kind}] Q: {q[:20]} A: {a[:20]}…"</span>)
+            <span class="c-kw">print</span>(<span class="c-str">"-----------------"</span>)
+
+            <span class="c-cm"># ---- 基础质检：去重、查空、查过短 ----</span>
+            <span class="c-kw">if</span> q <span class="c-kw">in</span> seen <span class="c-kw">or</span> <span class="c-kw">len</span>(q) &lt; <span class="c-kw">2</span> <span class="c-kw">or</span> <span class="c-kw">len</span>(a) &lt; <span class="c-kw">2</span>:
+                <span class="c-kw">continue</span>  <span class="c-cm"># 不合格直接丢弃，进入下一轮</span>
+            seen.add(q)
+
+            self.store.append(q, a, kind)
+            done += <span class="c-kw">1</span>
+            <span class="c-kw">if</span> done % <span class="c-kw">20</span> == <span class="c-kw">0</span>:
+                <span class="c-kw">print</span>(<span class="c-str">f"[distill] 进度 {done}/{TARGET_COUNT}，最近一条 [{kind}]"</span>)
+
+        <span class="c-kw">print</span>(<span class="c-str">f"[done] 全部完成！共 {done} 条 → {OUT_FILE.resolve()}"</span>)
+
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    DistillPipeline().run()
+        </pre>
+      </div>
+    </section>
+
+    <!-- ============ 05 验收 ============ -->
+    <section class="stage" id="p5">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 340"
+            role="img"
+            aria-label="验收方法：打开jsonl抽检，三类数据各看十条"
+          >
+            <text x="40" y="36" class="ta">
+              产出长这样（distill_data.jsonl）
+            </text>
+            <rect
+              x="40"
+              y="52"
+              width="400"
+              height="120"
+              rx="12"
+              fill="#15130e"
+            />
+            <g font-family="'JetBrains Mono',monospace" font-size="10">
+              <text x="56" y="78" fill="#e8e2d2">
+                {"messages": [{"role": "user",
+              </text>
+              <text x="56" y="96" fill="#e8e2d2">
+                "content": "你是谁？"}, {"role":
+              </text>
+              <text x="56" y="114" fill="#e8e2d2">
+                "assistant", "content": "我叫小智，
+              </text>
+              <text x="56" y="132" fill="#e8e2d2">
+                一个迷你中文模型…"}], "type": "self_intro"}
+              </text>
+              <text x="56" y="158" fill="#7a7261">
+                ← 每行一条，UTF-8 中文不转义
+              </text>
+            </g>
+            <!-- 抽检清单 -->
+            <rect x="40" y="192" width="400" height="108" rx="12" class="sw" />
+            <text x="60" y="220" class="tg" font-size="12.5">验收三步走：</text>
+            <text x="60" y="244" class="ts" font-size="11.5">
+              ① 数行数：wc -l 应等于 TARGET_COUNT
+            </text>
+            <text x="60" y="264" class="ts" font-size="11.5">
+              ② 每类随机读 10 条：口吻像不像小智？问法重不重复？
+            </text>
+            <text x="60" y="284" class="ts" font-size="11.5">
+              ③ 不合格的删掉重跑即可（断点续跑会自动补数）
+            </text>
+            <text x="240" y="326" text-anchor="middle" class="ta">
+              抽检 30 条 ≈ 十分钟，决定这锅教材能不能下锅
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">05</div>
+          <h2>验收 · 十分钟抽检</h2>
+          <div class="whyl">作用：垃圾进垃圾出，验收是最后一道关</div>
+          <p class="lead">
+            生成完别急着训练。打开 distill_data.jsonl，三类各随机读 10 条：<b
+              >自我介绍口径是否一致？闲聊是否自然口语化？AI
+              出的问法重复率高不高？</b
+            >
+          </p>
+          <p class="detail">
+            <b>发现整类跑偏怎么办？</b
+            >按"type"字段筛出那一类删掉，微调脚本里对应的提示词（比如闲聊答案太啰嗦，就在
+            PERSONA
+            里加"回答绝不超过两句话"），重新运行——断点续跑会自动把缺的补回来。
+          </p>
+          <p class="note">
+            验收通过后，这批数据就是下一代训练的教材原料。后续清洗、BPE
+            分词、训练的完整路线，见姊妹篇《v2 简单对话模型训练规划》。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 排错表 ============ -->
+    <section class="tsec" id="qa">
+      <h2 class="reveal">常见报错 · 一查就好</h2>
+      <p class="cap reveal">蒸馏阶段 90% 的问题都出在这几处</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th>现象</th>
+            <th>原因与处理</th>
+          </tr>
+          <tr class="hl">
+            <td class="mono">请在 .env 中配置…</td>
+            <td>
+              脚本同目录缺少 .env 文件，或三行配置没写全 → 按第 02 步补齐
+              <span class="mono">API_URL / API_MODEL / API_KEY</span>
+            </td>
+          </tr>
+          <tr>
+            <td class="mono">401 / 403 报错</td>
+            <td>
+              密钥错误或已失效 → 检查 .env 里的
+              <span class="mono">API_KEY</span>，注意前后不要有多余空格或引号
+            </td>
+          </tr>
+          <tr>
+            <td class="mono">404 / model not found</td>
+            <td>
+              模型名写错 → <span class="mono">API_MODEL</span>
+              必须与服务商控制台里的名字一字不差；接口地址确认以
+              <span class="mono">/chat/completions</span> 结尾
+            </td>
+          </tr>
+          <tr>
+            <td>答案里带"作为AI"等腔调</td>
+            <td>
+              人设提示词没压住 → 在 PERSONA
+              里追加"禁止自称AI助手，你是小智"，删掉旧数据重跑
+            </td>
+          </tr>
+          <tr>
+            <td>认怂答案总那几句，怕变复读机</td>
+            <td>
+              话术池太小 → 往
+              <span class="mono">UNKNOWN_ANSWERS</span>
+              里多添十几条不同风格的认怂话术（这是唯一需要手写的地方）
+            </td>
+          </tr>
+          <tr>
+            <td>大量重复问题被丢弃，进度卡住</td>
+            <td>
+              出题多样性不够 → 往 CHAT_TOPICS / HARD_TOPICS
+              里多加几十条种子，或把 TEMPERATURE 再调高一点
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">一晚上，小智就有教材了</h2>
+        <div class="stats reveal">
+          <div class="stat">
+            <b>3 类</b><em>自我介绍 · 闲聊 · 认怂，比例自动折算</em>
+          </div>
+          <div class="stat">
+            <b>5 个类</b><em>通信 · 出题 · 作答 · 存取 · 编排</em>
+          </div>
+          <div class="stat">
+            <b>0 道</b><em>需要你手写的问题 · 出题全交给 AI</em>
+          </div>
+          <div class="stat">
+            <b>1 个池</b><em>认怂话术池兜底 · 从源头杜绝编造</em>
+          </div>
+        </div>
+        <p class="fin-sum reveal">
+          蒸馏的全部秘密就一句话：老师的示范就是学生的天花板。方向选小、配方配匀、认怂答案收归话术池——教材印好了，下一步就是送小智去上学。
+        </p>
+        <footer class="reveal">
+          <span>小智二代 · 蒸馏实操手册（类结构版）</span>
+          <span>API 老师 × AI 出题 × 话术池 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "p4", "code", "p5", "qa"].forEach((id) =>
+        io2.observe(document.getElementById(id)),
+      );
+
+      /* ========== 一键复制代码 ========== */
+      document
+        .getElementById("copybtn")
+        .addEventListener("click", async (e) => {
+          const btn = e.target;
+          // 取代码纯文本（去掉高亮 span 标签）
+          const text = document.getElementById("codeblock").innerText;
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = "已复制 ✓";
+          } catch {
+            btn.textContent = "复制失败，请手动全选";
+          }
+          setTimeout(() => (btn.textContent = "复制代码"), 1800);
+        });
+    </script>
+  </body>
+</html>
