@@ -1,0 +1,1510 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小智二代 · 训练实操手册</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+        --term: #15130e;
+        --termtxt: #e8e2d2;
+        --termmut: #7a7261;
+      }
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .sf {
+        fill: var(--ink);
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tg {
+        fill: #2e7d4f;
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ========== 代码区 ========== */
+      .codesec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        background: var(--term);
+        color: var(--termtxt);
+      }
+      .codesec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        color: var(--termtxt);
+      }
+      .codesec .cap {
+        text-align: center;
+        color: var(--termmut);
+        font-size: 0.9rem;
+        margin-bottom: 2.2rem;
+      }
+      .codewrap {
+        max-width: 980px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .codewrap pre {
+        background: #0e0c08;
+        border: 1px solid #3b372c;
+        border-radius: 14px;
+        padding: 1.6rem 1.4rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+        color: var(--termtxt);
+        max-height: 640px;
+        overflow-y: auto;
+      }
+      .codewrap .c-cm {
+        color: #7a7261;
+      }
+      .codewrap .c-kw {
+        color: #e8432c;
+      }
+      .codewrap .c-str {
+        color: #a8c686;
+      }
+      #copybtn {
+        position: sticky;
+        top: 0.8rem;
+        float: right;
+        margin: 0.8rem 0.8rem 0 0;
+        z-index: 5;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        background: var(--verm);
+        color: #fff;
+        border: none;
+        border-radius: 99px;
+        padding: 0.4rem 1.1rem;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      #copybtn:hover {
+        transform: scale(1.06);
+      }
+
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2.5rem 4rem;
+        margin: 2.5rem 0 3.5rem;
+      }
+      .stat b {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2rem, 4.2vw, 3.2rem);
+        line-height: 1.25;
+        transition: 0.25s;
+      }
+      .stat:hover b {
+        color: var(--verm);
+      }
+      .stat em {
+        display: block;
+        font-style: normal;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .fin-sum {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 打包流</span></a>
+      <a href="#p1"><span>1 超参与调度</span></a>
+      <a href="#p2"><span>2 监考与早停</span></a>
+      <a href="#p3"><span>3 跑脚本</span></a>
+      <a href="#code"><span>完整代码</span></a>
+      <a href="#p4"><span>4 验收</span></a>
+      <a href="#qa"><span>排错表</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">0.01B · 训练 · 标准流水线 · 含可运行代码</p>
+      <h1>小智二代<br /><span class="red">训练实操手册</span></h1>
+      <p class="sub">
+        万事俱备：教材洗净切好、分词器体检合格、模型配置达标。这一步点火开训——教材打包成
+        token 流，随机切片组批，AdamW
+        慢慢收敛，验证集在旁监考，不行就早停。睡前挂机，早上收获一个小智。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">打包流 · 不浪费一个 token</span>
+        <span class="hb">AdamW · lr 4e-4</span>
+        <span class="hb">验证集每 200 步监考</span>
+        <span class="hb">早停 + 最佳存档</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 训练的四步</h2>
+      <p class="cap reveal">数据侧打包组批，训练侧循环监考——两条线各自标准</p>
+      <svg
+        viewBox="0 0 1150 190"
+        class="reveal"
+        role="img"
+        aria-label="四步流程图"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="237" y1="80" x2="293" y2="80" />
+          <line x1="512" y1="80" x2="568" y2="80" />
+          <line x1="787" y1="80" x2="843" y2="80" />
+        </g>
+        <g
+          font-family="'Noto Serif SC',serif"
+          font-weight="900"
+          font-size="22"
+          text-anchor="middle"
+        >
+          <circle
+            cx="177"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="177" y="88" fill="#191611">01</text>
+          <circle cx="452" cy="80" r="40" fill="#E8432C" />
+          <text x="452" y="88" fill="#fff">02</text>
+          <circle cx="727" cy="80" r="40" fill="#E8432C" />
+          <text x="727" y="88" fill="#fff">03</text>
+          <circle
+            cx="983"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="983" y="88" fill="#191611">04</text>
+        </g>
+        <g
+          class="ts"
+          text-anchor="middle"
+          font-size="12.5"
+          style="fill: #8a8271"
+        >
+          <text x="177" y="148">预分词打包</text>
+          <text x="452" y="148" style="fill: #e8432c; font-weight: 700">
+            随机切片组批
+          </text>
+          <text x="727" y="148" style="fill: #e8432c; font-weight: 700">
+            训练循环
+          </text>
+          <text x="983" y="148">监考 · 早停 · 存档</text>
+        </g>
+        <text x="575" y="180" text-anchor="middle" class="ts" font-size="12">
+          红色两步是核心：组批决定"学什么"，循环决定"怎么学"
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 打包流 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="打包流：全部教材拼成一条 token 流，随机切片"
+          >
+            <text x="40" y="36" class="ta">全语料拼成一条流，随机下刀</text>
+            <!-- token 流 -->
+            <rect
+              x="40"
+              y="56"
+              width="400"
+              height="44"
+              rx="10"
+              fill="#15130e"
+            />
+            <g font-family="'JetBrains Mono',monospace" font-size="10">
+              <text x="56" y="83" fill="#e8e2d2">
+                [1542][877][23][401][9987][1542][877][23][401]…
+              </text>
+            </g>
+            <!-- 切片 -->
+            <rect x="70" y="120" width="150" height="40" rx="8" class="ac" />
+            <text
+              x="145"
+              y="144"
+              text-anchor="middle"
+              font-size="11"
+              fill="#fff"
+              font-family="'JetBrains Mono',monospace"
+            >
+              窗口 A（512）
+            </text>
+            <rect x="230" y="170" width="150" height="40" rx="8" class="sw" />
+            <text
+              x="305"
+              y="194"
+              text-anchor="middle"
+              font-size="11"
+              fill="var(--ink)"
+              font-family="'JetBrains Mono',monospace"
+            >
+              窗口 B（512）
+            </text>
+            <rect x="100" y="220" width="150" height="40" rx="8" class="sw" />
+            <text
+              x="175"
+              y="244"
+              text-anchor="middle"
+              font-size="11"
+              fill="var(--ink)"
+              font-family="'JetBrains Mono',monospace"
+            >
+              窗口 C（512）
+            </text>
+            <!-- 对比 -->
+            <rect x="40" y="282" width="400" height="52" rx="12" class="sw" />
+            <text x="60" y="304" class="tg" font-size="12">
+              对比一代手工 get_batch：
+            </text>
+            <text x="60" y="323" class="ts" font-size="11">
+              不浪费一个 token · 每批内容永远随机 · 相当于无限套题
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">00</div>
+          <h2>打包流 · 数据侧的标准答案</h2>
+          <div class="whyl">作用：让每一份算力都花在新知识上</div>
+          <p class="lead">
+            做法一句话：<b
+              >把全部教材预分词后拼成一条长 token 流，训练时随机切窗口</b
+            >。每个窗口是 512 个 token，输入是前 511 个，答案是右移一位的后 511
+            个——模型学的就是"看到上文猜下一个词"。
+          </p>
+          <p class="detail">
+            <b>为什么拼成一条流而不是一条条喂？</b
+            >对话有长有短，逐条喂会在短句后面浪费大量 padding；拼成流之后每个
+            token
+            都参与训练，窗口边界切在对话中间也没关系——模型顺便学会了"接着任何上文说下去"。
+          </p>
+          <p class="note">
+            这是从 nanoGPT
+            到所有大厂都在用的方案。一个诚实的取舍：打包流对"问题"和"回答"一视同仁地学；进阶做法是只计算回答部分的
+            loss，等流程跑通后再加也不迟。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 超参与调度 ============ -->
+    <section class="stage dark" id="p1">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="学习率曲线：预热爬升，余弦退火"
+          >
+            <text x="40" y="36" class="ta">学习率的一生：先爬升，再退火</text>
+            <!-- 坐标系 -->
+            <line x1="60" y1="280" x2="440" y2="280" class="s" />
+            <line x1="60" y1="280" x2="60" y2="60" class="s" />
+            <!-- 曲线：预热 + 余弦 -->
+            <path d="M60 275 L110 90" class="acs" stroke-width="3" />
+            <path
+              d="M110 90 C 200 100, 320 190, 430 250"
+              class="acs"
+              stroke-width="3"
+            />
+            <!-- 标注 -->
+            <circle cx="110" cy="90" r="5" class="ac" />
+            <text
+              x="110"
+              y="76"
+              text-anchor="middle"
+              class="ta"
+              font-size="11.5"
+            >
+              峰值 4e-4
+            </text>
+            <text x="90" y="200" text-anchor="middle" class="ts" font-size="11">
+              预热 100 步
+            </text>
+            <text
+              x="300"
+              y="170"
+              text-anchor="middle"
+              class="ts"
+              font-size="11"
+            >
+              余弦退火
+            </text>
+            <text x="430" y="272" text-anchor="end" class="ts" font-size="11">
+              收尾 = 峰值的 1/10
+            </text>
+            <!-- 配套 -->
+            <rect x="40" y="296" width="400" height="44" rx="10" class="sw" />
+            <text x="60" y="316" class="ts" font-size="11.5">
+              配套：AdamW 优化器 · 梯度裁剪 1.0 · 批次 32 × 窗口 512
+            </text>
+            <text x="60" y="333" class="ts" font-size="10.5">
+              学习率比一代低一个量级：模型大了、数据多了，步子要小
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">01</div>
+          <h2>超参与调度 · 步子怎么迈</h2>
+          <div class="whyl">作用：学习率是训练的第一旋钮</div>
+          <p class="lead">
+            学习率的行程分两截：<b>前 100 步从 0 线性爬到 4e-4</b
+            >（预热——开局权重是随机噪声，大步走会翻车），然后<b>余弦曲线缓缓降到峰值的十分之一</b>（退火——越接近收敛，步子越小，落得越稳）。
+          </p>
+          <p class="detail">
+            <b>为什么从一代的 3e-3 降到 4e-4？</b
+            >经验法则：模型大一个量级，学习率小一个量级。86
+            万参数经得起猛冲，900 万参数猛冲就会震荡不收敛。
+          </p>
+          <p class="detail">
+            <b>梯度裁剪 1.0</b>
+            是保险丝：偶尔某批数据算出巨大的梯度，直接裁到阈值内，防止一步踏空把前面学的全毁了。
+          </p>
+          <p class="note">
+            MPS 提醒：为稳妥起见脚本全程 fp32（混合精度在 Apple GPU
+            上对小模型收益有限且偶发异常）。想加速的 CUDA 用户可以自行加
+            autocast。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 监考与早停 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="训练与验证曲线：分叉即过拟合，早停收工"
+          >
+            <text x="40" y="36" class="ta">两条曲线一起看，分叉就是信号</text>
+            <!-- 坐标 -->
+            <line x1="60" y1="270" x2="440" y2="270" class="s" />
+            <line x1="60" y1="270" x2="60" y2="60" class="s" />
+            <text x="45" y="70" class="ts" font-size="10">loss</text>
+            <text x="430" y="290" text-anchor="end" class="ts" font-size="10">
+              步数
+            </text>
+            <!-- 训练曲线 -->
+            <path
+              d="M60 80 C 140 130, 220 180, 430 230"
+              class="s"
+              stroke-width="2.5"
+            />
+            <!-- 验证曲线：先降后平微翘 -->
+            <path
+              d="M60 90 C 150 150, 230 200, 300 220 C 350 232, 400 228, 430 224"
+              class="acs"
+              stroke-width="2.5"
+            />
+            <!-- 分叉点 -->
+            <circle cx="300" cy="220" r="5" class="ac" />
+            <text
+              x="300"
+              y="204"
+              text-anchor="middle"
+              class="ta"
+              font-size="11.5"
+            >
+              最佳点 → 存档
+            </text>
+            <line
+              x1="300"
+              y1="220"
+              x2="300"
+              y2="270"
+              stroke="var(--verm)"
+              stroke-width="1.5"
+              stroke-dasharray="4 4"
+            />
+            <!-- 图例 -->
+            <rect x="80" y="296" width="18" height="4" class="sf" />
+            <text x="104" y="302" class="ts" font-size="11">
+              训练 loss（会一直降）
+            </text>
+            <rect x="250" y="296" width="18" height="4" class="ac" />
+            <text x="274" y="302" class="ts" font-size="11">
+              验证 loss（降不动就该停）
+            </text>
+            <text
+              x="240"
+              y="332"
+              text-anchor="middle"
+              class="ts"
+              font-size="11"
+            >
+              连续 3 次监考不进步 → 早停：保住的是最佳存档，不是最后存档
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">02</div>
+          <h2>监考与早停 · 见好就收</h2>
+          <div class="whyl">作用：背熟教材不等于学会对话</div>
+          <p class="lead">
+            训练 loss 会一直降——模型总能把教材背得更熟。真正代表"学会"的是<b
+              >验证集 loss</b
+            >：它降不动甚至抬头，说明模型开始死记硬背（过拟合）。脚本每 200
+            步监考一次，<b>连续 3 次没进步就提前收工</b>。
+          </p>
+          <p class="detail">
+            <b>存档只存"最佳"不存"最后"：</b>每次验证 loss 刷新纪录才写入
+            checkpoint.pt。早停之后你拿到的是小智的巅峰状态，不是过拟合后的样子。
+          </p>
+          <p class="note">
+            预期水位：验证 loss 落到 2.0~2.8
+            区间且进入平台期，就是合理的停机点。数字只是参考——下一站的评估会用真刀真枪的对话来验收。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 跑脚本 ============ -->
+    <section class="stage dark" id="p3">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 380"
+            role="img"
+            aria-label="五个类：分词流、组批、学习率、训练器、编排"
+          >
+            <text x="40" y="36" class="ta">
+              脚本结构：五个类，一个类只做一件事
+            </text>
+            <rect x="40" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              TokenStreamer
+            </text>
+            <text
+              x="136"
+              y="100"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管 jsonl → token 流
+            </text>
+            <rect x="248" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="344"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              BatchSampler
+            </text>
+            <text
+              x="344"
+              y="100"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管随机切片组批
+            </text>
+            <rect x="40" y="136" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              LrScheduler
+            </text>
+            <text
+              x="136"
+              y="180"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管预热+余弦退火
+            </text>
+            <rect x="248" y="136" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="344"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              Trainer
+            </text>
+            <text
+              x="344"
+              y="180"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管训练/监考/早停
+            </text>
+            <rect x="40" y="216" width="400" height="56" rx="10" class="ac" />
+            <text
+              x="240"
+              y="240"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="#fff"
+            >
+              TrainPipeline
+            </text>
+            <text
+              x="240"
+              y="260"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+              fill="#fff"
+            >
+              只管编排：供料 → 组建 → 开训 → 报告
+            </text>
+            <rect x="40" y="292" width="400" height="56" rx="12" class="sw" />
+            <text x="60" y="316" class="ts" font-size="11.5">
+              运行：conda activate f10 &amp;&amp; python train.py
+            </text>
+            <text x="60" y="336" class="ts" font-size="11.5">
+              需同目录：model_config.py · tokenizer/ · train.jsonl · val.jsonl
+            </text>
+            <text x="240" y="372" text-anchor="middle" class="ta">
+              产出：checkpoint.pt（最佳验证 loss 那一刻的小智）
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">03</div>
+          <h2>跑起来 · 挂机等小智</h2>
+          <div class="whyl">作用：一条命令，从教材到模型</div>
+          <p class="lead">
+            前几站的产物此时全部汇合：脚本自动加载 tokenizer.json、train/val
+            教材和上一站的 XiaozhiGPT。设备自动选择：英伟达 GPU &gt; 苹果 MPS
+            &gt; CPU，有什么用什么。
+          </p>
+          <p class="detail">
+            <b>先短跑验证，再挂机：</b>把 TOTAL_STEPS 临时改成 50 跑一遍，确认
+            loss 在下降、存档文件有生成，再改回 2000
+            挂机。和数据阶段同一套纪律：<b>先验小样，再放大量</b>。
+          </p>
+          <p class="note">
+            时间参考（M 系列 Mac · MPS · fp32）：0.01B 模型、10 万 token
+            教材、2000 步，大约几十分钟量级。数据涨到几千万 token
+            时，才是"睡前挂机"的规模。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 完整代码 ============ -->
+    <section class="codesec" id="code">
+      <h2 class="reveal">完整可运行脚本 · train.py</h2>
+      <p class="cap reveal">
+        复制 → 与前序产物同目录保存 → conda activate f10 && python train.py
+      </p>
+      <div class="codewrap reveal">
+        <button id="copybtn">复制代码</button>
+        <pre id="codeblock">
+<span class="c-cm"># -*- coding: utf-8 -*-</span>
+<span class="c-cm">"""
+train.py —— 小智二代 · 训练脚本（打包流 + 验证集监考 + 早停）
+作用：把 train.jsonl 编码成 token 流，训练 XiaozhiGPT，产出最佳存档 checkpoint.pt
+用法：python train.py
+前置：同目录需有 model_config.py（04 站）、tokenizer/（03 站）、train.jsonl + val.jsonl（02 站）
+"""</span>
+
+<span class="c-kw">import</span> json      <span class="c-cm"># 读取 jsonl 教材</span>
+<span class="c-kw">import</span> math      <span class="c-cm"># 余弦退火要算 cos</span>
+<span class="c-kw">import</span> time      <span class="c-cm"># 统计训练耗时</span>
+<span class="c-kw">from</span> pathlib <span class="c-kw">import</span> Path  <span class="c-cm"># 跨平台路径处理（macOS / Linux 通用）</span>
+
+<span class="c-kw">import</span> torch
+<span class="c-kw">import</span> torch.nn.functional <span class="c-kw">as</span> F
+<span class="c-kw">from</span> tokenizers <span class="c-kw">import</span> Tokenizer
+
+<span class="c-kw">from</span> model_config <span class="c-kw">import</span> ModelConfig, XiaozhiGPT  <span class="c-cm"># 04 站的配置与模型本体</span>
+
+<span class="c-cm"># ==================== 可调参数区（只改这里） ====================</span>
+TRAIN_FILE = Path(<span class="c-str">"train.jsonl"</span>)            <span class="c-cm"># 训练集（02 站产出）</span>
+VAL_FILE = Path(<span class="c-str">"val.jsonl"</span>)                <span class="c-cm"># 验证集（监考卷）</span>
+TOKENIZER_FILE = Path(<span class="c-str">"tokenizer/tokenizer.json"</span>)  <span class="c-cm"># 分词器（03 站产出）</span>
+CKPT_FILE = Path(<span class="c-str">"checkpoint.pt"</span>)           <span class="c-cm"># 存档：只存验证 loss 最佳的那一刻</span>
+
+SEQ_LEN = <span class="c-kw">512</span>        <span class="c-cm"># 训练窗口长度：与模型 max_seq_len 一致</span>
+BATCH_SIZE = <span class="c-kw">32</span>      <span class="c-cm"># 每批抽 32 个窗口</span>
+TOTAL_STEPS = <span class="c-kw">2000</span>   <span class="c-cm"># 总步数：试跑改 50，小数据 2000 步足够收敛</span>
+LR = <span class="c-kw">4e-4</span>           <span class="c-cm"># 峰值学习率（比一代低一个量级）</span>
+WARMUP_STEPS = <span class="c-kw">100</span>   <span class="c-cm"># 预热步数：学习率从 0 线性爬到峰值</span>
+VAL_EVERY = <span class="c-kw">200</span>     <span class="c-cm"># 每 200 步用验证集监考一次</span>
+VAL_BATCHES = <span class="c-kw">8</span>     <span class="c-cm"># 每次监考抽 8 批取平均，降低偶然性</span>
+PATIENCE = <span class="c-kw">3</span>        <span class="c-cm"># 连续 3 次监考没进步 → 早停</span>
+GRAD_CLIP = <span class="c-kw">1.0</span>     <span class="c-cm"># 梯度裁剪阈值：防单步梯度爆炸</span>
+SEED = <span class="c-kw">42</span>           <span class="c-cm"># 随机种子：固定后结果可复现</span>
+
+
+<span class="c-cm"># ==================== 五个类，一个类只做一件事 ====================</span>
+<span class="c-kw">class</span> TokenStreamer:
+    <span class="c-cm">"""职责：只负责预分词与打包——jsonl 文本 → 一条长长的 token 流"""</span>
+
+    <span class="c-kw">def</span> __init__(self, tok_path):
+        <span class="c-cm">"""加载 03 站训练好的分词器"""</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> tok_path.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {tok_path}（请先运行 train_tokenizer.py）"</span>)
+        self.tok = Tokenizer.from_file(<span class="c-kw">str</span>(tok_path))
+
+    <span class="c-kw">def</span> encode_file(self, path):
+        <span class="c-cm">"""把一份 jsonl 教材编码并首尾拼接成 token 流；返回 list[int]"""</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> path.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {path}（请先运行 clean_split.py）"</span>)
+        ids = []
+        <span class="c-kw">for</span> line <span class="c-kw">in</span> path.read_text(encoding=<span class="c-str">"utf-8"</span>).splitlines():
+            <span class="c-kw">try</span>:
+                text = json.loads(line)[<span class="c-str">"text"</span>]
+            <span class="c-kw">except</span> (json.JSONDecodeError, KeyError):
+                <span class="c-kw">continue</span>  <span class="c-cm"># 坏行跳过</span>
+            ids.extend(self.tok.encode(text).ids)  <span class="c-cm"># 直接续接，不浪费一个 token</span>
+        <span class="c-kw">return</span> ids
+
+
+<span class="c-kw">class</span> BatchSampler:
+    <span class="c-cm">"""职责：只负责组批——从 token 流里随机切窗口，每批内容都不同"""</span>
+
+    <span class="c-kw">def</span> __init__(self, ids, seq_len):
+        <span class="c-cm"># 存成 tensor 放内存：小语料切片开销可忽略</span>
+        self.data = torch.tensor(ids, dtype=torch.long)
+        <span class="c-cm"># 实际窗口自适应缩短：验证集很小时也能监考，不至于崩溃
+        # 注意要 -2：窗口本身占 win 个 token，右移一位的答案还要多占 1 个</span>
+        self.win = <span class="c-kw">min</span>(seq_len, <span class="c-kw">len</span>(self.data) - <span class="c-kw">2</span>)
+        <span class="c-kw">if</span> self.win &lt; <span class="c-kw">2</span>:
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">"[stop] token 流太短，凑不出训练窗口（先补数据）"</span>)
+
+    <span class="c-kw">def</span> sample(self, batch_size, device):
+        <span class="c-cm">"""随机抽 batch_size 个窗口；x 是输入，y 是右移一位的标准答案"""</span>
+        hi = <span class="c-kw">len</span>(self.data) - self.win - <span class="c-kw">1</span>
+        starts = torch.randint(<span class="c-kw">0</span>, hi, (batch_size,))
+        <span class="c-cm"># 类似 Python 的列表推导：逐起点切窗口再堆叠成批</span>
+        x = torch.stack([self.data[s : s + self.win] <span class="c-kw">for</span> s <span class="c-kw">in</span> starts])
+        y = torch.stack([self.data[s + <span class="c-kw">1</span> : s + self.win + <span class="c-kw">1</span>] <span class="c-kw">for</span> s <span class="c-kw">in</span> starts])
+        <span class="c-kw">return</span> x.to(device), y.to(device)
+
+
+<span class="c-kw">class</span> LrScheduler:
+    <span class="c-cm">"""职责：只负责学习率——预热线性爬升，随后余弦退火到峰值的 1/10"""</span>
+
+    <span class="c-kw">def</span> at(self, step):
+        <span class="c-cm">"""返回第 step 步应使用的学习率"""</span>
+        <span class="c-kw">if</span> step &lt; WARMUP_STEPS:
+            <span class="c-kw">return</span> LR * (step + <span class="c-kw">1</span>) / WARMUP_STEPS  <span class="c-cm"># 预热：防开局大步翻车</span>
+        t = (step - WARMUP_STEPS) / <span class="c-kw">max</span>(TOTAL_STEPS - WARMUP_STEPS, <span class="c-kw">1</span>)
+        <span class="c-kw">return</span> LR * (<span class="c-kw">0.1</span> + <span class="c-kw">0.9</span> * (<span class="c-kw">1</span> + math.cos(math.pi * t)) / <span class="c-kw">2</span>)  <span class="c-cm"># 余弦退火</span>
+
+
+<span class="c-kw">class</span> Trainer:
+    <span class="c-cm">"""职责：只负责训练循环——前向、反向、监考、早停、存档"""</span>
+
+    <span class="c-kw">def</span> __init__(self, cfg, train_ids, val_ids):
+        self.device = self._pick_device()
+        self.model = XiaozhiGPT(cfg).to(self.device)
+        self.opt = torch.optim.AdamW(self.model.parameters(), lr=LR)
+        self.train_batch = BatchSampler(train_ids, SEQ_LEN)
+        self.val_batch = BatchSampler(val_ids, SEQ_LEN)
+        self.sched = LrScheduler()
+
+    <span class="c-kw">@staticmethod</span>
+    <span class="c-kw">def</span> _pick_device():
+        <span class="c-cm">"""设备优先级：英伟达 GPU > 苹果 MPS > CPU（有什么用什么）"""</span>
+        <span class="c-kw">if</span> torch.cuda.is_available():
+            <span class="c-kw">return</span> <span class="c-str">"cuda"</span>
+        <span class="c-kw">if</span> torch.backends.mps.is_available():
+            <span class="c-kw">return</span> <span class="c-str">"mps"</span>
+        <span class="c-kw">return</span> <span class="c-str">"cpu"</span>
+
+    @torch.no_grad()
+    <span class="c-kw">def</span> eval_loss(self):
+        <span class="c-cm">"""验证集监考：抽固定批数算平均 loss，全程不更新参数"""</span>
+        self.model.eval()
+        losses = []
+        <span class="c-kw">for</span> _ <span class="c-kw">in</span> <span class="c-kw">range</span>(VAL_BATCHES):
+            x, y = self.val_batch.sample(BATCH_SIZE, self.device)
+            logits = self.model(x)
+            <span class="c-cm"># 交叉熵：模型猜下一个词 vs 标准答案，逐 token 算分</span>
+            losses.append(F.cross_entropy(
+                logits.view(-<span class="c-kw">1</span>, logits.size(-<span class="c-kw">1</span>)), y.view(-<span class="c-kw">1</span>)
+            ).item())
+        self.model.train()
+        <span class="c-kw">return</span> <span class="c-kw">sum</span>(losses) / <span class="c-kw">len</span>(losses)
+
+    <span class="c-kw">def</span> run(self):
+        <span class="c-cm">"""主循环：训练 TOTAL_STEPS 步，期间定期监考，不行就早停"""</span>
+        best_val, bad_rounds = <span class="c-kw">float</span>(<span class="c-str">"inf"</span>), <span class="c-kw">0</span>
+        t0 = time.time()
+        <span class="c-kw">for</span> step <span class="c-kw">in</span> <span class="c-kw">range</span>(TOTAL_STEPS):
+            <span class="c-cm"># 学习率每步重算并写回优化器（调度器的正确接法）</span>
+            lr = self.sched.at(step)
+            <span class="c-kw">for</span> g <span class="c-kw">in</span> self.opt.param_groups:
+                g[<span class="c-str">"lr"</span>] = lr
+
+            <span class="c-cm"># ---- 标准五步走：取批 → 前向 → 清零 → 反向 → 更新 ----</span>
+            x, y = self.train_batch.sample(BATCH_SIZE, self.device)
+            logits = self.model(x)
+            loss = F.cross_entropy(logits.view(-<span class="c-kw">1</span>, logits.size(-<span class="c-kw">1</span>)), y.view(-<span class="c-kw">1</span>))
+            self.opt.zero_grad(set_to_none=<span class="c-kw">True</span>)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), GRAD_CLIP)
+            self.opt.step()
+
+            <span class="c-kw">if</span> step % <span class="c-kw">50</span> == <span class="c-kw">0</span>:
+                <span class="c-kw">print</span>(<span class="c-str">f"[train] step {step:>5} | loss {loss.item():.4f} | lr {lr:.2e}"</span>)
+
+            <span class="c-cm"># ---- 定期监考：刷新纪录才存档，连续不进步就早停 ----</span>
+            <span class="c-kw">if</span> step % VAL_EVERY == <span class="c-kw">0</span> <span class="c-kw">or</span> step == TOTAL_STEPS - <span class="c-kw">1</span>:
+                val = self.eval_loss()
+                <span class="c-kw">if</span> val &lt; best_val:
+                    best_val, bad_rounds = val, <span class="c-kw">0</span>
+                    torch.save(
+                        {<span class="c-str">"model"</span>: self.model.state_dict(), <span class="c-str">"config"</span>: vars(self.model.cfg)},
+                        CKPT_FILE,
+                    )
+                    <span class="c-kw">print</span>(<span class="c-str">f"[val] step {step:>5} | val_loss {val:.4f} | best {best_val:.4f} ← 新纪录，已存档"</span>)
+                <span class="c-kw">else</span>:
+                    bad_rounds += <span class="c-kw">1</span>
+                    <span class="c-kw">print</span>(<span class="c-str">f"[val] step {step:>5} | val_loss {val:.4f} | best {best_val:.4f}（{bad_rounds}/{PATIENCE}）"</span>)
+                    <span class="c-kw">if</span> bad_rounds &gt;= PATIENCE:
+                        <span class="c-kw">print</span>(<span class="c-str">f"[early-stop] 验证集连续 {PATIENCE} 次没进步，提前收工"</span>)
+                        <span class="c-kw">break</span>
+        <span class="c-kw">print</span>(<span class="c-str">f"[done] 训练结束 | 最佳验证 loss {best_val:.4f} | 存档 → {CKPT_FILE} | 用时 {time.time()-t0:.0f}s"</span>)
+
+
+<span class="c-kw">class</span> TrainPipeline:
+    <span class="c-cm">"""职责：只负责编排——供料 → 组建 → 开训"""</span>
+
+    <span class="c-kw">def</span> run(self):
+        torch.manual_seed(SEED)  <span class="c-cm"># 固定随机性：同样的数据同样的开局</span>
+
+        <span class="c-cm"># ① 供料：教材 → token 流</span>
+        streamer = TokenStreamer(TOKENIZER_FILE)
+        train_ids = streamer.encode_file(TRAIN_FILE)
+        val_ids = streamer.encode_file(VAL_FILE)
+        <span class="c-kw">print</span>(<span class="c-str">f"[data] 训练流 {len(train_ids):,} tokens · 验证流 {len(val_ids):,} tokens"</span>)
+
+        <span class="c-cm"># ② 组建：词表以分词器的实际大小为准（可能没练满 8192）</span>
+        cfg = ModelConfig(vocab_size=streamer.tok.get_vocab_size())
+        trainer = Trainer(cfg, train_ids, val_ids)
+        n_params = <span class="c-kw">sum</span>(p.numel() <span class="c-kw">for</span> p <span class="c-kw">in</span> trainer.model.parameters())
+        <span class="c-kw">print</span>(<span class="c-str">f"[model] 参数 {n_params/1e6:.2f}M · 设备 {trainer.device}"</span>)
+
+        <span class="c-cm"># ③ 开训</span>
+        trainer.run()
+
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    TrainPipeline().run()
+        </pre>
+      </div>
+    </section>
+
+    <!-- ============ 04 验收 ============ -->
+    <section class="stage" id="p4">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 360"
+            role="img"
+            aria-label="验收：一次健康的训练输出"
+          >
+            <text x="40" y="36" class="ta">一次健康的训练长这样</text>
+            <rect
+              x="40"
+              y="52"
+              width="400"
+              height="196"
+              rx="12"
+              fill="#15130e"
+            />
+            <g font-family="'JetBrains Mono',monospace" font-size="10.5">
+              <text x="56" y="76" fill="#e8e2d2">
+                [data] 训练流 98,204 tokens · 验证流 1,862 tokens
+              </text>
+              <text x="56" y="96" fill="#e8e2d2">
+                [model] 参数 8.92M · 设备 mps
+              </text>
+              <text x="56" y="118" fill="#e8e2d2">
+                [train] step 0 | loss 9.0132 | lr 4.00e-06
+              </text>
+              <text x="56" y="138" fill="#e8e2d2">
+                [train] step 500 | loss 3.8421 | lr 3.82e-04
+              </text>
+              <text x="56" y="158" fill="#e8e2d2">
+                [train] step 1000 | loss 2.6407 | lr 2.36e-04
+              </text>
+              <text x="56" y="180" fill="#a8c686">
+                [val] step 1400 | val_loss 2.4103 | best 2.4103 ← 已存档
+              </text>
+              <text x="56" y="200" fill="#e8e2d2">
+                [val] step 1800 | val_loss 2.4233 |（2/3）
+              </text>
+              <text x="56" y="220" fill="#a8c686">
+                [early-stop] 连续 3 次没进步，提前收工
+              </text>
+              <text x="56" y="240" fill="#a8c686">
+                [done] 最佳验证 loss 2.4103 | 存档 → checkpoint.pt
+              </text>
+            </g>
+            <rect x="40" y="268" width="400" height="64" rx="12" class="sw" />
+            <text x="60" y="292" class="tg" font-size="12.5">
+              三个健康信号：
+            </text>
+            <text x="60" y="314" class="ts" font-size="11.5">
+              ① loss 从 ~9 稳步下降（起始值 ≈ ln(词表) 说明初始化正常）
+            </text>
+            <text x="60" y="330" class="ts" font-size="11.5">
+              ② 验证 loss 落到 2.0~2.8 平台期 ③ checkpoint.pt 有生成
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">04</div>
+          <h2>验收 · 读懂训练日志</h2>
+          <div class="whyl">作用：日志里的每个数字都在汇报</div>
+          <p class="lead">
+            开局 loss ≈ ln(8192) ≈ 9.0——这是"纯瞎猜"的理论值，第一步若就在 9
+            附近说明初始化正常；之后应<b>稳步下降</b>，训练 loss 与验证 loss
+            一起走低。验证 loss 进入平台期、早停触发、存档在手，这站就毕业了。
+          </p>
+          <p class="detail">
+            <b>数据只有几百条时会怎样？</b>验证集太小，val_loss
+            噪声会很大，可能很早就触发早停——这不是
+            bug，是数据量在给提醒。先把流程跑通拿到会说话的
+            checkpoint，再回头把蒸馏数据加到几千条重训，曲线会漂亮得多。
+          </p>
+          <p class="note">
+            拿到 checkpoint.pt 别急着高兴：loss
+            合格只代表"像教材"，不代表"会聊天"。下一站评估，用规划里那张 50
+            题考卷真刀真枪地考它。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 排错表 ============ -->
+    <section class="tsec" id="qa">
+      <h2 class="reveal">常见问题 · 一查就好</h2>
+      <p class="cap reveal">
+        训练阶段的故障都能映射到三个源头：数据、模板、超参
+      </p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th>现象</th>
+            <th>原因与处理</th>
+          </tr>
+          <tr class="hl">
+            <td>loss 停在 ~9 不降</td>
+            <td>
+              模型在纯瞎猜 → 查 tokenizer 与教材是否配套；学习率是否被误改成 0
+            </td>
+          </tr>
+          <tr>
+            <td>loss 剧烈震荡</td>
+            <td>
+              学习率太大 → LR 降到 2e-4；或预热太短 → WARMUP_STEPS 加到 200
+            </td>
+          </tr>
+          <tr>
+            <td>训练 loss 降、验证 loss 升</td>
+            <td>
+              典型过拟合（数据太少/模型在背书）→
+              早停会帮你保住最佳点；根治靠回去加数据
+            </td>
+          </tr>
+          <tr>
+            <td class="mono">token 流太短</td>
+            <td>数据量不够一个窗口 → 回蒸馏阶段把 TARGET_COUNT 调大重跑</td>
+          </tr>
+          <tr>
+            <td>MPS 上比预期慢很多</td>
+            <td>
+              fp32 的代价，属预期；先小步数试跑标定速度，再决定 TOTAL_STEPS
+            </td>
+          </tr>
+          <tr>
+            <td>想接着上次的存档继续训</td>
+            <td>
+              加载 checkpoint：<span class="mono"
+                >ckpt = torch.load(...);
+                model.load_state_dict(ckpt["model"])</span
+              >，把 LR 调小一个量级再训
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">点火收工，小智呱呱坠地</h2>
+        <div class="stats reveal">
+          <div class="stat">
+            <b>1 条流</b><em>全语料打包 · 不浪费一个 token</em>
+          </div>
+          <div class="stat">
+            <b>4e-4</b><em>峰值学习率 · 预热 + 余弦退火</em>
+          </div>
+          <div class="stat"><b>3 次</b><em>监考不进步就早停</em></div>
+          <div class="stat">
+            <b>1 个档</b><em>checkpoint.pt · 只存巅峰时刻</em>
+          </div>
+        </div>
+        <p class="fin-sum reveal">
+          训练的纪律就两条：数据侧不浪费（打包流），训练侧不贪心（验证集监考 +
+          早停）。守住它们，挂机几小时，checkpoint.pt
+          里就躺着一个会接话的小智——剩下的，交给评估去验收。
+        </p>
+        <footer class="reveal">
+          <span>小智二代 · 训练实操手册</span>
+          <span>打包流 × 余弦退火 × 早停 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "code", "p4", "qa"].forEach((id) =>
+        io2.observe(document.getElementById(id)),
+      );
+
+      /* ========== 一键复制代码 ========== */
+      document
+        .getElementById("copybtn")
+        .addEventListener("click", async (e) => {
+          const btn = e.target;
+          // 取代码纯文本（去掉高亮 span 标签）
+          const text = document.getElementById("codeblock").innerText;
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = "已复制 ✓";
+          } catch {
+            btn.textContent = "复制失败，请手动全选";
+          }
+          setTimeout(() => (btn.textContent = "复制代码"), 1800);
+        });
+    </script>
+  </body>
+</html>

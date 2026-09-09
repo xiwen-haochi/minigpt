@@ -1,0 +1,1471 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小智二代 · BPE 分词器实操手册</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+        --term: #15130e;
+        --termtxt: #e8e2d2;
+        --termmut: #7a7261;
+      }
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .sf {
+        fill: var(--ink);
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tg {
+        fill: #2e7d4f;
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ========== 代码区 ========== */
+      .codesec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        background: var(--term);
+        color: var(--termtxt);
+      }
+      .codesec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        color: var(--termtxt);
+      }
+      .codesec .cap {
+        text-align: center;
+        color: var(--termmut);
+        font-size: 0.9rem;
+        margin-bottom: 2.2rem;
+      }
+      .codewrap {
+        max-width: 980px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .codewrap pre {
+        background: #0e0c08;
+        border: 1px solid #3b372c;
+        border-radius: 14px;
+        padding: 1.6rem 1.4rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+        color: var(--termtxt);
+        max-height: 640px;
+        overflow-y: auto;
+      }
+      .codewrap .c-cm {
+        color: #7a7261;
+      }
+      .codewrap .c-kw {
+        color: #e8432c;
+      }
+      .codewrap .c-str {
+        color: #a8c686;
+      }
+      #copybtn {
+        position: sticky;
+        top: 0.8rem;
+        float: right;
+        margin: 0.8rem 0.8rem 0 0;
+        z-index: 5;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        background: var(--verm);
+        color: #fff;
+        border: none;
+        border-radius: 99px;
+        padding: 0.4rem 1.1rem;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      #copybtn:hover {
+        transform: scale(1.06);
+      }
+
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2.5rem 4rem;
+        margin: 2.5rem 0 3.5rem;
+      }
+      .stat b {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2rem, 4.2vw, 3.2rem);
+        line-height: 1.25;
+        transition: 0.25s;
+      }
+      .stat:hover b {
+        color: var(--verm);
+      }
+      .stat em {
+        display: block;
+        font-style: normal;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .fin-sum {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 为什么换</span></a>
+      <a href="#p1"><span>1 训练原理</span></a>
+      <a href="#p2"><span>2 三道体检</span></a>
+      <a href="#p3"><span>3 跑脚本</span></a>
+      <a href="#code"><span>完整代码</span></a>
+      <a href="#p4"><span>4 验收</span></a>
+      <a href="#qa"><span>排错表</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">0.01B · 分词器 · 最大单项杠杆 · 含可运行代码</p>
+      <h1>小智二代<br /><span class="red">BPE 分词器手册</span></h1>
+      <p class="sub">
+        字符级分词像一个字一个字啃书的小学生，又慢又累。BPE
+        把高频字词合并成"词块"，一句话的 token
+        数直接砍到三分之一——同样的上下文窗口装三倍内容，训练还更快。这份手册带你在自己的教材上，练一个专属小智的分词器。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">序列变短 ≈3 倍</span>
+        <span class="hb">词表 8192</span>
+        <span class="hb">压缩率体检 1~1.5 token/字</span>
+        <span class="hb">依赖：pip install tokenizers</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 四步拿到分词器</h2>
+      <p class="cap reveal">
+        在 train.jsonl 上练，在 val.jsonl 上考——教材和考场各司其职
+      </p>
+      <svg
+        viewBox="0 0 1150 190"
+        class="reveal"
+        role="img"
+        aria-label="四步流程图"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="237" y1="80" x2="293" y2="80" />
+          <line x1="512" y1="80" x2="568" y2="80" />
+          <line x1="787" y1="80" x2="843" y2="80" />
+        </g>
+        <g
+          font-family="'Noto Serif SC',serif"
+          font-weight="900"
+          font-size="22"
+          text-anchor="middle"
+        >
+          <circle
+            cx="177"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="177" y="88" fill="#191611">01</text>
+          <circle cx="452" cy="80" r="40" fill="#E8432C" />
+          <text x="452" y="88" fill="#fff">02</text>
+          <circle
+            cx="727"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="727" y="88" fill="#191611">03</text>
+          <circle cx="983" cy="80" r="40" fill="#E8432C" />
+          <text x="983" y="88" fill="#fff">04</text>
+        </g>
+        <g
+          class="ts"
+          text-anchor="middle"
+          font-size="12.5"
+          style="fill: #8a8271"
+        >
+          <text x="177" y="148">供料 train.jsonl</text>
+          <text x="452" y="148" style="fill: #e8432c; font-weight: 700">
+            BPE 统计合并
+          </text>
+          <text x="727" y="148">存 tokenizer.json</text>
+          <text x="983" y="148" style="fill: #e8432c; font-weight: 700">
+            三道体检
+          </text>
+        </g>
+        <text x="575" y="180" text-anchor="middle" class="ts" font-size="12">
+          分词器只用训练集练——验证集要留给它当"没见过的考题"，体检才真实
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 为什么换 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 360"
+            role="img"
+            aria-label="字符级与BPE对比：同一句话两种切法"
+          >
+            <text x="40" y="40" class="ta">同一句话，两种切法</text>
+            <!-- 字符级 -->
+            <text x="40" y="74" class="ts" font-size="12.5">
+              字符级（一代）：14 个 token，序列长、注意力贵
+            </text>
+            <g
+              font-family="'Noto Serif SC',serif"
+              font-size="14"
+              text-anchor="middle"
+            >
+              <rect x="40" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="54" y="106" class="tt">今</text>
+              <rect x="70" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="84" y="106" class="tt">天</text>
+              <rect x="100" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="114" y="106" class="tt">天</text>
+              <rect x="130" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="144" y="106" class="tt">气</text>
+              <rect x="160" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="174" y="106" class="tt">真</text>
+              <rect x="190" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="204" y="106" class="tt">好</text>
+              <rect x="220" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="234" y="106" class="tt">，</text>
+              <rect x="250" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="264" y="106" class="tt">我</text>
+              <rect x="280" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="294" y="106" class="tt">们</text>
+              <rect x="310" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="324" y="106" class="tt">出</text>
+              <rect x="340" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="354" y="106" class="tt">去</text>
+              <rect x="370" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="384" y="106" class="tt">玩</text>
+              <rect x="400" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="414" y="106" class="tt">吧</text>
+              <rect x="430" y="86" width="28" height="28" rx="5" class="sw" />
+              <text x="444" y="106" class="tt">。</text>
+            </g>
+            <!-- BPE -->
+            <text x="40" y="160" class="ts" font-size="12.5">
+              BPE（二代）：高频组合合并成词块，约 6 个 token
+            </text>
+            <rect x="40" y="172" width="94" height="34" rx="7" class="ac" />
+            <text
+              x="87"
+              y="194"
+              text-anchor="middle"
+              font-size="13"
+              fill="#fff"
+            >
+              今天
+            </text>
+            <rect x="140" y="172" width="66" height="34" rx="7" class="ac" />
+            <text
+              x="173"
+              y="194"
+              text-anchor="middle"
+              font-size="13"
+              fill="#fff"
+            >
+              天气
+            </text>
+            <rect x="212" y="172" width="66" height="34" rx="7" class="ac" />
+            <text
+              x="245"
+              y="194"
+              text-anchor="middle"
+              font-size="13"
+              fill="#fff"
+            >
+              真好
+            </text>
+            <rect x="284" y="172" width="28" height="34" rx="7" class="sw" />
+            <text
+              x="298"
+              y="194"
+              text-anchor="middle"
+              class="tt"
+              font-size="13"
+            >
+              ，
+            </text>
+            <rect x="318" y="172" width="94" height="34" rx="7" class="ac" />
+            <text
+              x="365"
+              y="194"
+              text-anchor="middle"
+              font-size="13"
+              fill="#fff"
+            >
+              我们
+            </text>
+            <rect x="418" y="172" width="44" height="34" rx="7" class="sw" />
+            <text
+              x="440"
+              y="194"
+              text-anchor="middle"
+              class="tt"
+              font-size="12"
+            >
+              去吧。
+            </text>
+            <!-- 收益 -->
+            <rect x="40" y="240" width="400" height="90" rx="12" class="sw" />
+            <text x="60" y="270" class="tg">三重收益：</text>
+            <text x="60" y="294" class="ts" font-size="12">
+              ① 同样上下文窗口能装下约 3 倍内容
+            </text>
+            <text x="60" y="312" class="ts" font-size="12">
+              ② 注意力开销随长度平方下降 → 训练显著提速
+            </text>
+            <text x="60" y="330" class="ts" font-size="12">
+              ③ 每个 token 携带更多语义 → 说话更"成块"
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">00</div>
+          <h2>为什么换 · 最大单项杠杆</h2>
+          <div class="whyl">作用：同样的教材，更薄的厚度</div>
+          <p class="lead">
+            字符级分词把"今天"拆成两个字，模型要花两步才能"读完"。BPE
+            的做法很朴素：<b>统计语料里哪些组合出现得最频繁，就把它们合并成一个词块</b>——"今天""我们""小智"各占一个
+            token。
+          </p>
+          <p class="detail">
+            <b>为什么必须在自己的语料上练？</b
+            >词块是从数据里统计出来的：闲聊教材里高频的是"心情""周末""睡不着"，法律教材里高频的是"依据""条款"。直接用别人的分词器，等于穿别人的鞋跑步。<b>所有现代模型都是先练分词器、再练模型</b>，我们照做。
+          </p>
+          <p class="note">
+            词表不是越大越好：嵌入层参数 = 词表 × 维度。8192 词表 × 256 维 ≈ 200
+            万参数，已占掉 0.01B 预算的两成。小模型配小词表，是有意的取舍。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 训练原理 ============ -->
+    <section class="stage dark" id="p1">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="BPE训练原理：统计相邻频率，反复合并，直到词表满"
+          >
+            <text x="40" y="36" class="ta">BPE 的合并游戏（简化示意）</text>
+            <!-- 轮次 -->
+            <rect x="40" y="52" width="400" height="60" rx="10" class="sw" />
+            <text x="60" y="76" class="ts" font-size="11.5">
+              起点：每个字/字节各占一格
+            </text>
+            <text x="60" y="98" class="tt" font-size="12.5">
+              今 天 天 气 今 天 我 们 …
+            </text>
+            <rect x="40" y="124" width="400" height="60" rx="10" class="sw" />
+            <text x="60" y="148" class="ts" font-size="11.5">
+              第 1 轮：全语料数一遍，「今天」出现最多 → 合并
+            </text>
+            <text x="60" y="170" class="tt" font-size="12.5">
+              <tspan fill="#e8432c">今天</tspan>
+              天 气
+              <tspan fill="#e8432c">今天</tspan>
+              我 们 …
+            </text>
+            <rect x="40" y="196" width="400" height="60" rx="10" class="sw" />
+            <text x="60" y="220" class="ts" font-size="11.5">
+              第 2 轮：重新统计，「我们」最频繁 → 再合并
+            </text>
+            <text x="60" y="242" class="tt" font-size="12.5">
+              <tspan fill="#e8432c">今天</tspan>
+              天 气
+              <tspan fill="#e8432c">今天</tspan>
+              <tspan fill="#e8432c">我们</tspan>
+              …
+            </text>
+            <rect x="40" y="268" width="400" height="52" rx="10" class="ac" />
+            <text x="60" y="290" class="ts" font-size="11.5" fill="#fff">
+              一直合并到词表满 8192 个坑位 → 收工
+            </text>
+            <text x="60" y="308" class="ts" font-size="10.5" fill="#fff">
+              前 3 个坑位永远留给特殊标记：&lt;|user|&gt; &lt;|assistant|&gt;
+              &lt;|end|&gt;
+            </text>
+            <text x="240" y="342" text-anchor="middle" class="ta">
+              你一行合并逻辑都不用写：tokenizers 库全包了
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">01</div>
+          <h2>训练原理 · 统计与合并</h2>
+          <div class="whyl">作用：懂原理才知道体检在看什么</div>
+          <p class="lead">
+            BPE
+            训练就是循环两件事：<b>数频率</b>（语料里哪对相邻单位最常一起出现）和<b>合并</b>（把它变成一个新词块）。循环几千次，词表从几百个字符长成
+            8192 个词块。
+          </p>
+          <p class="detail">
+            <b>两个工程细节：</b>①
+            我们启用<b>字节级回退</b>——任何生僻字、emoji、乱码都能拆成字节兜底，永远不会出现"未知符"；②
+            三个聊天模板标记注册为<b>特殊标记</b>，它们永远整体占一个
+            token，不会被拆碎——这是对话格式稳定的根基。
+          </p>
+          <p class="note">
+            实现用的是 HuggingFace 的 tokenizers 库（Rust
+            内核，几千条语料秒级练完）。你不需要懂它的内部，只需要看懂下一节的体检报告。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 三道体检 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="三道体检：压缩率、特殊标记、往返一致"
+          >
+            <text x="40" y="36" class="ta">练完别急着走，先过三关</text>
+            <rect x="40" y="56" width="400" height="76" rx="10" class="sw" />
+            <text x="60" y="82" class="tt" font-size="12.5">① 压缩率</text>
+            <text x="60" y="104" class="ts" font-size="11">
+              在 val.jsonl 上算：总 token 数 ÷ 总字符数
+            </text>
+            <text x="60" y="122" class="ts" font-size="11">
+              中文教材健康区间：
+              <tspan fill="#2e7d4f" font-weight="700">1.0 ~ 1.5 token/字</tspan>
+              ，超了调词表重练
+            </text>
+            <rect x="40" y="144" width="400" height="76" rx="10" class="sw" />
+            <text x="60" y="170" class="tt" font-size="12.5">
+              ② 特殊标记独占一格
+            </text>
+            <text x="60" y="192" class="ts" font-size="11">
+              &lt;|user|&gt; 等三个标记必须各自编码成"一个" id
+            </text>
+            <text x="60" y="210" class="ts" font-size="11">
+              被拆碎 = 对话格式必崩，直接不合格
+            </text>
+            <rect x="40" y="232" width="400" height="76" rx="10" class="ac" />
+            <text x="60" y="258" class="tt" font-size="12.5" fill="#fff">
+              ③ 往返一致
+            </text>
+            <text x="60" y="280" class="ts" font-size="11" fill="#fff">
+              任意文本 → 编码成 id → 再解码回来，必须一字不差
+            </text>
+            <text x="60" y="298" class="ts" font-size="11" fill="#fff">
+              靠字节级解码器兜底，生僻字和 emoji 也不怕
+            </text>
+            <text x="240" y="340" text-anchor="middle" class="ta">
+              三关全过才交付，脚本自动判分
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">02</div>
+          <h2>三道体检 · 及格线画在这</h2>
+          <div class="whyl">作用：把"感觉能用"变成"指标合格"</div>
+          <p class="lead">
+            分词器的质量不看感觉，看三个硬指标：<b>压缩率</b>（决定上下文利用率）、<b>特殊标记完整性</b>（决定对话格式）、<b>往返一致性</b>（决定编解码可靠）。脚本练完自动全部检查并打分。
+          </p>
+          <p class="detail">
+            <b>压缩率为什么用验证集考？</b
+            >在训练集上考会"作弊"——词块本来就是从这些句子里统计出来的。验证集是分词器没见过的文本，它上面的压缩率才代表真实世界的表现。
+          </p>
+          <p class="note">
+            不合格怎么办：压缩率高于 1.5 → 词表太小，调大 VOCAB_SIZE 重练；低于
+            1.0 →
+            多半是特殊标记和短句拉低了均值，若长句压缩率正常就不用管。体检的本质是给你一个"要不要重练"的决策依据。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 跑脚本 ============ -->
+    <section class="stage dark" id="p3">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 380"
+            role="img"
+            aria-label="四个类各司其职：供料、训练、体检、编排"
+          >
+            <text x="40" y="36" class="ta">
+              脚本结构：四个类，一个类只做一件事
+            </text>
+            <rect x="40" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              CorpusExtractor
+            </text>
+            <text
+              x="136"
+              y="100"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管从 jsonl 抽文本
+            </text>
+            <rect x="248" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="344"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              BpeTrainer
+            </text>
+            <text
+              x="344"
+              y="100"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管训练并保存词表
+            </text>
+            <rect x="40" y="136" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              CompressionChecker
+            </text>
+            <text
+              x="136"
+              y="180"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管三道体检打分
+            </text>
+            <rect x="248" y="136" width="192" height="60" rx="10" class="ac" />
+            <text
+              x="344"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="#fff"
+            >
+              TokenizerPipeline
+            </text>
+            <text
+              x="344"
+              y="180"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+              fill="#fff"
+            >
+              只管编排与给结论
+            </text>
+            <rect
+              x="40"
+              y="216"
+              width="400"
+              height="60"
+              rx="12"
+              fill="#15130e"
+            />
+            <g font-family="'JetBrains Mono',monospace" font-size="11">
+              <text x="58" y="240" fill="#7a7261"># 装依赖并运行</text>
+              <text x="58" y="262" fill="#e8e2d2">
+                pip install tokenizers && python train_tokenizer.py
+              </text>
+            </g>
+            <rect x="40" y="292" width="400" height="52" rx="12" class="sw" />
+            <text x="60" y="314" class="ts" font-size="11.5">
+              产出：tokenizer/tokenizer.json（唯一交付物，一个文件）
+            </text>
+            <text x="60" y="334" class="ts" font-size="11.5">
+              几千条语料秒级练完，进度条走满即完成
+            </text>
+            <text x="240" y="368" text-anchor="middle" class="ta">
+              数据变多了随时重跑：词表跟着教材一起长大
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">03</div>
+          <h2>跑起来 · 一分钟出词表</h2>
+          <div class="whyl">作用：供料、训练、保存、体检全自动</div>
+          <p class="lead">
+            把脚本存为 train_tokenizer.py，和 train.jsonl / val.jsonl
+            同目录，装一个 tokenizers
+            库就能跑。产出只有一个文件：<b>tokenizer/tokenizer.json</b>——训练脚本和推理脚本将来都加载它。
+          </p>
+          <p class="detail">
+            <b>唯一要盯的参数是 VOCAB_SIZE：</b>8192
+            是"嵌入层参数"与"压缩率"的平衡点。教材还只有几百条时词表可能练不满（会有警告），这很正常——等数据涨到几万条，重跑一次即可，词表会随教材一起长大。
+          </p>
+          <p class="note">
+            纪律重申：分词器只用 train.jsonl 练，val.jsonl
+            只用来体检。这个分工和模型训练时"训练集学习、验证集监考"是同一条纪律。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 完整代码 ============ -->
+    <section class="codesec" id="code">
+      <h2 class="reveal">完整可运行脚本 · train_tokenizer.py</h2>
+      <p class="cap reveal">
+        复制 → 与 train.jsonl 同目录保存 → conda activate f10 && pip install
+        tokenizers && python train_tokenizer.py
+      </p>
+      <div class="codewrap reveal">
+        <button id="copybtn">复制代码</button>
+        <pre id="codeblock">
+<span class="c-cm"># -*- coding: utf-8 -*-</span>
+<span class="c-cm">"""
+train_tokenizer.py —— 小智二代 · BPE 分词器训练脚本
+作用：在清洗后的 train.jsonl 上训练专属 BPE 分词器，并做三道体检
+用法：pip install tokenizers && python train_tokenizer.py
+依赖：仅需第三方库 tokenizers（HuggingFace 出品，Rust 内核，秒级训练）
+"""</span>
+
+<span class="c-kw">import</span> json      <span class="c-cm"># 读取 jsonl 教材</span>
+<span class="c-kw">from</span> pathlib <span class="c-kw">import</span> Path  <span class="c-cm"># 跨平台路径处理（macOS / Linux 通用）</span>
+
+<span class="c-kw">from</span> tokenizers <span class="c-kw">import</span> Tokenizer, models, trainers, pre_tokenizers, decoders
+
+<span class="c-cm"># ==================== 可调参数区（只改这里） ====================</span>
+TRAIN_FILE = Path(<span class="c-str">"train.jsonl"</span>)  <span class="c-cm"># 分词器只用它练（防验证集泄漏）</span>
+VAL_FILE = Path(<span class="c-str">"val.jsonl"</span>)      <span class="c-cm"># 体检考场：衡量压缩率的真实水平</span>
+OUT_DIR = Path(<span class="c-str">"tokenizer"</span>)       <span class="c-cm"># 输出目录：tokenizer.json 存在这里</span>
+VOCAB_SIZE = <span class="c-kw">8192</span>   <span class="c-cm"># 词表大小：小模型配小词表，嵌入层才不吃爆参数预算</span>
+
+<span class="c-cm"># 特殊标记：必须与清洗脚本 clean_split.py 里的聊天模板一字不差！</span>
+SPECIAL_TOKENS = [<span class="c-str">"&lt;|user|&gt;"</span>, <span class="c-str">"&lt;|assistant|&gt;"</span>, <span class="c-str">"&lt;|end|&gt;"</span>]
+
+<span class="c-cm"># 压缩率健康区间：中文教材约 1.0~1.5 token/字</span>
+GOOD_RATIO_MIN, GOOD_RATIO_MAX = <span class="c-kw">1.0</span>, <span class="c-kw">1.5</span>
+
+
+<span class="c-cm"># ==================== 四个类，一个类只做一件事 ====================</span>
+<span class="c-kw">class</span> CorpusExtractor:
+    <span class="c-cm">"""职责：只负责供料——从 jsonl 里把 text 字段逐条抽出来"""</span>
+
+    <span class="c-kw">def</span> __init__(self, path):
+        <span class="c-cm">"""path：教材文件路径（Path 对象）"""</span>
+        self.path = path
+
+    <span class="c-kw">def</span> all_texts(self):
+        <span class="c-cm">"""读取全部 text 字段；返回字符串列表，坏行跳过"""</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> self.path.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {self.path}（请先运行 clean_split.py）"</span>)
+        texts = []
+        <span class="c-kw">for</span> line <span class="c-kw">in</span> self.path.read_text(encoding=<span class="c-str">"utf-8"</span>).splitlines():
+            <span class="c-kw">try</span>:
+                texts.append(json.loads(line)[<span class="c-str">"text"</span>])
+            <span class="c-kw">except</span> (json.JSONDecodeError, KeyError):
+                <span class="c-kw">continue</span>  <span class="c-cm"># 坏行跳过，不干扰训练</span>
+        <span class="c-kw">return</span> texts
+
+
+<span class="c-kw">class</span> BpeTrainer:
+    <span class="c-cm">"""职责：只负责训练——在你的语料上练一个专属 BPE 分词器并保存"""</span>
+
+    <span class="c-kw">def</span> train(self, texts):
+        <span class="c-cm">"""
+        参数：texts 训练文本列表
+        返回：(训练好的 Tokenizer 对象, 保存路径)
+        """</span>
+        <span class="c-cm"># BPE 模型 + 字节级回退：生僻字/emoji 都能拆成字节兜底，永无未知符</span>
+        tokenizer = Tokenizer(models.BPE())
+        tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=<span class="c-kw">False</span>)
+        tokenizer.decoder = decoders.ByteLevel()  <span class="c-cm"># 保证"编码再解码 = 原文"</span>
+        trainer = trainers.BpeTrainer(
+            vocab_size=VOCAB_SIZE,
+            special_tokens=SPECIAL_TOKENS,  <span class="c-cm"># 特殊标记永远占据词表前几个坑位</span>
+            <span class="c-cm"># 关键：把 256 个字节全部纳入初始字母表，否则语料里没出现过的字节
+            # 在编码时会被静默丢弃（"是谁？"可能只剩半个字）——这是最易踩的坑</span>
+            initial_alphabet=pre_tokenizers.ByteLevel.alphabet(),
+            show_progress=<span class="c-kw">True</span>,
+        )
+        tokenizer.train_from_iterator(texts, trainer)
+        OUT_DIR.mkdir(exist_ok=<span class="c-kw">True</span>)
+        out_path = OUT_DIR / <span class="c-str">"tokenizer.json"</span>
+        tokenizer.save(<span class="c-kw">str</span>(out_path))
+        <span class="c-kw">return</span> tokenizer, out_path
+
+
+<span class="c-kw">class</span> CompressionChecker:
+    <span class="c-cm">"""职责：只负责体检——压缩率、特殊标记、往返一致，三道关卡"""</span>
+
+    <span class="c-kw">def</span> __init__(self, tokenizer):
+        <span class="c-cm">"""tokenizer：刚训练好的 Tokenizer 对象"""</span>
+        self.tok = tokenizer
+
+    <span class="c-kw">def</span> check(self, val_texts):
+        <span class="c-cm">"""
+        在验证集上执行三道体检；返回报告 dict：
+        ratio 压缩率 / special_ok 特殊标记完整性 / roundtrip_ok 往返一致性
+        """</span>
+        <span class="c-cm"># ① 压缩率：验证集总 token 数 ÷ 总字符数（用没见过的文本考才真实）</span>
+        total_tokens = <span class="c-kw">sum</span>(<span class="c-kw">len</span>(self.tok.encode(t).ids) <span class="c-kw">for</span> t <span class="c-kw">in</span> val_texts)
+        total_chars = <span class="c-kw">sum</span>(<span class="c-kw">len</span>(t) <span class="c-kw">for</span> t <span class="c-kw">in</span> val_texts)
+        ratio = total_tokens / <span class="c-kw">max</span>(total_chars, <span class="c-kw">1</span>)
+
+        <span class="c-cm"># ② 特殊标记：必须各自被编码成"一个" id，被拆碎即格式崩坏</span>
+        special_ok = <span class="c-kw">all</span>(<span class="c-kw">len</span>(self.tok.encode(t).ids) == <span class="c-kw">1</span> <span class="c-kw">for</span> t <span class="c-kw">in</span> SPECIAL_TOKENS)
+
+        <span class="c-cm"># ③ 往返一致：编码成 id 再解码回来，必须与原文一字不差
+        # 注意 decode 默认会跳过特殊标记，必须显式关掉，否则模板标记"被解码丢了"</span>
+        sample = <span class="c-str">"&lt;|user|&gt;你是谁？&lt;|assistant|&gt;我叫小智~&lt;|end|&gt;"</span>
+        back = self.tok.decode(self.tok.encode(sample).ids, skip_special_tokens=<span class="c-kw">False</span>)
+        roundtrip_ok = back == sample
+
+        <span class="c-kw">return</span> {
+            <span class="c-str">"ratio"</span>: ratio,
+            <span class="c-str">"special_ok"</span>: special_ok,
+            <span class="c-str">"roundtrip_ok"</span>: roundtrip_ok,
+            <span class="c-str">"vocab_real"</span>: self.tok.get_vocab_size(),
+        }
+
+
+<span class="c-kw">class</span> TokenizerPipeline:
+    <span class="c-cm">"""职责：只负责编排——供料 → 训练 → 保存 → 体检 → 给结论"""</span>
+
+    <span class="c-kw">def</span> run(self):
+        <span class="c-cm"># ① 供料：训练集练分词器，验证集当体检考场</span>
+        train_texts = CorpusExtractor(TRAIN_FILE).all_texts()
+        val_texts = CorpusExtractor(VAL_FILE).all_texts()
+        <span class="c-kw">print</span>(<span class="c-str">f"[read] 训练语料 {len(train_texts)} 条，体检语料 {len(val_texts)} 条"</span>)
+
+        <span class="c-cm"># ② 训练 + 保存</span>
+        tokenizer, out_path = BpeTrainer().train(train_texts)
+        <span class="c-kw">print</span>(<span class="c-str">f"[train] 分词器已保存 → {out_path}"</span>)
+
+        <span class="c-cm"># ③ 保存后重新加载一次，验证文件本身可用（防止"存了个坏的"）</span>
+        reloaded = Tokenizer.from_file(<span class="c-kw">str</span>(out_path))
+
+        <span class="c-cm"># ④ 三道体检</span>
+        report = CompressionChecker(reloaded).check(val_texts)
+        <span class="c-kw">print</span>(<span class="c-str">f"[check] 实际词表大小：{report['vocab_real']}（目标 {VOCAB_SIZE}）"</span>)
+        <span class="c-kw">print</span>(<span class="c-str">f"[check] 压缩率：{report['ratio']:.2f} token/字"</span>
+              <span class="c-str">f"（健康区间 {GOOD_RATIO_MIN}~{GOOD_RATIO_MAX}）"</span>)
+        <span class="c-kw">print</span>(<span class="c-str">f"[check] 特殊标记独占一格：{'✓' if report['special_ok'] else '✗'}"</span>)
+        <span class="c-kw">print</span>(<span class="c-str">f"[check] 编解码往返一致：{'✓' if report['roundtrip_ok'] else '✗'}"</span>)
+
+        <span class="c-cm"># ⑤ 给结论：三关全过才放行</span>
+        ratio_ok = GOOD_RATIO_MIN &lt;= report[<span class="c-str">"ratio"</span>] &lt;= GOOD_RATIO_MAX
+        <span class="c-kw">if</span> ratio_ok <span class="c-kw">and</span> report[<span class="c-str">"special_ok"</span>] <span class="c-kw">and</span> report[<span class="c-str">"roundtrip_ok"</span>]:
+            <span class="c-kw">print</span>(<span class="c-str">"[done] 体检全部通过！分词器可交付训练阶段使用"</span>)
+        <span class="c-kw">else</span>:
+            <span class="c-kw">print</span>(<span class="c-str">"[warn] 体检未全过：压缩率不达标请调整 VOCAB_SIZE 后重跑"</span>)
+
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    TokenizerPipeline().run()
+        </pre>
+      </div>
+    </section>
+
+    <!-- ============ 04 验收 ============ -->
+    <section class="stage" id="p4">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 340"
+            role="img"
+            aria-label="验收：一次健康的运行输出"
+          >
+            <text x="40" y="36" class="ta">一次健康的运行长这样</text>
+            <rect
+              x="40"
+              y="52"
+              width="400"
+              height="150"
+              rx="12"
+              fill="#15130e"
+            />
+            <g font-family="'JetBrains Mono',monospace" font-size="10.5">
+              <text x="56" y="78" fill="#e8e2d2">
+                [read] 训练语料 165 条，体检语料 3 条
+              </text>
+              <text x="56" y="100" fill="#e8e2d2">
+                [train] 分词器已保存 → tokenizer/tokenizer.json
+              </text>
+              <text x="56" y="122" fill="#e8e2d2">
+                [check] 实际词表大小：8192（目标 8192）
+              </text>
+              <text x="56" y="144" fill="#e8e2d2">
+                [check] 压缩率：1.21 token/字（健康区间 1.0~1.5）
+              </text>
+              <text x="56" y="166" fill="#a8c686">
+                [check] 特殊标记独占一格：✓
+              </text>
+              <text x="56" y="186" fill="#a8c686">
+                [check] 编解码往返一致：✓
+              </text>
+            </g>
+            <rect x="40" y="222" width="400" height="76" rx="12" class="sw" />
+            <text x="60" y="250" class="tg" font-size="12.5">
+              交付前最后核对：
+            </text>
+            <text x="60" y="274" class="ts" font-size="11.5">
+              ① tokenizer.json 存在且能被 from_file 重新加载
+            </text>
+            <text x="60" y="294" class="ts" font-size="11.5">
+              ② 特殊标记 ✓ 与往返 ✓ 缺一不可；压缩率允许小幅偏离
+            </text>
+            <text x="240" y="326" text-anchor="middle" class="ta">
+              数据量翻倍后记得回来重练：词表要跟上教材的成长
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">04</div>
+          <h2>验收 · 看懂体检报告</h2>
+          <div class="whyl">作用：一个文件、三个勾，齐了才往下走</div>
+          <p class="lead">
+            验收就两行重点：<b>实际词表大小</b>是否达到目标（没练满说明语料还少，不致命但要记着），以及<b>三个体检勾</b>是否全亮。
+          </p>
+          <p class="detail">
+            <b>哪个勾最不能妥协？特殊标记。</b
+            >压缩率差一点只是效率问题，特殊标记被拆碎是功能问题——模型的"谁在说、到哪停"全靠它们完整。脚本已把这条设为硬门槛。
+          </p>
+          <p class="note">
+            交付物只有 tokenizer/tokenizer.json
+            一个文件。下一站把它交给模型训练脚本：加载它、把 train.jsonl 编码成
+            token 流、开训——见《v2 简单对话模型训练规划》第 04~05 阶段。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 排错表 ============ -->
+    <section class="tsec" id="qa">
+      <h2 class="reveal">常见问题 · 一查就好</h2>
+      <p class="cap reveal">分词器阶段的问题都围绕"词表"和"语料"</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th>现象</th>
+            <th>原因与处理</th>
+          </tr>
+          <tr class="hl">
+            <td class="mono">找不到 train.jsonl</td>
+            <td>
+              上一步没跑或不在同目录 → 先运行 clean_split.py 生成 train/val
+            </td>
+          </tr>
+          <tr>
+            <td>实际词表远小于 8192</td>
+            <td>
+              语料太少，字都认不全 →
+              几百条数据时正常；等蒸馏数据涨到几千条以上重跑即可
+            </td>
+          </tr>
+          <tr>
+            <td>压缩率高于 1.5</td>
+            <td>
+              词表相对语料偏小 → 把 <span class="mono">VOCAB_SIZE</span> 调到
+              12288 或 16000 重练（注意嵌入层参数同步变大）
+            </td>
+          </tr>
+          <tr>
+            <td>特殊标记被拆成多个 id</td>
+            <td>
+              几乎只可能是标记名写岔了 → 核对 SPECIAL_TOKENS 与 clean_split.py
+              里的模板常量逐字符一致
+            </td>
+          </tr>
+          <tr>
+            <td>往返不一致 / 编码后内容变少</td>
+            <td>
+              两个高发根因：① 训练器漏了
+              <span class="mono"
+                >initial_alphabet=pre_tokenizers.ByteLevel.alphabet()</span
+              >，语料没出现过的字节被静默丢弃；② 体检时
+              <span class="mono">decode</span> 没加
+              <span class="mono">skip_special_tokens=False</span
+              >，特殊标记被默认跳过
+            </td>
+          </tr>
+          <tr>
+            <td class="mono">pip install tokenizers 失败</td>
+            <td>
+              网络问题 → 换国内镜像：<span class="mono"
+                >pip install tokenizers -i
+                https://pypi.tuna.tsinghua.edu.cn/simple</span
+              >
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">换上正规军，教材薄了三倍</h2>
+        <div class="stats reveal">
+          <div class="stat"><b>×3</b><em>同样窗口装下约三倍内容</em></div>
+          <div class="stat">
+            <b>8192</b><em>词表坑位 · 前 3 个留给模板标记</em>
+          </div>
+          <div class="stat">
+            <b>3 道</b><em>体检：压缩率 · 特殊标记 · 往返</em>
+          </div>
+          <div class="stat">
+            <b>1 个文件</b><em>tokenizer.json 即全部交付物</em>
+          </div>
+        </div>
+        <p class="fin-sum reveal">
+          分词器是小模型性价比最高的升级：一行合并逻辑不用写，换来的是上下文三倍利用、注意力开销平方级下降。教材变薄了，接下来该建小智的大脑了——0.01B
+          模型配置与训练，下一站见。
+        </p>
+        <footer class="reveal">
+          <span>小智二代 · BPE 分词器实操手册</span>
+          <span>tokenizers × 字节回退 × 三道体检 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "code", "p4", "qa"].forEach((id) =>
+        io2.observe(document.getElementById(id)),
+      );
+
+      /* ========== 一键复制代码 ========== */
+      document
+        .getElementById("copybtn")
+        .addEventListener("click", async (e) => {
+          const btn = e.target;
+          // 取代码纯文本（去掉高亮 span 标签）
+          const text = document.getElementById("codeblock").innerText;
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = "已复制 ✓";
+          } catch {
+            btn.textContent = "复制失败，请手动全选";
+          }
+          setTimeout(() => (btn.textContent = "复制代码"), 1800);
+        });
+    </script>
+  </body>
+</html>

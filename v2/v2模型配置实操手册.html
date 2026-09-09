@@ -1,0 +1,1547 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小智二代 · 模型配置实操手册</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+        --term: #15130e;
+        --termtxt: #e8e2d2;
+        --termmut: #7a7261;
+      }
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .sf {
+        fill: var(--ink);
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tg {
+        fill: #2e7d4f;
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ========== 代码区 ========== */
+      .codesec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        background: var(--term);
+        color: var(--termtxt);
+      }
+      .codesec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        color: var(--termtxt);
+      }
+      .codesec .cap {
+        text-align: center;
+        color: var(--termmut);
+        font-size: 0.9rem;
+        margin-bottom: 2.2rem;
+      }
+      .codewrap {
+        max-width: 980px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .codewrap pre {
+        background: #0e0c08;
+        border: 1px solid #3b372c;
+        border-radius: 14px;
+        padding: 1.6rem 1.4rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+        color: var(--termtxt);
+        max-height: 640px;
+        overflow-y: auto;
+      }
+      .codewrap .c-cm {
+        color: #7a7261;
+      }
+      .codewrap .c-kw {
+        color: #e8432c;
+      }
+      .codewrap .c-str {
+        color: #a8c686;
+      }
+      #copybtn {
+        position: sticky;
+        top: 0.8rem;
+        float: right;
+        margin: 0.8rem 0.8rem 0 0;
+        z-index: 5;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        background: var(--verm);
+        color: #fff;
+        border: none;
+        border-radius: 99px;
+        padding: 0.4rem 1.1rem;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      #copybtn:hover {
+        transform: scale(1.06);
+      }
+
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2.5rem 4rem;
+        margin: 2.5rem 0 3.5rem;
+      }
+      .stat b {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2rem, 4.2vw, 3.2rem);
+        line-height: 1.25;
+        transition: 0.25s;
+      }
+      .stat:hover b {
+        color: var(--verm);
+      }
+      .stat em {
+        display: block;
+        font-style: normal;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .fin-sum {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 预算表</span></a>
+      <a href="#p1"><span>1 三大件</span></a>
+      <a href="#p2"><span>2 权重共享</span></a>
+      <a href="#p3"><span>3 跑脚本</span></a>
+      <a href="#code"><span>完整代码</span></a>
+      <a href="#p4"><span>4 验收</span></a>
+      <a href="#qa"><span>排错表</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">0.01B · 模型配置 · 每个参数都花在刀刃上</p>
+      <h1>小智二代<br /><span class="red">模型配置手册</span></h1>
+      <p class="sub">
+        1000
+        万参数怎么分，决定了小智是"聪明的小个子"还是"笨拙的小个子"。这份手册给你一套被现代开源小模型验证过的配置：先用公式把预算算明白，再用
+        PyTorch 真机建模、前向冒烟——配置确认无误，才配进训练炉。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">词表 8192 × 维度 256 × 8 层</span>
+        <span class="hb">RoPE + RMSNorm + SwiGLU</span>
+        <span class="hb">权重共享省 200 万</span>
+        <span class="hb">合计 ≈ 8.9M</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 四步确认配置</h2>
+      <p class="cap reveal">先算账，再建模，账实相符才动工</p>
+      <svg
+        viewBox="0 0 1150 190"
+        class="reveal"
+        role="img"
+        aria-label="四步流程图"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="237" y1="80" x2="293" y2="80" />
+          <line x1="512" y1="80" x2="568" y2="80" />
+          <line x1="787" y1="80" x2="843" y2="80" />
+        </g>
+        <g
+          font-family="'Noto Serif SC',serif"
+          font-weight="900"
+          font-size="22"
+          text-anchor="middle"
+        >
+          <circle
+            cx="177"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="177" y="88" fill="#191611">01</text>
+          <circle cx="452" cy="80" r="40" fill="#E8432C" />
+          <text x="452" y="88" fill="#fff">02</text>
+          <circle cx="727" cy="80" r="40" fill="#E8432C" />
+          <text x="727" y="88" fill="#fff">03</text>
+          <circle
+            cx="983"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="983" y="88" fill="#191611">04</text>
+        </g>
+        <g
+          class="ts"
+          text-anchor="middle"
+          font-size="12.5"
+          style="fill: #8a8271"
+        >
+          <text x="177" y="148">定下超参</text>
+          <text x="452" y="148" style="fill: #e8432c; font-weight: 700">
+            公式算预算
+          </text>
+          <text x="727" y="148" style="fill: #e8432c; font-weight: 700">
+            PyTorch 建模
+          </text>
+          <text x="983" y="148">前向冒烟</text>
+        </g>
+        <text x="575" y="180" text-anchor="middle" class="ts" font-size="12">
+          估算与实机参数必须一分不差——对不上说明哪里写错了，趁早抓
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 预算表 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 360"
+            role="img"
+            aria-label="参数预算表：8.9M 怎么分配"
+          >
+            <text x="40" y="40" class="ta">≈890 万参数的预算表</text>
+            <rect x="40" y="58" width="188" height="44" rx="9" class="ac" />
+            <text
+              x="58"
+              y="79"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="#fff"
+            >
+              词嵌入（权重共享）
+            </text>
+            <text x="214" y="86" text-anchor="end" font-size="11" fill="#fff">
+              ≈ 2.10M
+            </text>
+            <rect x="40" y="110" width="188" height="44" rx="9" class="sw" />
+            <text
+              x="58"
+              y="131"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              8 层 × 注意力
+            </text>
+            <text x="214" y="138" text-anchor="end" class="ts">≈ 2.10M</text>
+            <rect x="40" y="162" width="296" height="44" rx="9" class="sw" />
+            <text
+              x="58"
+              y="183"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="var(--ink)"
+            >
+              8 层 × 前馈网络
+            </text>
+            <text x="322" y="190" text-anchor="end" class="ts">≈ 4.72M</text>
+            <rect x="40" y="214" width="60" height="44" rx="9" class="sw" />
+            <text
+              x="70"
+              y="235"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="10"
+              fill="var(--ink)"
+            >
+              归一化
+            </text>
+            <text x="70" y="252" text-anchor="middle" class="ts">≈ 4K</text>
+            <text x="240" y="292" text-anchor="middle" class="ta">
+              合计 ≈ 8.92M ✓ 落在 0.01B 口径内
+            </text>
+            <text
+              x="240"
+              y="330"
+              text-anchor="middle"
+              class="ts"
+              font-size="12"
+            >
+              前馈网络吃掉一半预算：它是模型的"知识仓库"，值这个价
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">00</div>
+          <h2>预算表 · 先算账再建模</h2>
+          <div class="whyl">作用：0.01B 的每个参数都要精打细算</div>
+          <p class="lead">
+            参考配置：<b
+              >词表 8192 · 维度 256 · 层数 8 · 注意力头 8 · 前馈 768 · 上下文
+              512</b
+            >。这套数字背后的取舍：层数多而维度适中——深网络比宽网络更会"讲条理"；上下文
+            512 个 BPE token 约等于 350~500 个汉字，够 6~8 轮对话。
+          </p>
+          <p class="detail">
+            <b>预算分配的规律：</b
+            >前馈网络（FFN）吃掉约一半参数，它是存储"知识"的地方；注意力负责"理顺上下文"，占四分之一；词嵌入占四分之一——所以词表不能贪大，它直接抢前馈的口粮。
+          </p>
+          <p class="note">
+            两个口径别搞混：总参数 ≈8.9M，非嵌入参数
+            ≈6.8M。两种算法都行，但训练前后的对比必须用同一个口径，否则"变大变小"都说不清。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 三大件 ============ -->
+    <section class="stage dark" id="p1">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="现代标配三大件：RoPE、RMSNorm、SwiGLU"
+          >
+            <text x="40" y="36" class="ta">当代小模型的标配三大件</text>
+            <rect x="40" y="56" width="400" height="80" rx="12" class="sw" />
+            <text
+              x="62"
+              y="84"
+              font-family="'JetBrains Mono',monospace"
+              font-size="13"
+              fill="var(--verm)"
+            >
+              RoPE · 旋转位置编码
+            </text>
+            <text x="62" y="106" class="ts" font-size="11.5">
+              不给位置"编号"，给位置"转角"：相对远近天然保鲜
+            </text>
+            <text x="62" y="124" class="ts" font-size="10.5">
+              零参数 · 外推性比绝对位置编码好
+            </text>
+            <rect x="40" y="148" width="400" height="80" rx="12" class="sw" />
+            <text
+              x="62"
+              y="176"
+              font-family="'JetBrains Mono',monospace"
+              font-size="13"
+              fill="var(--verm)"
+            >
+              RMSNorm · 均方根归一化
+            </text>
+            <text x="62" y="198" class="ts" font-size="11.5">
+              只缩放、不减均值：比 LayerNorm 少一步，更快更稳
+            </text>
+            <text x="62" y="216" class="ts" font-size="10.5">
+              每层两个 + 结尾一个 · 总共才几千参数
+            </text>
+            <rect x="40" y="240" width="400" height="80" rx="12" class="ac" />
+            <text
+              x="62"
+              y="268"
+              font-family="'JetBrains Mono',monospace"
+              font-size="13"
+              fill="#fff"
+            >
+              SwiGLU · 门控前馈网络
+            </text>
+            <text x="62" y="290" class="ts" font-size="11.5" fill="#fff">
+              比普通 FFN 多一个"门控"矩阵：同样预算，表达力更强
+            </text>
+            <text x="62" y="308" class="ts" font-size="10.5" fill="#fff">
+              Llama / Qwen 全在用 · 参数大户就在这里
+            </text>
+            <text x="240" y="344" text-anchor="middle" class="ta">
+              策略：照抄被验证过的现代配置，不发明新东西
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">01</div>
+          <h2>三大件 · 站在巨人肩膀上</h2>
+          <div class="whyl">作用：每一代标配都解决了上一代的老毛病</div>
+          <p class="lead">
+            这三件不是炫技，是淘汰赛的胜者：<b>RoPE</b>
+            让模型理解"相对距离"而非死记硬背位置编号；<b>RMSNorm</b>
+            在效果不减的前提下比 LayerNorm 更快；<b>SwiGLU</b>
+            用一个门控矩阵换来明显的表达力提升。
+          </p>
+          <p class="detail">
+            <b>为什么不自己发明？</b
+            >你的目标是"复刻一条被千亿美元验证过的路线"，不是做研究。Qwen、Llama
+            的小尺寸版配置表就是标准答案——照着实现，把创造力留给数据和评估。
+          </p>
+          <p class="note">
+            脚本里每个部件都是独立的小类，注释里标了"类比 Python
+            的什么"。先不求甚解完全没问题——冒烟测试通过后，回头再啃原理也来得及。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 权重共享 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 330"
+            role="img"
+            aria-label="权重共享：输入嵌入与输出层共用同一份矩阵"
+          >
+            <text x="40" y="36" class="ta">一份矩阵，打两份工</text>
+            <!-- 矩阵 -->
+            <rect x="140" y="110" width="200" height="110" rx="14" class="ac" />
+            <text
+              x="240"
+              y="155"
+              text-anchor="middle"
+              font-size="14"
+              fill="#fff"
+              font-family="'Noto Serif SC',serif"
+              font-weight="900"
+            >
+              嵌入矩阵
+            </text>
+            <text
+              x="240"
+              y="178"
+              text-anchor="middle"
+              font-size="11"
+              fill="#fff"
+            >
+              8192 × 256 ≈ 210 万参数
+            </text>
+            <text
+              x="240"
+              y="198"
+              text-anchor="middle"
+              font-size="10.5"
+              fill="#fff"
+            >
+              每一行是一个词的"身份证向量"
+            </text>
+            <!-- 两个用途 -->
+            <rect x="20" y="40" width="170" height="48" rx="10" class="sw" />
+            <text
+              x="105"
+              y="69"
+              text-anchor="middle"
+              class="ts"
+              font-size="11.5"
+            >
+              打工①：输入时查表
+            </text>
+            <rect x="290" y="40" width="170" height="48" rx="10" class="sw" />
+            <text
+              x="375"
+              y="69"
+              text-anchor="middle"
+              class="ts"
+              font-size="11.5"
+            >
+              打工②：输出时打分
+            </text>
+            <path d="M120 88 L180 108" class="acs" />
+            <path d="M360 88 L300 108" class="acs" />
+            <!-- 收益 -->
+            <rect x="40" y="252" width="400" height="56" rx="12" class="sw" />
+            <text x="60" y="276" class="tg" font-size="12">
+              白省 210 万参数 → 让给更多层数
+            </text>
+            <text x="60" y="296" class="ts" font-size="11">
+              副作用还是好的：输入与输出共享语义空间，学得更一致
+            </text>
+            <text
+              x="240"
+              y="324"
+              text-anchor="middle"
+              class="ts"
+              font-size="11"
+            >
+              代码里只有一行：lm_head.weight = embed.weight
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">02</div>
+          <h2>权重共享 · 一鱼两吃</h2>
+          <div class="whyl">作用：白捡 200 万参数的预算</div>
+          <p class="lead">
+            模型入口要一张"词 → 向量"的表，出口要一张"向量 →
+            词"的表。既然互为镜像，<b>干脆共用同一份矩阵</b>——这一行代码省下的
+            210 万参数，足够多堆两层 Transformer。
+          </p>
+          <p class="detail">
+            <b>怎么验证共享真的生效了？</b
+            >对比"公式估算"与"实机参数"：两者一分不差 =
+            共享生效（输出层没有偷偷多领一份参数）。如果实机比估算多了约 210
+            万，就是那行共享代码丢了。脚本会自动做这个对账。
+          </p>
+          <p class="note">
+            这也是 GPT-2 以来的经典做法（weight
+            tying）。小模型参数寸土寸金，这个免费的午餐没有理由不吃。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 跑脚本 ============ -->
+    <section class="stage dark" id="p3">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 380"
+            role="img"
+            aria-label="脚本结构：配置、算账、模型、冒烟、编排"
+          >
+            <text x="40" y="36" class="ta">脚本结构：五个角色，各司其职</text>
+            <rect x="40" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              ModelConfig
+            </text>
+            <text
+              x="136"
+              y="100"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管集中存放超参
+            </text>
+            <rect x="248" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="344"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              BudgetCalculator
+            </text>
+            <text
+              x="344"
+              y="100"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管用公式算预算
+            </text>
+            <rect x="40" y="136" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              XiaozhiGPT
+            </text>
+            <text
+              x="136"
+              y="180"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管模型本体结构
+            </text>
+            <rect x="248" y="136" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="344"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              ForwardTester
+            </text>
+            <text
+              x="344"
+              y="180"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+            >
+              只管实机对账+冒烟
+            </text>
+            <rect x="40" y="216" width="400" height="56" rx="10" class="ac" />
+            <text
+              x="240"
+              y="240"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12"
+              fill="#fff"
+            >
+              ConfigPipeline
+            </text>
+            <text
+              x="240"
+              y="260"
+              text-anchor="middle"
+              class="ts"
+              font-size="10.5"
+              fill="#fff"
+            >
+              只管编排：配置 → 预算 → 建模 → 对账 → 冒烟 → 结论
+            </text>
+            <rect x="40" y="292" width="400" height="56" rx="12" class="sw" />
+            <text x="60" y="316" class="ts" font-size="11.5">
+              运行：conda activate f10 &amp;&amp; python model_config.py
+            </text>
+            <text x="60" y="336" class="ts" font-size="11.5">
+              没装 torch 也能跑：预算表照出，真机验证自动跳过并提示
+            </text>
+            <text x="240" y="372" text-anchor="middle" class="ta">
+              改配置只动 ModelConfig，预算表和模型都跟着变
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">03</div>
+          <h2>跑起来 · 一分钟对账</h2>
+          <div class="whyl">作用：配置从"纸面数字"变成"可运行的模型"</div>
+          <p class="lead">
+            脚本做四件事：打印超参 → <b>纯公式算预算</b>（不依赖任何库）→ 用
+            PyTorch 建真模型并数实际参数 → 喂一批假 token
+            跑前向，确认输出形状正确。<b>估算与实机一分不差</b>，才算配置落地。
+          </p>
+          <p class="detail">
+            <b>为什么先算预算再建模？</b
+            >公式算账零成本，能在写模型之前就发现"词表太大吃爆预算"这类错误；真机对账则能抓住"忘了权重共享"这种代码级失误。两道关卡防的是不同层级的错。
+          </p>
+          <p class="note">
+            这份 XiaozhiGPT 就是下一站训练脚本要 import
+            的模型本体——本页的冒烟测试通过，意味着训练的最后一道前置工序就绪。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 完整代码 ============ -->
+    <section class="codesec" id="code">
+      <h2 class="reveal">完整可运行脚本 · model_config.py</h2>
+      <p class="cap reveal">
+        复制 → 保存 → conda activate f10 && python model_config.py（真机验证需
+        torch，预算表零依赖）
+      </p>
+      <div class="codewrap reveal">
+        <button id="copybtn">复制代码</button>
+        <pre id="codeblock">
+<span class="c-cm"># -*- coding: utf-8 -*-</span>
+<span class="c-cm">"""
+model_config.py —— 小智二代 · 0.01B 模型配置与预算自检脚本
+作用：定义模型超参 → 纯公式算参数预算 → PyTorch 真机建模 → 前向冒烟测试
+用法：python model_config.py（装了 torch 自动做实机验证；没装也能看预算表）
+"""</span>
+
+<span class="c-kw">from</span> dataclasses <span class="c-kw">import</span> dataclass  <span class="c-cm"># 把配置打包成结构体，类似带类型提示的 dict</span>
+
+<span class="c-cm"># torch 是可选依赖：有它就真机建模，没有就只看预算表（脚本不会崩）</span>
+<span class="c-kw">try</span>:
+    <span class="c-kw">import</span> torch
+    <span class="c-kw">import</span> torch.nn <span class="c-kw">as</span> nn
+    <span class="c-kw">import</span> torch.nn.functional <span class="c-kw">as</span> F
+    TORCH_OK = <span class="c-kw">True</span>
+<span class="c-kw">except</span> ImportError:
+    TORCH_OK = <span class="c-kw">False</span>
+
+
+<span class="c-cm"># ==================== 可调参数区（只改这里） ====================</span>
+<span class="c-kw">@dataclass</span>
+<span class="c-kw">class</span> ModelConfig:
+    <span class="c-cm">"""全部超参集中在这一处：训练和推理脚本都引用它，保证口径唯一"""</span>
+    vocab_size: int = <span class="c-kw">8192</span>   <span class="c-cm"># 词表大小：必须与 tokenizer.json 的实际词表一致！</span>
+    d_model: int = <span class="c-kw">256</span>      <span class="c-cm"># 隐藏维度：每个 token 用 256 个数表示</span>
+    n_layers: int = <span class="c-kw">8</span>        <span class="c-cm"># Transformer 层数：深比宽更会"讲条理"</span>
+    n_heads: int = <span class="c-kw">8</span>         <span class="c-cm"># 注意力头数：必须能整除 d_model</span>
+    d_ff: int = <span class="c-kw">768</span>          <span class="c-cm"># 前馈网络中间维度（SwiGLU 三矩阵）</span>
+    max_seq_len: int = <span class="c-kw">512</span>   <span class="c-cm"># 上下文窗口：约能装 350~500 个汉字</span>
+
+    <span class="c-kw">def</span> __post_init__(self):
+        <span class="c-cm">"""创建配置时立刻自检，不合规直接报错（防止带病进入训练）"""</span>
+        <span class="c-kw">assert</span> self.d_model % self.n_heads == <span class="c-kw">0</span>, <span class="c-str">"d_model 必须能被 n_heads 整除"</span>
+
+<span class="c-cm"># 预算合格区间：总参数落在 8.5M~12M 算 0.01B 达标</span>
+PARAM_MIN, PARAM_MAX = <span class="c-kw">8_500_000</span>, <span class="c-kw">12_000_000</span>
+
+
+<span class="c-cm"># ==================== 预算计算（纯公式，零依赖） ====================</span>
+<span class="c-kw">class</span> BudgetCalculator:
+    <span class="c-cm">"""职责：只负责算账——用公式预估每个部件的参数，不用真的建模"""</span>
+
+    <span class="c-kw">def</span> __init__(self, cfg):
+        <span class="c-cm">"""cfg：ModelConfig 实例"""</span>
+        self.cfg = cfg
+
+    <span class="c-kw">def</span> report(self):
+        <span class="c-cm">"""逐项计算并打印预算表；返回 (总参数, 嵌入参数)"""</span>
+        c = self.cfg
+        embed = c.vocab_size * c.d_model           <span class="c-cm"># 词嵌入（权重共享：输出层白嫖它）</span>
+        attn = c.n_layers * <span class="c-kw">4</span> * c.d_model ** <span class="c-kw">2</span>     <span class="c-cm"># 每层 Q/K/V/O 四个方阵</span>
+        ffn = c.n_layers * <span class="c-kw">3</span> * c.d_model * c.d_ff   <span class="c-cm"># SwiGLU 每层三个矩阵</span>
+        norm = (c.n_layers * <span class="c-kw">2</span> + <span class="c-kw">1</span>) * c.d_model     <span class="c-cm"># RMSNorm 每层两个 + 结尾一个</span>
+        total = embed + attn + ffn + norm
+        <span class="c-kw">print</span>(<span class="c-str">f"[budget] 词嵌入(共享)  {embed/1e6:>6.2f}M"</span>)
+        <span class="c-kw">print</span>(<span class="c-str">f"[budget] 注意力×{c.n_layers}   {attn/1e6:>6.2f}M"</span>)
+        <span class="c-kw">print</span>(<span class="c-str">f"[budget] 前馈×{c.n_layers}     {ffn/1e6:>6.2f}M"</span>)
+        <span class="c-kw">print</span>(<span class="c-str">f"[budget] 归一化        {norm/1e3:>6.1f}K"</span>)
+        <span class="c-kw">print</span>(<span class="c-str">f"[budget] 合计 ≈ {total/1e6:.2f}M（非嵌入口径 {(total-embed)/1e6:.2f}M）"</span>)
+        <span class="c-kw">return</span> total, embed
+
+
+<span class="c-cm"># ==================== 模型本体（需要 torch） ====================</span>
+<span class="c-kw">if</span> TORCH_OK:
+
+    <span class="c-kw">class</span> RMSNorm(nn.Module):
+        <span class="c-cm">"""均方根归一化：只缩放不减均值，比 LayerNorm 少一步（类似简化版标准化）"""</span>
+
+        <span class="c-kw">def</span> __init__(self, dim, eps=<span class="c-kw">1e-6</span>):
+            <span class="c-kw">super</span>().__init__()
+            self.eps = eps
+            self.weight = nn.Parameter(torch.ones(dim))  <span class="c-cm"># 可学习的缩放系数</span>
+
+        <span class="c-kw">def</span> forward(self, x):
+            <span class="c-cm"># x / sqrt(mean(x²)) × weight：把每行的"能量"归一后再按权重缩放</span>
+            <span class="c-kw">return</span> x * torch.rsqrt(x.pow(<span class="c-kw">2</span>).mean(-<span class="c-kw">1</span>, keepdim=<span class="c-kw">True</span>) + self.eps) * self.weight
+
+    <span class="c-kw">class</span> RotaryEmbedding(nn.Module):
+        <span class="c-cm">"""RoPE 旋转位置编码：不给位置编号，给位置"转角"（零参数，只存预计算的旋转表）"""</span>
+
+        <span class="c-kw">def</span> __init__(self, head_dim, max_seq_len, base=<span class="c-kw">10000</span>):
+            <span class="c-kw">super</span>().__init__()
+            <span class="c-cm"># 每个维度对对应一个旋转频率：维度越低转得越慢（类似钟表的长短针）</span>
+            inv_freq = <span class="c-kw">1.0</span> / (base ** (torch.arange(<span class="c-kw">0</span>, head_dim, <span class="c-kw">2</span>).float() / head_dim))
+            t = torch.arange(max_seq_len).float()          <span class="c-cm"># 位置序号 0..T-1</span>
+            freqs = torch.outer(t, inv_freq)               <span class="c-cm"># 外积：(位置, 频率) → 转角表</span>
+            <span class="c-cm"># 预先存好 cos/sin 表，forward 时直接查（register_buffer = 不算参数但随模型保存）</span>
+            self.register_buffer(<span class="c-str">"cos"</span>, freqs.cos(), persistent=<span class="c-kw">False</span>)
+            self.register_buffer(<span class="c-str">"sin"</span>, freqs.sin(), persistent=<span class="c-kw">False</span>)
+
+        <span class="c-kw">def</span> forward(self, x):
+            <span class="c-cm">"""x 形状 (B, 头数, T, 头维度)；对每两个相邻维度做一次二维旋转"""</span>
+            T = x.size(<span class="c-kw">2</span>)
+            cos = self.cos[:T][<span class="c-kw">None</span>, <span class="c-kw">None</span>, :, :]  <span class="c-cm"># 加两个广播维度对齐 x</span>
+            sin = self.sin[:T][<span class="c-kw">None</span>, <span class="c-kw">None</span>, :, :]
+            x1, x2 = x[..., ::<span class="c-kw">2</span>], x[..., <span class="c-kw">1</span>::<span class="c-kw">2</span>]  <span class="c-cm"># 偶数位 / 奇数位拆开</span>
+            <span class="c-cm"># 二维旋转公式：偶位 = x1·cos − x2·sin；奇位 = x1·sin + x2·cos</span>
+            out = torch.stack([x1 * cos - x2 * sin, x1 * sin + x2 * cos], dim=-<span class="c-kw">1</span>)
+            <span class="c-kw">return</span> out.flatten(-<span class="c-kw">2</span>)  <span class="c-cm"># 交错拼回原来的维度顺序</span>
+
+    <span class="c-kw">class</span> CausalSelfAttention(nn.Module):
+        <span class="c-cm">"""因果自注意力：每个位置只能看自己和之前的位置（防作弊，生成必须从左往右）"""</span>
+
+        <span class="c-kw">def</span> __init__(self, cfg):
+            <span class="c-kw">super</span>().__init__()
+            self.n_heads = cfg.n_heads
+            self.head_dim = cfg.d_model // cfg.n_heads
+            self.qkv = nn.Linear(cfg.d_model, <span class="c-kw">3</span> * cfg.d_model, bias=<span class="c-kw">False</span>)  <span class="c-cm"># Q/K/V 一次算出</span>
+            self.proj = nn.Linear(cfg.d_model, cfg.d_model, bias=<span class="c-kw">False</span>)      <span class="c-cm"># 输出投影</span>
+            self.rope = RotaryEmbedding(self.head_dim, cfg.max_seq_len)
+
+        <span class="c-kw">def</span> forward(self, x):
+            B, T, _ = x.shape
+            q, k, v = self.qkv(x).chunk(<span class="c-kw">3</span>, dim=-<span class="c-kw">1</span>)  <span class="c-cm"># 沿最后一维切成三份</span>
+            <span class="c-cm"># 调整形状为 (B, 头数, T, 头维度)：每个头独立看一句话</span>
+            q = q.view(B, T, self.n_heads, self.head_dim).transpose(<span class="c-kw">1</span>, <span class="c-kw">2</span>)
+            k = k.view(B, T, self.n_heads, self.head_dim).transpose(<span class="c-kw">1</span>, <span class="c-kw">2</span>)
+            v = v.view(B, T, self.n_heads, self.head_dim).transpose(<span class="c-kw">1</span>, <span class="c-kw">2</span>)
+            q, k = self.rope(q), self.rope(k)  <span class="c-cm"># 只有 Q/K 加位置信息</span>
+            <span class="c-cm"># PyTorch 内置的高效注意力：is_causal=True 自动上因果掩码</span>
+            y = F.scaled_dot_product_attention(q, k, v, is_causal=<span class="c-kw">True</span>)
+            y = y.transpose(<span class="c-kw">1</span>, <span class="c-kw">2</span>).contiguous().view(B, T, -<span class="c-kw">1</span>)  <span class="c-cm"># 多头结果拼回去</span>
+            <span class="c-kw">return</span> self.proj(y)
+
+    <span class="c-kw">class</span> SwiGLU(nn.Module):
+        <span class="c-cm">"""门控前馈网络：w1 算"门"、w3 算"内容"，相乘后由 w2 降回原维度"""</span>
+
+        <span class="c-kw">def</span> __init__(self, cfg):
+            <span class="c-kw">super</span>().__init__()
+            self.w1 = nn.Linear(cfg.d_model, cfg.d_ff, bias=<span class="c-kw">False</span>)  <span class="c-cm"># 门控支路</span>
+            self.w3 = nn.Linear(cfg.d_model, cfg.d_ff, bias=<span class="c-kw">False</span>)  <span class="c-cm"># 内容支路</span>
+            self.w2 = nn.Linear(cfg.d_ff, cfg.d_model, bias=<span class="c-kw">False</span>)  <span class="c-cm"># 降维输出</span>
+
+        <span class="c-kw">def</span> forward(self, x):
+            <span class="c-cm"># silu(门) × 内容：让网络自己学会"哪些信息放行"</span>
+            <span class="c-kw">return</span> self.w2(F.silu(self.w1(x)) * self.w3(x))
+
+    <span class="c-kw">class</span> Block(nn.Module):
+        <span class="c-cm">"""一个 Transformer 层：Pre-Norm 结构（先归一化再进子层，残差兜底）"""</span>
+
+        <span class="c-kw">def</span> __init__(self, cfg):
+            <span class="c-kw">super</span>().__init__()
+            self.norm1 = RMSNorm(cfg.d_model)
+            self.attn = CausalSelfAttention(cfg)
+            self.norm2 = RMSNorm(cfg.d_model)
+            self.ffn = SwiGLU(cfg)
+
+        <span class="c-kw">def</span> forward(self, x):
+            x = x + self.attn(self.norm1(x))  <span class="c-cm"># 残差连接：原信息抄近道，防梯度消失</span>
+            x = x + self.ffn(self.norm2(x))
+            <span class="c-kw">return</span> x
+
+    <span class="c-kw">class</span> XiaozhiGPT(nn.Module):
+        <span class="c-cm">"""小智本体：嵌入 → N 个 Block → 归一化 → 输出层（与嵌入权重共享）"""</span>
+
+        <span class="c-kw">def</span> __init__(self, cfg):
+            <span class="c-kw">super</span>().__init__()
+            self.cfg = cfg
+            self.embed = nn.Embedding(cfg.vocab_size, cfg.d_model)
+            self.blocks = nn.ModuleList([Block(cfg) <span class="c-kw">for</span> _ <span class="c-kw">in</span> <span class="c-kw">range</span>(cfg.n_layers)])
+            self.norm_f = RMSNorm(cfg.d_model)
+            self.lm_head = nn.Linear(cfg.d_model, cfg.vocab_size, bias=<span class="c-kw">False</span>)
+            <span class="c-cm"># 权重共享的关键一行：输出层直接复用嵌入矩阵，白省 210 万参数</span>
+            self.lm_head.weight = self.embed.weight
+            <span class="c-cm"># 参数初始化：全部改用小方差正态分布（GPT 惯例 std=0.02）
+            # PyTorch 默认初始化方差偏大，会让开局 loss 远超 ln(词表)，前期训练不稳</span>
+            self.apply(self._init_weights)
+
+        <span class="c-kw">def</span> _init_weights(self, module):
+            <span class="c-cm">"""对 Linear/Embedding 统一做 std=0.02 的正态初始化（self.apply 会遍历所有子模块）"""</span>
+            <span class="c-kw">if</span> <span class="c-kw">isinstance</span>(module, (nn.Linear, nn.Embedding)):
+                nn.init.normal_(module.weight, mean=<span class="c-kw">0.0</span>, std=<span class="c-kw">0.02</span>)
+
+        <span class="c-kw">def</span> forward(self, idx):
+            <span class="c-cm">"""idx 形状 (B, T) 的 token id；返回 (B, T, 词表) 的 logits（每个位置的下一个词打分）"""</span>
+            x = self.embed(idx)
+            <span class="c-kw">for</span> blk <span class="c-kw">in</span> self.blocks:
+                x = blk(x)
+            <span class="c-kw">return</span> self.lm_head(self.norm_f(x))
+
+
+<span class="c-cm"># ==================== 实机验证 ====================</span>
+<span class="c-kw">class</span> ForwardTester:
+    <span class="c-cm">"""职责：只负责真机验证——建模、对账参数、跑一次前向冒烟"""</span>
+
+    <span class="c-kw">def</span> run(self, cfg, estimated_total):
+        <span class="c-cm">"""
+        参数：cfg 配置；estimated_total 公式估算的总参数
+        校验：实机参数必须等于估算（证明权重共享生效）；输出形状必须正确
+        """</span>
+        model = XiaozhiGPT(cfg)
+        real = <span class="c-kw">sum</span>(p.numel() <span class="c-kw">for</span> p <span class="c-kw">in</span> model.parameters())  <span class="c-cm"># 数真实参数个数</span>
+        match = <span class="c-str">"一致 ✓（权重共享生效）"</span> <span class="c-kw">if</span> real == estimated_total <span class="c-kw">else</span> <span class="c-str">f"对不上！差 {real-estimated_total}"</span>
+        <span class="c-kw">print</span>(<span class="c-str">f"[model] 实机参数 {real/1e6:.2f}M，与估算{match}"</span>)
+
+        <span class="c-cm"># 前向冒烟：假装 2 条 16 token 的句子喂进去，看输出形状对不对</span>
+        idx = torch.randint(<span class="c-kw">0</span>, cfg.vocab_size, (<span class="c-kw">2</span>, <span class="c-kw">16</span>))
+        logits = model(idx)
+        <span class="c-kw">assert</span> logits.shape == (<span class="c-kw">2</span>, <span class="c-kw">16</span>, cfg.vocab_size), <span class="c-str">f"输出形状异常：{logits.shape}"</span>
+        <span class="c-kw">print</span>(<span class="c-str">f"[forward] 冒烟通过：logits {tuple(logits.shape)}"</span>)
+        <span class="c-kw">return</span> real
+
+
+<span class="c-cm"># ==================== 编排 ====================</span>
+<span class="c-kw">class</span> ConfigPipeline:
+    <span class="c-cm">"""职责：只负责编排——配置 → 预算 → 建模对账 → 冒烟 → 给结论"""</span>
+
+    <span class="c-kw">def</span> run(self):
+        cfg = ModelConfig()
+        <span class="c-kw">print</span>(<span class="c-str">f"[cfg] 词表 {cfg.vocab_size} · 维度 {cfg.d_model} · "</span>
+              <span class="c-str">f"{cfg.n_layers} 层 · {cfg.n_heads} 头 · 上下文 {cfg.max_seq_len}"</span>)
+
+        <span class="c-cm"># ① 公式算预算（零依赖，永远可跑）</span>
+        total, _ = BudgetCalculator(cfg).report()
+
+        <span class="c-cm"># ② 真机验证（有 torch 才跑）</span>
+        <span class="c-kw">if</span> TORCH_OK:
+            ForwardTester().run(cfg, total)
+        <span class="c-kw">else</span>:
+            <span class="c-kw">print</span>(<span class="c-str">"[skip] 未安装 torch，跳过实机验证（pip install torch 后可跑）"</span>)
+
+        <span class="c-cm"># ③ 给结论</span>
+        <span class="c-kw">if</span> PARAM_MIN &lt;= total &lt;= PARAM_MAX:
+            <span class="c-kw">print</span>(<span class="c-str">f"[done] 预算 {total/1e6:.2f}M 落在 {PARAM_MIN/1e6:.1f}~{PARAM_MAX/1e6:.0f}M 区间，配置达标！"</span>)
+        <span class="c-kw">else</span>:
+            <span class="c-kw">print</span>(<span class="c-str">f"[warn] 预算 {total/1e6:.2f}M 超出区间，请调整 d_model / n_layers / d_ff"</span>)
+
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    ConfigPipeline().run()
+        </pre>
+      </div>
+    </section>
+
+    <!-- ============ 04 验收 ============ -->
+    <section class="stage" id="p4">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="验收：一次健康的运行输出"
+          >
+            <text x="40" y="36" class="ta">一次健康的运行长这样</text>
+            <rect
+              x="40"
+              y="52"
+              width="400"
+              height="200"
+              rx="12"
+              fill="#15130e"
+            />
+            <g font-family="'JetBrains Mono',monospace" font-size="10.5">
+              <text x="56" y="78" fill="#e8e2d2">
+                [cfg] 词表 8192 · 维度 256 · 8 层 · 8 头 · 上下文 512
+              </text>
+              <text x="56" y="100" fill="#e8e2d2">
+                [budget] 词嵌入(共享) 2.10M
+              </text>
+              <text x="56" y="120" fill="#e8e2d2">[budget] 注意力×8 2.10M</text>
+              <text x="56" y="140" fill="#e8e2d2">[budget] 前馈×8 4.72M</text>
+              <text x="56" y="160" fill="#e8e2d2">[budget] 归一化 4.4K</text>
+              <text x="56" y="180" fill="#e8e2d2">
+                [budget] 合计 ≈ 8.92M（非嵌入口径 6.82M）
+              </text>
+              <text x="56" y="204" fill="#a8c686">
+                [model] 实机参数 8.92M，与估算一致 ✓（权重共享生效）
+              </text>
+              <text x="56" y="226" fill="#a8c686">
+                [forward] 冒烟通过：logits (2, 16, 8192)
+              </text>
+              <text x="56" y="246" fill="#a8c686">
+                [done] 预算落在区间内，配置达标！
+              </text>
+            </g>
+            <rect x="40" y="272" width="400" height="52" rx="12" class="sw" />
+            <text x="60" y="296" class="ts" font-size="11.5">
+              三个通过信号：合计达标 · 账实一致 · 冒烟通过
+            </text>
+            <text x="60" y="314" class="ts" font-size="11.5">
+              任何一个不亮，都先别进训练——回去查配置
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">04</div>
+          <h2>验收 · 三个通过信号</h2>
+          <div class="whyl">作用：配置不达标就训练，等于给危房装修</div>
+          <p class="lead">
+            看三行：<b>合计 ≈8.9M 落在区间</b
+            >（预算达标）、<b>实机与估算一致</b>（权重共享生效、公式没写错）、<b
+              >logits 形状 (2, 16, 8192)</b
+            >（前向通畅）。三盏绿灯全亮，配置才算落地。
+          </p>
+          <p class="detail">
+            <b>账实一致为什么重要？</b
+            >它是"你以为的模型"和"实际的模型"之间的对账单。估算多算了说明共享没生效，少算了说明某个部件被漏计——无论哪种，训练到一半才发现都要推倒重来。
+          </p>
+          <p class="note">
+            通过后，这份 model_config.py 就是唯一事实来源：训练脚本 import
+            ModelConfig 和 XiaozhiGPT，推理脚本也一样——配置永远只有一处可改。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 排错表 ============ -->
+    <section class="tsec" id="qa">
+      <h2 class="reveal">常见问题 · 一查就好</h2>
+      <p class="cap reveal">配置阶段的问题都会在冒烟时现形</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th>现象</th>
+            <th>原因与处理</th>
+          </tr>
+          <tr class="hl">
+            <td class="mono">d_model 必须能被 n_heads 整除</td>
+            <td>头数分不匀 → 保持比例调整（如 256 维配 8 头，每头 32 维）</td>
+          </tr>
+          <tr>
+            <td>实机参数比估算多约 210 万</td>
+            <td>
+              权重共享没生效 → 检查
+              <span class="mono">lm_head.weight = embed.weight</span>
+              这一行还在不在
+            </td>
+          </tr>
+          <tr>
+            <td>实机与估算差一点点</td>
+            <td>
+              某个部件漏算/多算 → 检查 Linear 是否都设了
+              <span class="mono">bias=False</span>（本配置全程无偏置）
+            </td>
+          </tr>
+          <tr>
+            <td class="mono">[skip] 未安装 torch</td>
+            <td>
+              预算表已出，真机验证跳过 →
+              <span class="mono">pip install torch</span>
+              后重跑（训练阶段反正要装）
+            </td>
+          </tr>
+          <tr>
+            <td>预算超出 12M</td>
+            <td>
+              优先级：先缩 d_ff，再缩 n_layers，最后才动
+              d_model（维度是表达力的底盘）
+            </td>
+          </tr>
+          <tr>
+            <td>想升到 0.05B</td>
+            <td>
+              只改 ModelConfig 的数字（如维度 512、层数
+              12），重跑本脚本对账即可——流程一字不变
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">配置落地，小智有了身体</h2>
+        <div class="stats reveal">
+          <div class="stat"><b>≈8.9M</b><em>总参数 · 账实一分不差</em></div>
+          <div class="stat">
+            <b>3 大件</b><em>RoPE · RMSNorm · SwiGLU 现代标配</em>
+          </div>
+          <div class="stat"><b>1 处</b><em>ModelConfig 是唯一事实来源</em></div>
+          <div class="stat"><b>0 发明</b><em>复刻被验证过的路线</em></div>
+        </div>
+        <p class="fin-sum reveal">
+          小模型的配置哲学不是"怎么更强"，而是"怎么不浪费"：前馈吃一半、注意力理顺上下文、嵌入共享白捡两百万。身体造好了，下一步点火——训练。
+        </p>
+        <footer class="reveal">
+          <span>小智二代 · 模型配置实操手册</span>
+          <span>预算对账 × 权重共享 × 前向冒烟 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "code", "p4", "qa"].forEach((id) =>
+        io2.observe(document.getElementById(id)),
+      );
+
+      /* ========== 一键复制代码 ========== */
+      document
+        .getElementById("copybtn")
+        .addEventListener("click", async (e) => {
+          const btn = e.target;
+          // 取代码纯文本（去掉高亮 span 标签）
+          const text = document.getElementById("codeblock").innerText;
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = "已复制 ✓";
+          } catch {
+            btn.textContent = "复制失败，请手动全选";
+          }
+          setTimeout(() => (btn.textContent = "复制代码"), 1800);
+        });
+    </script>
+  </body>
+</html>

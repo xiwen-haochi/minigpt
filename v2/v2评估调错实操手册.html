@@ -1,0 +1,1325 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小智二代 · 评估调错实操手册</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+        --term: #15130e;
+        --termtxt: #e8e2d2;
+        --termmut: #7a7261;
+      }
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .sf {
+        fill: var(--ink);
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tg {
+        fill: #2e7d4f;
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ========== 代码区 ========== */
+      .codesec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        background: var(--term);
+        color: var(--termtxt);
+      }
+      .codesec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        color: var(--termtxt);
+      }
+      .codesec .cap {
+        text-align: center;
+        color: var(--termmut);
+        font-size: 0.9rem;
+        margin-bottom: 2.2rem;
+      }
+      .codewrap {
+        max-width: 980px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .codewrap pre {
+        background: #0e0c08;
+        border: 1px solid #3b372c;
+        border-radius: 14px;
+        padding: 1.6rem 1.4rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+        color: var(--termtxt);
+        max-height: 640px;
+        overflow-y: auto;
+      }
+      .codewrap .c-cm {
+        color: #7a7261;
+      }
+      .codewrap .c-kw {
+        color: #e8432c;
+      }
+      .codewrap .c-str {
+        color: #a8c686;
+      }
+      #copybtn {
+        position: sticky;
+        top: 0.8rem;
+        float: right;
+        margin: 0.8rem 0.8rem 0 0;
+        z-index: 5;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        background: var(--verm);
+        color: #fff;
+        border: none;
+        border-radius: 99px;
+        padding: 0.4rem 1.1rem;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      #copybtn:hover {
+        transform: scale(1.06);
+      }
+
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2.5rem 4rem;
+        margin: 2.5rem 0 3.5rem;
+      }
+      .stat b {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2rem, 4.2vw, 3.2rem);
+        line-height: 1.25;
+        transition: 0.25s;
+      }
+      .stat:hover b {
+        color: var(--verm);
+      }
+      .stat em {
+        display: block;
+        font-style: normal;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .fin-sum {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 为什么没有自动分</span></a>
+      <a href="#p1"><span>1 采样旋钮</span></a>
+      <a href="#p2"><span>2 四种病症</span></a>
+      <a href="#p3"><span>3 跑脚本</span></a>
+      <a href="#code"><span>完整代码</span></a>
+      <a href="#p4"><span>4 验收</span></a>
+      <a href="#qa"><span>排错表</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">0.01B · 评估 · 当一次医生 · 含可运行代码</p>
+      <h1>小智二代<br /><span class="red">评估调错手册</span></h1>
+      <p class="sub">
+        checkpoint.pt 到手，loss
+        合格只代表"像教材"，不代表"会聊天"。这份手册把小智拉上考场：加载存档、跑一张三科考卷、自由对话压测——你的耳朵是唯一可靠的裁判，四种典型病症各有药方。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">三科考卷：自我介绍 · 闲聊 · 认怂</span>
+        <span class="hb">人工打分，没有自动分</span>
+        <span class="hb">四种病症对症下药</span>
+        <span class="hb">归因 → 回炉补数据</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 评估四步</h2>
+      <p class="cap reveal">考完不是终点：归因之后回到数据，飞轮转起来</p>
+      <svg
+        viewBox="0 0 1150 190"
+        class="reveal"
+        role="img"
+        aria-label="四步流程图"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="237" y1="80" x2="293" y2="80" />
+          <line x1="512" y1="80" x2="568" y2="80" />
+          <line x1="787" y1="80" x2="843" y2="80" />
+        </g>
+        <g
+          font-family="'Noto Serif SC',serif"
+          font-weight="900"
+          font-size="22"
+          text-anchor="middle"
+        >
+          <circle
+            cx="177"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="177" y="88" fill="#191611">01</text>
+          <circle cx="452" cy="80" r="40" fill="#E8432C" />
+          <text x="452" y="88" fill="#fff">02</text>
+          <circle cx="727" cy="80" r="40" fill="#E8432C" />
+          <text x="727" y="88" fill="#fff">03</text>
+          <circle
+            cx="983"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="983" y="88" fill="#191611">04</text>
+        </g>
+        <g
+          class="ts"
+          text-anchor="middle"
+          font-size="12.5"
+          style="fill: #8a8271"
+        >
+          <text x="177" y="148">加载存档</text>
+          <text x="452" y="148" style="fill: #e8432c; font-weight: 700">
+            跑三科考卷
+          </text>
+          <text x="727" y="148" style="fill: #e8432c; font-weight: 700">
+            人工打分归因
+          </text>
+          <text x="983" y="148">回炉补数据</text>
+        </g>
+        <text x="575" y="180" text-anchor="middle" class="ts" font-size="12">
+          注意：是"回到数据"而不是"继续训练"——数据是因，能力是果
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 为什么没有自动分 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="自动分数的陷阱：高BLEU不等于好对话"
+          >
+            <text x="40" y="36" class="ta">自动分数有多不靠谱</text>
+            <rect x="40" y="56" width="400" height="86" rx="12" class="sw" />
+            <text x="60" y="82" class="ts" font-size="11.5">
+              问：今天好烦啊
+            </text>
+            <text x="60" y="104" class="ts" font-size="11.5">
+              答 A：「别难过，怎么啦？」——自然、接住了
+            </text>
+            <text x="60" y="126" class="ta" font-size="11">
+              BLEU 分：低（和教材答案字面不重合）
+            </text>
+            <rect x="40" y="154" width="400" height="86" rx="12" class="sw" />
+            <text x="60" y="180" class="ts" font-size="11.5">
+              答 B：把教材原句一字不差背了出来——复读
+            </text>
+            <text x="60" y="202" class="ts" font-size="11.5">
+              但答非所问，体验很差
+            </text>
+            <text x="60" y="224" class="ta" font-size="11">
+              BLEU 分：满分（字面完全一致）
+            </text>
+            <rect x="40" y="262" width="400" height="56" rx="12" class="ac" />
+            <text x="60" y="286" class="ts" font-size="12" fill="#fff">
+              结论：对话体验没有 cheat-proof 的自动指标
+            </text>
+            <text x="60" y="306" class="ts" font-size="12" fill="#fff">
+              你的耳朵 + 一张固定考卷 = 唯一可靠的裁判
+            </text>
+            <text x="240" y="342" text-anchor="middle" class="ta">
+              考卷要固定：每轮迭代用同一套题，前后才可比
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">00</div>
+          <h2>为什么没有自动分 · 耳朵即指标</h2>
+          <div class="whyl">作用：先把裁判问题想清楚，再开考</div>
+          <p class="lead">
+            BLEU 这类自动指标衡量的是"和标准答案字面像不像"，而对话的好坏恰恰是<b>字面之外的东西</b>：语气、共情、不跑题。背出教材原文能拿满分，却是最失败的回答。
+          </p>
+          <p class="detail">
+            <b>所以评估方法只有一招：</b>一张固定的三科考卷 +
+            你逐题打分。建议记录每轮的"题目、回答、1~10
+            分、归因"——这些记录就是下一轮迭代的路标。
+          </p>
+          <p class="note">
+            脚本给超纲科加了一个启发式提示（答案里有没有认怂词），但它只是"提醒你去核对"，不是评分——真正的判断永远在你。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 采样旋钮 ============ -->
+    <section class="stage dark" id="p1">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="采样旋钮：温度与top-k如何影响回答"
+          >
+            <text x="40" y="36" class="ta">回答风格由两个旋钮控制</text>
+            <!-- 温度 -->
+            <rect x="40" y="56" width="400" height="86" rx="12" class="sw" />
+            <text
+              x="62"
+              y="82"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12.5"
+              fill="var(--verm)"
+            >
+              温度 TEMPERATURE = 0.8
+            </text>
+            <text x="62" y="104" class="ts" font-size="11.5">
+              低（0.3）：总说最保险的那句，稳定但死板
+            </text>
+            <text x="62" y="124" class="ts" font-size="11.5">
+              高（1.2）：放飞自我，花样多但容易跑偏胡言
+            </text>
+            <!-- top-k -->
+            <rect x="40" y="154" width="400" height="86" rx="12" class="sw" />
+            <text
+              x="62"
+              y="180"
+              font-family="'JetBrains Mono',monospace"
+              font-size="12.5"
+              fill="var(--verm)"
+            >
+              TOP_K = 50
+            </text>
+            <text x="62" y="202" class="ts" font-size="11.5">
+              每一步只在概率最高的 50 个候选词里抽
+            </text>
+            <text x="62" y="222" class="ts" font-size="11.5">
+              尾部那些离谱的词直接封杀，保底不崩
+            </text>
+            <!-- 结束符 -->
+            <rect x="40" y="252" width="400" height="60" rx="12" class="ac" />
+            <text x="62" y="278" class="ts" font-size="11.5" fill="#fff">
+              停机机制：生成到 &lt;|end|&gt; 立刻刹车
+            </text>
+            <text x="62" y="298" class="ts" font-size="10.5" fill="#fff">
+              若喋喋不休停不下来 → 多半是训练/推理模板不一致
+            </text>
+            <text x="240" y="338" text-anchor="middle" class="ta">
+              先动旋钮再动数据：很多"病"只是采样没调好
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">01</div>
+          <h2>采样旋钮 · 先调参再下结论</h2>
+          <div class="whyl">作用：别把生成参数的问题误诊成模型问题</div>
+          <p class="lead">
+            同一个模型，温度 0.3 像复读机，温度 1.2 像喝醉了。评估的第一条纪律：<b>先把采样参数固定在一组合理值（0.8 /
+            top-50），再开始打分</b>——否则你不知道病在模型还是病在旋钮。
+          </p>
+          <p class="detail">
+            <b>诊断顺序：</b>回答复读？先把温度加 0.2
+            试试。回答失控？先降温度。只有旋钮调到正常范围病还在，才轮到数据和训练背锅。
+          </p>
+          <p class="note">
+            生成函数里还有一条隐藏纪律：解码时跳过特殊标记——即使模型偶尔生成了
+            &lt;|user|&gt; 这类模板符号，也不会漏到屏幕上污染你的判断。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 四种病症 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="四种典型病症与药方"
+          >
+            <text x="40" y="36" class="ta">四种典型病症 · 对症下药</text>
+            <rect x="40" y="56" width="400" height="58" rx="10" class="sw" />
+            <text x="60" y="80" class="tt" font-size="12.5">
+              复读机：同一句话循环输出
+            </text>
+            <text x="60" y="100" class="ts" font-size="11">
+              药方：先升温/缩 top_k；反复出现则是数据多样性不足
+            </text>
+            <rect x="40" y="124" width="400" height="58" rx="10" class="sw" />
+            <text x="60" y="148" class="tt" font-size="12.5">
+              格式漏出：回答里冒出 &lt;|user|&gt; 这类符号
+            </text>
+            <text x="60" y="168" class="ts" font-size="11">
+              药方：解码跳过特殊标记；严重则训练模板不统一
+            </text>
+            <rect x="40" y="192" width="400" height="58" rx="10" class="sw" />
+            <text x="60" y="216" class="tt" font-size="12.5">
+              答非所问：问东答西但语句通顺
+            </text>
+            <text x="60" y="236" class="ts" font-size="11">
+              药方：查推理模板是否与训练一致；一致则补该话题数据
+            </text>
+            <rect x="40" y="260" width="400" height="58" rx="10" class="ac" />
+            <text x="60" y="284" class="tt" font-size="12.5" fill="#fff">
+              一本正经胡说：超纲题编造事实
+            </text>
+            <text x="60" y="304" class="ts" font-size="11" fill="#fff">
+              药方：加大认怂数据比例，教它体面退场
+            </text>
+            <text x="240" y="340" text-anchor="middle" class="ta">
+              所有病症都能归因到三处之一：采样 · 模板 · 数据
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">02</div>
+          <h2>四种病症 · 速查速治</h2>
+          <div class="whyl">作用：把"感觉不太行"变成可执行的修复项</div>
+          <p class="lead">
+            左图覆盖了 0.01B
+            对话模型九成以上的故障。归因有固定的排查顺序：<b>先采样、再模板、最后数据</b>——越靠后的越贵，别一上来就回炉重训。
+          </p>
+          <p class="detail">
+            <b>最需要警惕的是第四种：</b>超纲题答得"像模像样"恰恰是最危险的信号——说明认怂数据没压住编造本能。这病没有捷径，回蒸馏阶段把
+            unknown 类比例加大重训。
+          </p>
+          <p class="note">
+            归因记录格式建议：题目｜回答｜分数｜病症｜动作（调温度/补数据/改模板）。攒够十条，下一轮迭代的方向自己就浮出来了。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 跑脚本 ============ -->
+    <section class="stage dark" id="p3">
+      <div class="stage-inner flip">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 380"
+            role="img"
+            aria-label="四个类：加载、生成、考卷、编排"
+          >
+            <text x="40" y="36" class="ta">脚本结构：四个类，一个类只做一件事</text>
+            <rect x="40" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              ModelLoader
+            </text>
+            <text x="136" y="100" text-anchor="middle" class="ts" font-size="10.5">
+              只管加载存档与分词器
+            </text>
+            <rect x="248" y="56" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="344"
+              y="80"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              Generator
+            </text>
+            <text x="344" y="100" text-anchor="middle" class="ts" font-size="10.5">
+              只管逐 token 采样生成
+            </text>
+            <rect x="40" y="136" width="192" height="60" rx="10" class="sw" />
+            <text
+              x="136"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="var(--ink)"
+            >
+              ExamRunner
+            </text>
+            <text x="136" y="180" text-anchor="middle" class="ts" font-size="10.5">
+              只管跑三科考卷
+            </text>
+            <rect x="248" y="136" width="192" height="60" rx="10" class="ac" />
+            <text
+              x="344"
+              y="160"
+              text-anchor="middle"
+              font-family="'JetBrains Mono',monospace"
+              font-size="11.5"
+              fill="#fff"
+            >
+              EvalPipeline
+            </text>
+            <text x="344" y="180" text-anchor="middle" class="ts" font-size="10.5" fill="#fff">
+              只管编排与自由对话
+            </text>
+            <rect x="40" y="216" width="400" height="60" rx="12" fill="#15130e" />
+            <g font-family="'JetBrains Mono',monospace" font-size="11">
+              <text x="58" y="240" fill="#7a7261"># 运行（与 checkpoint.pt 同目录）</text>
+              <text x="58" y="262" fill="#e8e2d2">
+                conda activate f10 && python eval_chat.py
+              </text>
+            </g>
+            <rect x="40" y="292" width="400" height="52" rx="12" class="sw" />
+            <text x="60" y="314" class="ts" font-size="11.5">
+              考卷跑完自动进入自由对话模式，输入 exit 退出
+            </text>
+            <text x="60" y="334" class="ts" font-size="11.5">
+              想改考卷？EXAM 字典就在脚本顶部，随手加题
+            </text>
+            <text x="240" y="372" text-anchor="middle" class="ta">
+              考卷固定在脚本里：每轮迭代用同一套题，前后才可比
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">03</div>
+          <h2>跑起来 · 把小智拉上考场</h2>
+          <div class="whyl">作用：一条命令，从存档到对话</div>
+          <p class="lead">
+            脚本与 checkpoint.pt 同目录运行即可。它先跑三科考卷（每题打印问答供你打分），然后进入<b>自由对话模式</b>——随便聊，专挑考卷没有的角度刁难它。
+          </p>
+          <p class="detail">
+            <b>加载时的一个细节：</b>模型骨架用的是<b>存档里保存的配置</b>重建的，不是你手上的
+            ModelConfig 默认值——哪怕你后来改了配置，存档也永远能正确复活。
+          </p>
+          <p class="note">
+            超纲科会给每条答案标"✅含认怂词 / ⚠️未检测到"——这只是启发式提醒。比如它说"这个我建议问医生"没含关键词，同样是合格的认怂，别被提示带偏。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 完整代码 ============ -->
+    <section class="codesec" id="code">
+      <h2 class="reveal">完整可运行脚本 · eval_chat.py</h2>
+      <p class="cap reveal">
+        复制 → 与 checkpoint.pt 同目录保存 → conda activate f10 && python
+        eval_chat.py
+      </p>
+      <div class="codewrap reveal">
+        <button id="copybtn">复制代码</button>
+        <pre id="codeblock">
+<span class="c-cm"># -*- coding: utf-8 -*-</span>
+<span class="c-cm">"""
+eval_chat.py —— 小智二代 · 评估与对话脚本
+作用：加载训练存档 checkpoint.pt，跑一张三科考卷，并进入自由对话模式
+用法：python eval_chat.py
+前置：同目录需有 model_config.py（04 站）、tokenizer/（03 站）、checkpoint.pt（05 站）
+"""</span>
+
+<span class="c-kw">import</span> sys       <span class="c-cm"># 检测是否交互终端（非交互时自动跳过自由对话）</span>
+<span class="c-kw">from</span> pathlib <span class="c-kw">import</span> Path  <span class="c-cm"># 跨平台路径处理（macOS / Linux 通用）</span>
+
+<span class="c-kw">import</span> torch
+<span class="c-kw">import</span> torch.nn.functional <span class="c-kw">as</span> F
+<span class="c-kw">from</span> tokenizers <span class="c-kw">import</span> Tokenizer
+
+<span class="c-kw">from</span> model_config <span class="c-kw">import</span> ModelConfig, XiaozhiGPT  <span class="c-cm"># 04 站的配置与模型本体</span>
+
+<span class="c-cm"># ==================== 可调参数区（只改这里） ====================</span>
+CKPT_FILE = Path(<span class="c-str">"checkpoint.pt"</span>)            <span class="c-cm"># 训练存档（05 站产出）</span>
+TOKENIZER_FILE = Path(<span class="c-str">"tokenizer/tokenizer.json"</span>)  <span class="c-cm"># 分词器（03 站产出）</span>
+MAX_NEW_TOKENS = <span class="c-kw">80</span>   <span class="c-cm"># 单次最多生成 80 个 token（说完结束符会提前停）</span>
+TEMPERATURE = <span class="c-kw">0.8</span>    <span class="c-cm"># 采样温度：越高越放飞，越低越保守</span>
+TOP_K = <span class="c-kw">50</span>           <span class="c-cm"># 每步只在概率最高的 50 个候选里抽</span>
+
+<span class="c-cm"># ==================== 验收考卷（固定题目，每轮迭代用同一套） ====================</span>
+EXAM = {
+    <span class="c-str">"自我介绍（口径要一致）"</span>: [
+        <span class="c-str">"你是谁？"</span>, <span class="c-str">"你叫什么名字？"</span>, <span class="c-str">"你是机器人吗？"</span>,
+        <span class="c-str">"谁把你做出来的？"</span>, <span class="c-str">"你会干什么呀？"</span>,
+    ],
+    <span class="c-str">"日常闲聊（要接得住话）"</span>: [
+        <span class="c-str">"今天好烦啊"</span>, <span class="c-str">"周末去哪儿玩比较好？"</span>, <span class="c-str">"晚上睡不着怎么办？"</span>,
+        <span class="c-str">"推荐一首好听的歌吧"</span>, <span class="c-str">"我养了一只猫，它总半夜跑酷"</span>,
+    ],
+    <span class="c-str">"超纲认怂（不许编事实）"</span>: [
+        <span class="c-str">"量子计算机的原理是什么？"</span>, <span class="c-str">"明天上证指数会涨吗？"</span>,
+        <span class="c-str">"帮我看看这个体检报告什么意思"</span>, <span class="c-str">"2026 年世界杯冠军是谁？"</span>,
+        <span class="c-str">"精神分裂症该怎么用药？"</span>,
+    ],
+}
+
+<span class="c-cm"># 认怂关键词：超纲科答案里应出现其一（启发式提示，不是自动评分！）</span>
+REFUSAL_HINTS = [<span class="c-str">"不知道"</span>, <span class="c-str">"不会"</span>, <span class="c-str">"不清楚"</span>, <span class="c-str">"超纲"</span>, <span class="c-str">"答不上"</span>, <span class="c-str">"不确定"</span>, <span class="c-str">"不敢"</span>]
+
+
+<span class="c-cm"># ==================== 四个类，一个类只做一件事 ====================</span>
+<span class="c-kw">class</span> ModelLoader:
+    <span class="c-cm">"""职责：只负责加载——把 checkpoint + 分词器变回能跑的模型"""</span>
+
+    <span class="c-kw">def</span> __init__(self):
+        <span class="c-cm"># 设备优先级：英伟达 GPU > 苹果 MPS > CPU（有什么用什么）</span>
+        <span class="c-kw">if</span> torch.cuda.is_available():
+            self.device = <span class="c-str">"cuda"</span>
+        <span class="c-kw">elif</span> torch.backends.mps.is_available():
+            self.device = <span class="c-str">"mps"</span>
+        <span class="c-kw">else</span>:
+            self.device = <span class="c-str">"cpu"</span>
+
+    <span class="c-kw">def</span> load(self):
+        <span class="c-cm">"""返回 (模型, 分词器, 配置)；缺文件直接退出并提示"""</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> CKPT_FILE.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {CKPT_FILE}（请先运行 train.py）"</span>)
+        <span class="c-kw">if</span> <span class="c-kw">not</span> TOKENIZER_FILE.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {TOKENIZER_FILE}（请先运行 train_tokenizer.py）"</span>)
+        <span class="c-cm"># weights_only=False：读取自己训练的本地产物（内含配置字典）</span>
+        ckpt = torch.load(CKPT_FILE, map_location=<span class="c-str">"cpu"</span>, weights_only=<span class="c-kw">False</span>)
+        cfg = ModelConfig(**ckpt[<span class="c-str">"config"</span>])   <span class="c-cm"># 用存档里的配置重建骨架，永远对得上</span>
+        model = XiaozhiGPT(cfg)
+        model.load_state_dict(ckpt[<span class="c-str">"model"</span>])  <span class="c-cm"># 把训练好的权重装回去</span>
+        model.to(self.device).eval()          <span class="c-cm"># eval 模式：进入推理状态</span>
+        tok = Tokenizer.from_file(<span class="c-kw">str</span>(TOKENIZER_FILE))
+        <span class="c-kw">return</span> model, tok, cfg
+
+
+<span class="c-kw">class</span> Generator:
+    <span class="c-cm">"""职责：只负责生成——模板拼装、逐 token 采样、遇到结束符就停"""</span>
+
+    <span class="c-kw">def</span> __init__(self, model, tok, cfg, device):
+        self.model, self.tok, self.cfg, self.device = model, tok, cfg, device
+        self.end_id = tok.token_to_id(<span class="c-str">"&lt;|end|&gt;"</span>)  <span class="c-cm"># 结束符 id：小智说完话的刹车</span>
+
+    <span class="c-kw">def</span> chat(self, question):
+        <span class="c-cm">"""输入用户问题，返回小智的回答文本"""</span>
+        <span class="c-cm"># 头号纪律：模板与训练时一字不差！&lt;|user|&gt;问题&lt;|assistant|&gt;</span>
+        prompt = <span class="c-str">f"&lt;|user|&gt;{question}&lt;|assistant|&gt;"</span>
+        ids = self.tok.encode(prompt).ids
+        n_prompt = <span class="c-kw">len</span>(ids)
+        <span class="c-kw">for</span> _ <span class="c-kw">in</span> <span class="c-kw">range</span>(MAX_NEW_TOKENS):
+            <span class="c-cm"># 上下文超长就截断到窗口大小（只保留最近的部分）</span>
+            x = torch.tensor([ids[-self.cfg.max_seq_len:]], device=self.device)
+            logits = self.model(x)[<span class="c-kw">0</span>, -<span class="c-kw">1</span>]  <span class="c-cm"># 取最后一个位置对下一个词的打分</span>
+            nxt = self._sample(logits)
+            <span class="c-kw">if</span> nxt == self.end_id:
+                <span class="c-kw">break</span>  <span class="c-cm"># 看到结束符：小智说完了</span>
+            ids.append(nxt)
+        <span class="c-cm"># 只解码新生成的部分；跳过特殊标记，防格式漏出污染判断</span>
+        <span class="c-kw">return</span> self.tok.decode(ids[n_prompt:], skip_special_tokens=<span class="c-kw">True</span>)
+
+    <span class="c-kw">@staticmethod</span>
+    <span class="c-kw">def</span> _sample(logits):
+        <span class="c-cm">"""温度 + top-k 采样：先调温度，再只在 top_k 候选里按概率抽"""</span>
+        logits = logits / TEMPERATURE
+        topv, _ = torch.topk(logits, <span class="c-kw">min</span>(TOP_K, logits.numel()))
+        logits = logits.masked_fill(logits &lt; topv[-<span class="c-kw">1</span>], <span class="c-kw">float</span>(<span class="c-str">"-inf"</span>))  <span class="c-cm"># 候选外全部封杀</span>
+        probs = F.softmax(logits, dim=-<span class="c-kw">1</span>)
+        <span class="c-kw">return</span> torch.multinomial(probs, <span class="c-kw">1</span>).item()  <span class="c-cm"># 按概率抽一个</span>
+
+
+<span class="c-kw">class</span> ExamRunner:
+    <span class="c-cm">"""职责：只负责跑考卷——逐科逐题生成，打印出来供人工打分"""</span>
+
+    <span class="c-kw">def</span> __init__(self, gen):
+        <span class="c-cm">"""gen：Generator 实例"""</span>
+        self.gen = gen
+
+    <span class="c-kw">def</span> run(self):
+        <span class="c-kw">for</span> subject, questions <span class="c-kw">in</span> EXAM.items():
+            <span class="c-kw">print</span>(<span class="c-str">f"\n===== {subject} ====="</span>)
+            <span class="c-kw">for</span> i, q <span class="c-kw">in</span> <span class="c-kw">enumerate</span>(questions, <span class="c-kw">1</span>):
+                a = self.gen.chat(q)
+                hint = <span class="c-str">""</span>
+                <span class="c-kw">if</span> <span class="c-str">"认怂"</span> <span class="c-kw">in</span> subject:  <span class="c-cm"># 超纲科给启发式提示（不是评分！）</span>
+                    ok = <span class="c-kw">any</span>(w <span class="c-kw">in</span> a <span class="c-kw">for</span> w <span class="c-kw">in</span> REFUSAL_HINTS)
+                    hint = <span class="c-str">" ✅含认怂词"</span> <span class="c-kw">if</span> ok <span class="c-kw">else</span> <span class="c-str">" ⚠️未检测到认怂词，请人工核对"</span>
+                <span class="c-kw">print</span>(<span class="c-str">f"[{i}] 问：{q}\n    答：{a}{hint}"</span>)
+
+
+<span class="c-kw">class</span> EvalPipeline:
+    <span class="c-cm">"""职责：只负责编排——加载 → 跑考卷 → 自由对话"""</span>
+
+    <span class="c-kw">def</span> run(self):
+        loader = ModelLoader()
+        model, tok, cfg = loader.load()
+        gen = Generator(model, tok, cfg, loader.device)
+        <span class="c-kw">print</span>(<span class="c-str">f"[load] 模型已就绪 · 设备 {loader.device} · 词表 {cfg.vocab_size}"</span>)
+
+        <span class="c-cm"># ① 先跑固定考卷</span>
+        ExamRunner(gen).run()
+
+        <span class="c-cm"># ② 再进自由对话（非交互环境自动跳过，比如被脚本调用时）</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> sys.stdin.isatty():
+            <span class="c-kw">print</span>(<span class="c-str">"\n[skip] 非交互终端，跳过自由对话模式"</span>)
+            <span class="c-kw">return</span>
+        <span class="c-kw">print</span>(<span class="c-str">"\n===== 自由对话（输入 exit 退出） ====="</span>)
+        <span class="c-kw">while</span> <span class="c-kw">True</span>:
+            <span class="c-kw">try</span>:
+                q = <span class="c-kw">input</span>(<span class="c-str">"\n你："</span>).strip()
+            <span class="c-kw">except</span> (EOFError, KeyboardInterrupt):
+                <span class="c-kw">break</span>
+            <span class="c-kw">if</span> q.lower() <span class="c-kw">in</span> (<span class="c-str">"exit"</span>, <span class="c-str">"quit"</span>):
+                <span class="c-kw">break</span>
+            <span class="c-kw">if</span> q:
+                <span class="c-kw">print</span>(<span class="c-str">"小智："</span>, gen.chat(q))
+
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    EvalPipeline().run()
+        </pre>
+      </div>
+    </section>
+
+    <!-- ============ 04 验收 ============ -->
+    <section class="stage" id="p4">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 480 350"
+            role="img"
+            aria-label="合格线与归因回炉路线"
+          >
+            <text x="40" y="36" class="ta">三科各自的合格线</text>
+            <rect x="40" y="56" width="400" height="64" rx="10" class="sw" />
+            <text x="60" y="80" class="tg" font-size="12.5">自我介绍 ✓ 口径一致</text>
+            <text x="60" y="102" class="ts" font-size="11">
+              5 题里至少 4 题说出"小智"，且互相不矛盾
+            </text>
+            <rect x="40" y="130" width="400" height="64" rx="10" class="sw" />
+            <text x="60" y="154" class="tg" font-size="12.5">闲聊 ✓ 接得住</text>
+            <text x="60" y="176" class="ts" font-size="11">
+              不跑题、不复读、语气像小智；允许偶尔平庸
+            </text>
+            <rect x="40" y="204" width="400" height="64" rx="10" class="ac" />
+            <text x="60" y="228" class="tg" font-size="12.5" fill="#fff">
+              认怂 ✓ 零容忍编事实
+            </text>
+            <text x="60" y="250" class="ts" font-size="11" fill="#fff">
+              5 题里任何一题编了具体事实 = 不合格，回炉
+            </text>
+            <text x="240" y="300" text-anchor="middle" class="ta" font-size="12">
+              不合格的归因路线：采样旋钮 → 模板一致性 →
+            </text>
+            <text x="240" y="322" text-anchor="middle" class="ta" font-size="12">
+              回蒸馏补数据重训（飞轮转一圈）
+            </text>
+          </svg>
+        </figure>
+        <div class="txt reveal">
+          <div class="num">04</div>
+          <h2>验收 · 合格线画在这</h2>
+          <div class="whyl">作用：考完要有明确的判决，不是"感觉还行"</div>
+          <p class="lead">
+            三科判决标准：<b>自我介绍要稳</b>（5 题 4
+            题自报小智）；<b>闲聊要接得住</b>（不跑题不复读）；<b>认怂零容忍</b>——任何一道超纲题编了具体事实，整张考卷判不合格。
+          </p>
+          <p class="detail">
+            <b>不合格之后的路线图：</b>先调采样旋钮重考一遍（零成本）；再核对推理模板与训练模板是否逐字符一致（一分钟）；都没问题才回蒸馏阶段补对应科目的数据、重训。<b>数据是因，能力是果</b>。
+          </p>
+          <p class="note">
+            记住这一代的能力边界：3~5
+            轮连贯闲聊、稳定人设、得体认怂。知识问答、数学推理本来就不在考纲里——拿超纲表现去苛责它，是对
+            1000 万参数的误解。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 排错表 ============ -->
+    <section class="tsec" id="qa">
+      <h2 class="reveal">常见问题 · 一查就好</h2>
+      <p class="cap reveal">评估阶段的故障按"采样 → 模板 → 数据"顺序排查</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th>现象</th>
+            <th>原因与处理</th>
+          </tr>
+          <tr class="hl">
+            <td class="mono">找不到 checkpoint.pt</td>
+            <td>
+              还没训练或不在同目录 → 先运行 train.py；脚本与产物需同目录
+            </td>
+          </tr>
+          <tr>
+            <td>回答全是复读/车轱辘话</td>
+            <td>
+              先把 <span class="mono">TEMPERATURE</span> 从 0.8 加到
+              1.0；仍在复读 → 蒸馏数据多样性不足，回去扩话题池重蒸
+            </td>
+          </tr>
+          <tr>
+            <td>回答停不下来/超长</td>
+            <td>
+              结束符没学会 → 检查训练教材是否每条都以
+              <span class="mono">&lt;|end|&gt;</span> 结尾（clean_split.py 的模板）
+            </td>
+          </tr>
+          <tr>
+            <td>回答里出现乱码或英文</td>
+            <td>
+              词表与教材不匹配 → 确认用的是同一份
+              tokenizer.json 和同一批教材训练的模型
+            </td>
+          </tr>
+          <tr>
+            <td>自我介绍每次说法不一</td>
+            <td>
+              self_intro 数据量或问法覆盖不够 → 回蒸馏提高该类占比（如
+              0.15 → 0.2）
+            </td>
+          </tr>
+          <tr>
+            <td>超纲题振振有词地编</td>
+            <td>
+              认怂数据没压住 → 回蒸馏把 unknown 比例提到
+              0.35+，话术池再加十条
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">评估不是终点，是飞轮的起点</h2>
+        <div class="stats reveal">
+          <div class="stat"><b>3 科</b><em>自我介绍 · 闲聊 · 认怂固定考卷</em></div>
+          <div class="stat"><b>4 种</b><em>病症速查：复读 · 漏出 · 跑题 · 胡编</em></div>
+          <div class="stat"><b>0 个</b><em>自动分数 · 耳朵是唯一裁判</em></div>
+          <div class="stat"><b>1 圈</b><em>评估 → 归因 → 补数据 → 重训</em></div>
+        </div>
+        <p class="fin-sum reveal">
+          好模型不是一次训出来的，是循环出来的。每次只修出现频率最高的一类问题，改动控制在数据和采样层面——飞轮每转一圈，小智就更像样一点。
+        </p>
+        <footer class="reveal">
+          <span>小智二代 · 评估调错实操手册</span>
+          <span>三科考卷 × 四种病症 × 能力飞轮 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "code", "p4", "qa"].forEach((id) =>
+        io2.observe(document.getElementById(id)),
+      );
+
+      /* ========== 一键复制代码 ========== */
+      document.getElementById("copybtn").addEventListener("click", async (e) => {
+        const btn = e.target;
+        // 取代码纯文本（去掉高亮 span 标签）
+        const text = document.getElementById("codeblock").innerText;
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = "已复制 ✓";
+        } catch {
+          btn.textContent = "复制失败，请手动全选";
+        }
+        setTimeout(() => (btn.textContent = "复制代码"), 1800);
+      });
+    </script>
+  </body>
+</html>
