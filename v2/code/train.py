@@ -24,11 +24,11 @@ TOKENIZER_FILE = Path("tokenizer/tokenizer.json")  # 分词器（03 站产出）
 CKPT_FILE = Path("checkpoint.pt")  # 存档：只存验证 loss 最佳的那一刻
 
 SEQ_LEN = 512  # 训练窗口长度：与模型 max_seq_len 一致
-BATCH_SIZE = 256  # 每批抽 256 个窗口：0.01B 模型很小，16G 显存只吃零头；吃不满就继续加倍
-TOTAL_STEPS = 300  # 总步数：试跑改 50，小数据 2000 步足够收敛
-LR = 4e-4  # 峰值学习率（比一代低一个量级）
-WARMUP_STEPS = 100  # 预热步数：学习率从 0 线性爬到峰值
-VAL_EVERY = 100  # 每 200 步用验证集监考一次
+BATCH_SIZE = 32  # 每批抽 32 个窗口：模型变小后小批量即可，还能增加参数更新次数
+TOTAL_STEPS = 500  # 总步数：1.2 万 tokens 的小语料 500 步已足够遍历，再多只会背书
+LR = 1e-3  # 峰值学习率：0.74M 小模型吃得下更大学习率，收敛更快
+WARMUP_STEPS = 30  # 预热步数：随总步数同比缩短
+VAL_EVERY = 100  # 每 100 步用验证集监考一次：总步数缩到 500 后监考要更密
 VAL_BATCHES = 8  # 每次监考抽 8 批取平均，降低偶然性
 PATIENCE = 3  # 连续 3 次监考没进步 → 早停
 GRAD_CLIP = 1.0  # 梯度裁剪阈值：防单步梯度爆炸
@@ -158,10 +158,14 @@ class Trainer:
                         {
                             # torch.compile 会给参数名加 "_orig_mod." 前缀，
                             # 存档时剥掉，保证评估脚本能直接加载
-                            "model": getattr(self.model, "_orig_mod", self.model).state_dict(),
-                            "config": vars(self.model.cfg)
-                            if hasattr(self.model, "cfg")
-                            else vars(self.model._orig_mod.cfg),
+                            "model": getattr(
+                                self.model, "_orig_mod", self.model
+                            ).state_dict(),
+                            "config": (
+                                vars(self.model.cfg)
+                                if hasattr(self.model, "cfg")
+                                else vars(self.model._orig_mod.cfg)
+                            ),
                         },
                         CKPT_FILE,
                     )

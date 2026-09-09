@@ -24,10 +24,10 @@ class ModelConfig:
     """全部超参集中在这一处：训练和推理脚本都引用它，保证口径唯一"""
 
     vocab_size: int = 8192  # 词表大小：必须与 tokenizer.json 的实际词表一致！
-    d_model: int = 256  # 隐藏维度：每个 token 用 256 个数表示
-    n_layers: int = 8  # Transformer 层数：深比宽更会"讲条理"
-    n_heads: int = 8  # 注意力头数：必须能整除 d_model
-    d_ff: int = 768  # 前馈网络中间维度（SwiGLU 三矩阵）
+    d_model: int = 64  # 隐藏维度：小数据必须砍维度，嵌入=词表×d_model 是参数大头
+    n_layers: int = 4  # Transformer 层数：500 条数据养不起 8 层，4 层足够
+    n_heads: int = 4  # 注意力头数：必须能整除 d_model（64/4=每头 16 维）
+    d_ff: int = 192  # 前馈网络中间维度（SwiGLU 三矩阵），约 3×d_model
     max_seq_len: int = 512  # 上下文窗口：约能装 350~500 个汉字
 
     def __post_init__(self):
@@ -35,8 +35,8 @@ class ModelConfig:
         assert self.d_model % self.n_heads == 0, "d_model 必须能被 n_heads 整除"
 
 
-# 预算合格区间：总参数落在 8.5M~12M 算 0.01B 达标
-PARAM_MIN, PARAM_MAX = 8_500_000, 12_000_000
+# 预算合格区间：500 条数据（约 1.2 万 tokens）匹配 0.5M~2M 的小模型
+PARAM_MIN, PARAM_MAX = 500_000, 2_000_000
 
 
 # ==================== 预算计算（纯公式，零依赖） ====================
