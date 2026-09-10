@@ -15,6 +15,9 @@ try:
     import torch
     import torch.nn as nn
     import torch.nn.functional as F
+    from torch.utils.checkpoint import (
+        checkpoint as grad_ckpt_fn,
+    )  # 梯度检查点：重算换显存
 
     TORCH_OK = True
 except ImportError:
@@ -214,6 +217,9 @@ if TORCH_OK:
             # 参数初始化：全部改用小方差正态分布（GPT 惯例 std=0.02）
             # PyTorch 默认初始化方差偏大，会让开局 loss 远超 ln(词表)，前期训练不稳
             self.apply(self._init_weights)
+            # 梯度检查点开关：默认关；训练站会打开它——前向只存每层入口，
+            # 反向时重算层内激活，用约 30% 速度换激活显存从 O(层数) 降到 O(1)
+            self.grad_ckpt = False
 
         def _init_weights(self, module):
             """对 Linear/Embedding 统一做 std=0.02 的正态初始化（self.apply 会遍历所有子模块）"""
@@ -224,7 +230,11 @@ if TORCH_OK:
             """idx 形状 (B, T) 的 token id；返回 (B, T, 词表) 的 logits（每个位置的下一个词打分）"""
             x = self.embed(idx)
             for blk in self.blocks:
-                x = blk(x)
+                # 训练且开了检查点：块内激活不存，反向时重算；推理/冒烟走原路
+                if self.training and self.grad_ckpt:
+                    x = grad_ckpt_fn(blk, x, use_reentrant=False)
+                else:
+                    x = blk(x)
             return self.lm_head(self.norm_f(x))
 
 
@@ -257,6 +267,15 @@ class ForwardTester:
         no_grad = [n for n, p in model.named_parameters() if p.grad is None]
         assert not no_grad, f"这些参数没收到梯度：{no_grad}"
         print("[backward] 冒烟通过：全部参数梯度通畅 ✓")
+
+        # 检查点路径冒烟：训练站实际走的就是这条路（重算式反向），单独验证一次
+        model.grad_ckpt = True
+        model.train()
+        model.zero_grad(set_to_none=True)
+        model(idx).sum().backward()
+        no_grad = [n for n, p in model.named_parameters() if p.grad is None]
+        assert not no_grad, f"检查点路径下这些参数没收到梯度：{no_grad}"
+        print("[backward] 梯度检查点路径冒烟通过 ✓")
         return real
 
 
