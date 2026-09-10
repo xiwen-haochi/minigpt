@@ -1,0 +1,1902 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小智三代 · 模型配置实操手册</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ========== 配色与全局（与 v3 规划页 / 前两站手册同一套纸面风格） ========== */
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+        --term: #15130e;
+        --termtxt: #e8e2d2;
+        --termmut: #7a7261;
+      }
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      /* ========== 右侧圆点导航 ========== */
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      /* ========== 首屏 ========== */
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      /* ========== 章节骨架 ========== */
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+      .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9em;
+      }
+
+      /* ========== 手绘 SVG 插图通用类 ========== */
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tm {
+        fill: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10.5px;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      /* ========== 全景流程图区 ========== */
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ========== 代码区（深色终端风） ========== */
+      .codesec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        background: var(--term);
+        color: var(--termtxt);
+      }
+      .codesec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        color: var(--termtxt);
+      }
+      .codesec .cap {
+        text-align: center;
+        color: var(--termmut);
+        font-size: 0.9rem;
+        margin-bottom: 2.2rem;
+      }
+      .codewrap {
+        max-width: 980px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .codewrap pre {
+        background: #0e0c08;
+        border: 1px solid #3b372c;
+        border-radius: 14px;
+        padding: 1.6rem 1.4rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+        color: var(--termtxt);
+        max-height: 640px;
+        overflow-y: auto;
+      }
+      .codewrap .c-cm {
+        color: #7a7261;
+      }
+      .codewrap .c-kw {
+        color: #e8432c;
+      }
+      .codewrap .c-str {
+        color: #a8c686;
+      }
+      #copybtn {
+        position: sticky;
+        top: 0.8rem;
+        float: right;
+        margin: 0.8rem 0.8rem 0 0;
+        z-index: 5;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        background: var(--verm);
+        color: #fff;
+        border: none;
+        border-radius: 99px;
+        padding: 0.4rem 1.1rem;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      #copybtn:hover {
+        transform: scale(1.06);
+      }
+
+      /* ========== 表格区 ========== */
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      /* ========== 结尾 ========== */
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .fin-sum {
+        margin-top: 2rem;
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      /* ========== 滚动淡入 ========== */
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 为什么放大</span></a>
+      <a href="#p1"><span>1 五个数字</span></a>
+      <a href="#p2"><span>2 架构零改动</span></a>
+      <a href="#p3"><span>3 显存账本</span></a>
+      <a href="#p4"><span>4 两道新闸</span></a>
+      <a href="#p5"><span>5 跑起来</span></a>
+      <a href="#code"><span>完整代码</span></a>
+      <a href="#check"><span>验收清单</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">v3 第 04 站 · 对应规划 M4 里程碑</p>
+      <h1>0.1B 模型配置<br /><span class="red">实操手册</span></h1>
+      <p class="sub">
+        语料从 500 条变成 210 万行，模型终于可以放开手脚：参数从约 100 万放大到
+        约 9700 万（×100）。 架构原封不动沿用 v2 已验证的 RMSNorm + RoPE +
+        SwiGLU + 权重共享，一行不改、只换数字。 但放行前多了两道新闸：
+        与分词器对账词表、反向传播冒烟。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">参数 0.97M → 97.5M（×100）</span>
+        <span class="hb red">架构零改动 · 只换数字</span>
+        <span class="hb">显存固定开销 ≈1.6GB</span>
+        <span class="hb">预算 → 对账 → 冒烟三关</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景流水线 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 五步定配置</h2>
+      <p class="cap reveal">
+        红色两步是 v3 新增的关卡，其余沿用 v2 已验证的做法
+      </p>
+      <svg
+        viewBox="0 0 1150 210"
+        class="reveal"
+        role="img"
+        aria-label="模型配置五步流程"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="218" y1="90" x2="266" y2="90" />
+          <line x1="438" y1="90" x2="486" y2="90" />
+          <line x1="658" y1="90" x2="706" y2="90" />
+          <line x1="878" y1="90" x2="926" y2="90" />
+        </g>
+        <g
+          font-family="'Noto Sans SC',sans-serif"
+          font-size="12.5"
+          text-anchor="middle"
+        >
+          <rect
+            x="40"
+            y="62"
+            width="178"
+            height="56"
+            rx="12"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="129" y="86" fill="#191611">定五个数字</text>
+          <text x="129" y="104" fill="#8a8271" font-size="10.5">
+            规模跟着数据走
+          </text>
+          <rect
+            x="266"
+            y="62"
+            width="172"
+            height="56"
+            rx="12"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="352" y="86" fill="#191611">公式算预算</text>
+          <text x="352" y="104" fill="#8a8271" font-size="10.5">
+            参数 + 显存两笔账
+          </text>
+          <rect x="486" y="62" width="172" height="56" rx="12" fill="#E8432C" />
+          <text x="572" y="86" fill="#fff">词表对账</text>
+          <text x="572" y="104" fill="#fff" font-size="10.5">
+            联动上一站 tokenizer.json
+          </text>
+          <rect x="706" y="62" width="172" height="56" rx="12" fill="#E8432C" />
+          <text x="792" y="86" fill="#fff">真机建模冒烟</text>
+          <text x="792" y="104" fill="#fff" font-size="10.5">
+            前向 + 反向都通才算数
+          </text>
+          <rect
+            x="926"
+            y="62"
+            width="172"
+            height="56"
+            rx="12"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="1012" y="86" fill="#191611">达标放行</text>
+          <text x="1012" y="104" fill="#8a8271" font-size="10.5">
+            80M~120M 区间
+          </text>
+        </g>
+        <g class="ts" text-anchor="middle" font-size="11.5">
+          <text x="129" y="155">d_model / 层 / 头 / d_ff / 词表</text>
+          <text x="352" y="155">不建模先算清，零依赖</text>
+          <text x="572" y="155">防"字典 16K 模型按 8K 建"</text>
+          <text x="792" y="155">参数对账 + 梯度通畅</text>
+          <text x="1012" y="155">不合格就调数字重算</text>
+        </g>
+        <text x="575" y="195" text-anchor="middle" class="ts" font-size="12">
+          铁律：vocab_size 不许拍脑袋——必须与上一站分词器的真实词表一字不差
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 为什么放大 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 360"
+            role="img"
+            aria-label="数据量与模型规模的匹配：小水塘养小鱼，大江河养大鱼"
+          >
+            <!-- v2 小水杯 -->
+            <rect x="30" y="60" width="170" height="220" rx="14" class="st" />
+            <text
+              x="115"
+              y="90"
+              class="ts"
+              text-anchor="middle"
+              font-size="12.5"
+            >
+              v2 · 小水塘
+            </text>
+            <path d="M55 200 L55 255 L175 255 L175 200 Z" class="sw" />
+            <path d="M55 200 Q80 192 115 200 Q150 208 175 200" class="s" />
+            <text
+              x="115"
+              y="236"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              500 条数据
+            </text>
+            <text
+              x="115"
+              y="300"
+              class="tt"
+              text-anchor="middle"
+              font-size="14"
+            >
+              ≈ 100 万参数
+            </text>
+            <text
+              x="115"
+              y="322"
+              class="ts"
+              text-anchor="middle"
+              font-size="10.5"
+            >
+              再大就只会死记硬背
+            </text>
+            <!-- 箭头 -->
+            <g class="acs" marker-end="url(#arw0)">
+              <line x1="215" y1="170" x2="248" y2="170" />
+            </g>
+            <text
+              x="231"
+              y="152"
+              class="ta"
+              text-anchor="middle"
+              font-size="13"
+            >
+              ×100
+            </text>
+            <!-- v3 大水桶 -->
+            <rect x="260" y="30" width="170" height="280" rx="14" class="sw" />
+            <text
+              x="345"
+              y="60"
+              class="tt"
+              text-anchor="middle"
+              font-size="12.5"
+            >
+              v3 · 大江河
+            </text>
+            <path
+              d="M280 110 L280 280 L410 280 L410 110 Z"
+              class="ac"
+              opacity="0.12"
+            />
+            <path d="M280 110 Q310 100 345 110 Q380 120 410 110" class="acs" />
+            <text
+              x="345"
+              y="200"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              210 万行 ≈ 3 亿 tokens
+            </text>
+            <text
+              x="345"
+              y="330"
+              class="tt"
+              text-anchor="middle"
+              font-size="14"
+            >
+              ≈ 9700 万参数
+            </text>
+            <!-- 底部经验法则 -->
+            <text
+              x="230"
+              y="352"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              经验法则：token 数 ÷ 20 ≈ 合理的参数规模
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">00</div>
+          <h2>为什么这一代能放大 100 倍</h2>
+          <span class="whyl">模型规模是数据量决定的</span>
+          <p class="lead">
+            v2 只有 500 条蒸馏对话，模型必须压到百万参数——不是不想大，
+            是数据养不起：模型比数据大太多，只会把答案背下来，换种问法就露馅。
+          </p>
+          <p class="detail">
+            v3 有 210 万行规范化语料（约 3 亿 tokens）。
+            工业界有条粗糙但好用的经验法则 （Chinchilla 缩放律的简化版）：<b
+              >每个参数配约 20 个 token</b
+            >。 3 亿 ÷ 20 ≈ 1500 万到 1.5 亿都是合理区间，我们取中间的
+            <b>0.1B（约 9700 万）</b>—— 刚好比 v2 大两个量级，又远在 16G
+            显存的舒适区内。
+          </p>
+          <p class="note">
+            这个公式只是定量级用的，不用精确。真正的验收标准是后面训练时 验证集
+            loss 能不能收敛。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 五个数字 ============ -->
+    <section class="stage dark flip" id="p1">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 400"
+            role="img"
+            aria-label="五个超参数卡片：词表、维度、层数、头数、前馈"
+          >
+            <!-- 词表卡片（红色，上一站定死） -->
+            <rect x="30" y="30" width="400" height="62" rx="12" class="ac" />
+            <text
+              x="50"
+              y="56"
+              fill="#fff"
+              font-size="13"
+              font-weight="700"
+              font-family="'Noto Sans SC',sans-serif"
+            >
+              vocab_size = 16384
+            </text>
+            <text
+              x="50"
+              y="78"
+              fill="#fff"
+              font-size="10.5"
+              font-family="'Noto Sans SC',sans-serif"
+            >
+              上一站分词器定死的，不许改 —— 嵌入层参数 = 词表 × 维度
+            </text>
+            <!-- 维度 -->
+            <rect x="30" y="106" width="194" height="62" rx="12" class="sw" />
+            <text x="48" y="132" class="tt" font-size="12.5">
+              d_model = 768
+            </text>
+            <text x="48" y="154" class="ts" font-size="10.5">
+              主流小模型档位
+            </text>
+            <!-- 层数 -->
+            <rect x="236" y="106" width="194" height="62" rx="12" class="sw" />
+            <text x="254" y="132" class="tt" font-size="12.5">
+              n_layers = 12
+            </text>
+            <text x="254" y="154" class="ts" font-size="10.5">
+              210 万行养得起
+            </text>
+            <!-- 头数 -->
+            <rect x="30" y="182" width="194" height="62" rx="12" class="sw" />
+            <text x="48" y="208" class="tt" font-size="12.5">n_heads = 12</text>
+            <text x="48" y="230" class="ts" font-size="10.5">
+              768÷12=每头 64 维
+            </text>
+            <!-- 前馈 -->
+            <rect x="236" y="182" width="194" height="62" rx="12" class="sw" />
+            <text x="254" y="208" class="tt" font-size="12.5">d_ff = 2048</text>
+            <text x="254" y="230" class="ts" font-size="10.5">
+              ≈ 2.7 × d_model
+            </text>
+            <!-- 约束条 -->
+            <rect x="30" y="258" width="400" height="56" rx="12" class="st" />
+            <text
+              x="230"
+              y="281"
+              class="ta"
+              text-anchor="middle"
+              font-size="11.5"
+            >
+              硬约束：d_model 必须能被 n_heads 整除
+            </text>
+            <text
+              x="230"
+              y="302"
+              class="ts"
+              text-anchor="middle"
+              font-size="10.5"
+            >
+              脚本在 __post_init__ 里断言，不合规直接报错，带病进不了训练
+            </text>
+            <text
+              x="230"
+              y="352"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              还有 max_seq_len = 512：与规范化脚本的文本长度上限配套
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">01</div>
+          <h2>五个数字是怎么定出来的</h2>
+          <span class="whyl">每个数字都有出处，没有玄学</span>
+          <p class="lead">
+            <span class="mono"
+              >d_model=768, n_layers=12, n_heads=12, d_ff=2048,
+              vocab=16384</span
+            >——这套数字不是拍脑袋，每一条都有讲究。
+          </p>
+          <p class="detail">
+            <b>768 / 12 层 / 12 头</b>是 GPT-2 Small
+            开创、沿用至今的经典小模型档位， 工具和教程最齐全；<b>每头 64 维</b
+            >（768÷12）是业界反复验证的高效甜点； <b>d_ff ≈ 2.7×d_model</b> 是
+            SwiGLU 结构的惯例区间（2.5~3 倍）。
+            <b>词表 16384</b> 上一站已经训好，这里只能照抄—— 嵌入层参数 = 词表 ×
+            维度 = 16384 × 768 ≈ <b>1258 万</b>，占全模型 13%。
+          </p>
+          <p class="note">
+            想调规模，只动 d_model 和 n_layers 两个旋钮就够了；
+            头数跟着整除关系走，d_ff 跟着倍数走。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 架构零改动 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 360"
+            role="img"
+            aria-label="四个部件从 v2 原样继承：RMSNorm、RoPE、SwiGLU、权重共享"
+          >
+            <!-- v2 箱子 -->
+            <rect x="30" y="70" width="150" height="200" rx="14" class="st" />
+            <text
+              x="105"
+              y="100"
+              class="ts"
+              text-anchor="middle"
+              font-size="12"
+            >
+              v2 的架构
+            </text>
+            <!-- v3 箱子 -->
+            <rect x="280" y="70" width="150" height="200" rx="14" class="sw" />
+            <text
+              x="355"
+              y="100"
+              class="tt"
+              text-anchor="middle"
+              font-size="12"
+            >
+              v3 的架构
+            </text>
+            <!-- 继承箭头 -->
+            <g class="acs" marker-end="url(#arw2)">
+              <line x1="192" y1="170" x2="268" y2="170" />
+            </g>
+            <text
+              x="230"
+              y="152"
+              class="ta"
+              text-anchor="middle"
+              font-size="11.5"
+            >
+              原样继承
+            </text>
+            <!-- 四个部件芯片（v3 侧） -->
+            <g font-family="'JetBrains Mono',monospace" font-size="10.5">
+              <rect x="298" y="118" width="114" height="28" rx="8" class="ac" />
+              <text x="355" y="136" fill="#fff" text-anchor="middle">
+                RMSNorm
+              </text>
+              <rect x="298" y="154" width="114" height="28" rx="8" class="ac" />
+              <text x="355" y="172" fill="#fff" text-anchor="middle">RoPE</text>
+              <rect x="298" y="190" width="114" height="28" rx="8" class="ac" />
+              <text x="355" y="208" fill="#fff" text-anchor="middle">
+                SwiGLU
+              </text>
+              <rect x="298" y="226" width="114" height="28" rx="8" class="ac" />
+              <text x="355" y="244" fill="#fff" text-anchor="middle">
+                权重共享
+              </text>
+            </g>
+            <!-- 底部说明 -->
+            <text
+              x="230"
+              y="310"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              权重共享：输出层白嫖嵌入矩阵，白省 1258 万参数
+            </text>
+            <text
+              x="230"
+              y="334"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              LLaMA、Qwen 等主流模型同款配方，v2 已实机验证
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">02</div>
+          <h2>架构零改动：为什么敢一行不改</h2>
+          <span class="whyl">已被两代验证 + 业界主流</span>
+          <p class="lead">
+            RMSNorm 归一化、RoPE 位置编码、SwiGLU 前馈、嵌入/输出权重共享——
+            这四个部件从 v2 原样继承，代码一行不改。
+          </p>
+          <p class="detail">
+            敢不改的底气有两层：一是 v2 已经实机验证过这套组合能训练、能收敛；
+            二是这就是 <b>LLaMA 系模型的标准配方</b>——你今天学的就是
+            工业界在用的东西，不是教学阉割版。 模型变大只是矩阵变大，
+            <b>结构没有任何变化</b>。
+          </p>
+          <p class="note">
+            权重共享在 0.1B 规模下更值钱了：输出层复用嵌入矩阵， 白省 16384 ×
+            768 ≈ 1258 万参数（占全模型的 13%）。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 显存账本 ============ -->
+    <section class="stage dark flip" id="p3">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 360"
+            role="img"
+            aria-label="显存账本：每参数 16 字节，总计约 1.6GB，16G 显卡余粮充足"
+          >
+            <!-- 显存条 -->
+            <rect x="30" y="60" width="400" height="54" rx="12" class="sw" />
+            <rect x="30" y="60" width="40" height="54" rx="12" class="ac" />
+            <rect
+              x="74"
+              y="60"
+              width="34"
+              height="54"
+              class="ac"
+              opacity="0.45"
+            />
+            <text
+              x="50"
+              y="92"
+              fill="#fff"
+              font-size="10"
+              text-anchor="middle"
+              font-weight="700"
+            >
+              1.6G
+            </text>
+            <text
+              x="91"
+              y="92"
+              fill="#fff"
+              font-size="9.5"
+              text-anchor="middle"
+            >
+              激活
+            </text>
+            <text x="290" y="92" class="ts" font-size="11" text-anchor="middle">
+              剩余 ≈ 14GB 余粮
+            </text>
+            <text x="30" y="140" class="ts" font-size="11">
+              单卡 16GB 显存条：红色是训练固定开销，浅红是激活（随 batch 浮动）
+            </text>
+            <!-- 16 字节拆解 -->
+            <g font-family="'JetBrains Mono',monospace" font-size="10.5">
+              <rect x="30" y="168" width="194" height="40" rx="10" class="sw" />
+              <text
+                x="127"
+                y="193"
+                class="tt"
+                text-anchor="middle"
+                font-size="11.5"
+              >
+                bf16 权重 2B + 梯度 2B
+              </text>
+              <rect
+                x="236"
+                y="168"
+                width="194"
+                height="40"
+                rx="10"
+                class="sw"
+              />
+              <text
+                x="333"
+                y="193"
+                class="tt"
+                text-anchor="middle"
+                font-size="11.5"
+              >
+                fp32 主权重 4B
+              </text>
+              <rect x="30" y="220" width="194" height="40" rx="10" class="sw" />
+              <text
+                x="127"
+                y="245"
+                class="tt"
+                text-anchor="middle"
+                font-size="11.5"
+              >
+                AdamW 动量 m 4B
+              </text>
+              <rect
+                x="236"
+                y="220"
+                width="194"
+                height="40"
+                rx="10"
+                class="sw"
+              />
+              <text
+                x="333"
+                y="245"
+                class="tt"
+                text-anchor="middle"
+                font-size="11.5"
+              >
+                AdamW 动量 v 4B
+              </text>
+            </g>
+            <text
+              x="230"
+              y="296"
+              class="ta"
+              text-anchor="middle"
+              font-size="12"
+            >
+              合计 16 字节/参数 × 9750 万 ≈ 1.6GB
+            </text>
+            <text
+              x="230"
+              y="330"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              激活另算：batch=8 × 512 长度约 1~2GB，仍然绰绰有余
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">03</div>
+          <h2>显存账本：16G 从瓶颈变余粮</h2>
+          <span class="whyl">先算固定开销，再留激活余量</span>
+          <p class="lead">
+            训练时的显存大头不是模型本身，而是"参数 + 梯度 + 优化器状态"三件套。
+            混合精度训练下，每个参数总共要吃 <b>16 字节</b>。
+          </p>
+          <p class="detail">
+            拆开看：bf16 权重 2 字节、bf16 梯度 2 字节、fp32 主权重 4 字节、
+            AdamW 的一阶/二阶动量各 4 字节。 9750 万 × 16 ≈
+            <b>1.6GB 固定开销</b>， 加上激活（batch=8、长度 512 时约 1~2GB），
+            单卡 16GB 连三分之一都用不满。 这就是为什么规划里说"先单卡跑通，双卡
+            DDP 留作升级"。
+          </p>
+          <p class="note">
+            脚本里的 <span class="mono">BYTES_PER_PARAM = 16</span> 就是这笔账；
+            以后改规模，显存预算会自动跟着重算。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04 两道新闸 ============ -->
+    <section class="stage" id="p4">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 380"
+            role="img"
+            aria-label="两道新闸：词表对账与反向冒烟"
+          >
+            <!-- 闸门 1：词表对账 -->
+            <rect x="30" y="30" width="400" height="150" rx="14" class="sw" />
+            <circle cx="72" cy="74" r="22" class="ac" />
+            <text
+              x="72"
+              y="82"
+              fill="#fff"
+              font-size="17"
+              font-weight="900"
+              text-anchor="middle"
+              font-family="'Noto Serif SC',serif"
+            >
+              1
+            </text>
+            <text x="110" y="70" class="tt" font-size="13.5">词表对账</text>
+            <text x="110" y="94" class="ts" font-size="11">
+              配置的 vocab_size 必须等于分词器的真实词表
+            </text>
+            <!-- 对账示意 -->
+            <rect x="60" y="118" width="150" height="42" rx="9" class="st" />
+            <text x="135" y="144" class="tm" text-anchor="middle">
+              tokenizer.json
+            </text>
+            <text
+              x="252"
+              y="144"
+              class="ta"
+              text-anchor="middle"
+              font-size="13"
+            >
+              =
+            </text>
+            <rect x="290" y="118" width="130" height="42" rx="9" class="st" />
+            <text x="355" y="144" class="tm" text-anchor="middle">
+              ModelConfig
+            </text>
+            <!-- 闸门 2：反向冒烟 -->
+            <rect x="30" y="200" width="400" height="150" rx="14" class="sw" />
+            <circle cx="72" cy="244" r="22" class="ac" />
+            <text
+              x="72"
+              y="252"
+              fill="#fff"
+              font-size="17"
+              font-weight="900"
+              text-anchor="middle"
+              font-family="'Noto Serif SC',serif"
+            >
+              2
+            </text>
+            <text x="110" y="240" class="tt" font-size="13.5">反向冒烟</text>
+            <text x="110" y="264" class="ts" font-size="11">
+              前向能跑 ≠ 能训练；每个参数都要收到梯度才算数
+            </text>
+            <!-- 前向/回传示意 -->
+            <g class="acs" marker-end="url(#arw4)">
+              <line x1="70" y1="308" x2="220" y2="308" />
+            </g>
+            <text
+              x="145"
+              y="296"
+              class="ts"
+              text-anchor="middle"
+              font-size="10.5"
+            >
+              前向 logits
+            </text>
+            <g class="st" marker-end="url(#arw4)">
+              <line x1="220" y1="330" x2="70" y2="330" />
+            </g>
+            <text
+              x="145"
+              y="326"
+              class="ts"
+              text-anchor="middle"
+              font-size="10.5"
+            >
+              梯度回传
+            </text>
+            <text
+              x="330"
+              y="322"
+              class="ta"
+              text-anchor="middle"
+              font-size="12"
+            >
+              全部参数 ✓
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">04</div>
+          <h2>两道新闸：把错位事故拦在训练前</h2>
+          <span class="whyl">v3 新增的验收关卡</span>
+          <p class="lead">
+            v2 时代词表是自己训的、配置是自己写的，错位风险小。 v3
+            工序变多、文件变多，"字典 16384、模型按 8192 建"这种错位一旦发生，
+            训练半天才发现就晚了。
+          </p>
+          <p class="detail">
+            <b>词表对账</b>：脚本自动读上一站的
+            <span class="mono">tokenizer/tokenizer.json</span>， 按 token id
+            去重数出真实词表，与配置比对，不一致直接断言失败。
+            （特殊标记同时登记在词表和 added_tokens 两处，按 id
+            去重才不会数两遍。） <b>反向冒烟</b>：前向算得出 logits
+            只证明"能推理"， 对 logits
+            反传一次、确认每个参数都拿到梯度，才证明"能训练"。
+          </p>
+          <p class="note">
+            tokenizer.json 还没训出来也不影响跑脚本——找不到文件会打印
+            <span class="mono">[skip]</span>
+            跳过对账，等分词器一站完成后自动生效。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 05 跑起来 ============ -->
+    <section class="stage dark flip" id="p5">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 400"
+            role="img"
+            aria-label="运行方式与配置报告示例"
+          >
+            <!-- 命令 -->
+            <rect
+              x="30"
+              y="30"
+              width="400"
+              height="58"
+              rx="12"
+              fill="#0e0c08"
+              stroke="#3b372c"
+              stroke-width="1.5"
+            />
+            <text
+              x="50"
+              y="55"
+              fill="#7a7261"
+              font-size="11"
+              font-family="'JetBrains Mono',monospace"
+            >
+              $ conda activate f10
+            </text>
+            <text
+              x="50"
+              y="76"
+              fill="#a8c686"
+              font-size="11"
+              font-family="'JetBrains Mono',monospace"
+            >
+              $ python model_config.py
+            </text>
+            <!-- 报告 -->
+            <rect
+              x="30"
+              y="110"
+              width="400"
+              height="240"
+              rx="12"
+              fill="#0e0c08"
+              stroke="#3b372c"
+              stroke-width="1.5"
+            />
+            <g
+              font-family="'JetBrains Mono',monospace"
+              font-size="10"
+              fill="#e8e2d2"
+            >
+              <text x="48" y="134">
+                [cfg] 词表 16384 · 维度 768 · 12 层 · 12 头
+              </text>
+              <text x="48" y="154">[budget] 词嵌入(共享) 12.58M</text>
+              <text x="48" y="174">[budget] 注意力×12 28.31M</text>
+              <text x="48" y="194">[budget] 前馈×12 56.62M</text>
+              <text x="48" y="214">[budget] 合计 ≈ 97.54M</text>
+              <text x="48" y="234">[vram] 训练固定开销 ≈ 1.6GB</text>
+              <text x="48" y="254" fill="#a8c686">
+                [vocab] 词表对账通过：16384 = 16384 ✓
+              </text>
+              <text x="48" y="274" fill="#a8c686">
+                [model] 实机参数 97.54M，与估算一致 ✓
+              </text>
+              <text x="48" y="294" fill="#a8c686">
+                [forward] 冒烟通过：logits (2, 16, 16384)
+              </text>
+              <text x="48" y="314" fill="#a8c686">
+                [backward] 冒烟通过：全部参数梯度通畅 ✓
+              </text>
+              <text x="48" y="336" fill="#a8c686">
+                [done] 预算落在 80~120M 区间，配置达标！
+              </text>
+            </g>
+            <text
+              x="230"
+              y="378"
+              text-anchor="middle"
+              class="ts"
+              font-size="11"
+            >
+              ↑ 应看到的健康输出（装了 torch 才会出现后四行）
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">05</div>
+          <h2>跑起来：先算账，再过闸</h2>
+          <span class="whyl">使用说明</span>
+          <p class="lead">
+            从下一节复制完整脚本，保存为
+            <span class="mono">model_config.py</span>， 放在能找到
+            <span class="mono">tokenizer/tokenizer.json</span> 的目录运行即可。
+            没装 torch 也能看预算表，装了 torch 自动做实机验证。
+          </p>
+          <p class="detail">
+            <b>看报告抓重点：</b>合计参数必须落在 80~120M 区间；
+            词表对账要么打勾、要么确认 <span class="mono">[skip]</span>
+            只是因为分词器还没跑； 实机参数与公式估算必须一致
+            （证明权重共享生效）；前向反向两团烟都要冒。
+          </p>
+          <p class="note">
+            这个脚本同时是后续训练的"配置唯一来源"： 预训练和 SFT 脚本都会
+            import 这里的 <span class="mono">ModelConfig</span>，
+            保证三代口径不漂移。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 完整代码 ============ -->
+    <section class="codesec" id="code">
+      <h2 class="reveal">完整可运行脚本 · model_config.py</h2>
+      <p class="cap reveal">
+        复制 → 保存为 model_config.py → conda activate f10 &amp;&amp; python
+        model_config.py
+      </p>
+      <div class="codewrap reveal">
+        <button id="copybtn">复制代码</button>
+        <pre id="codeblock">
+<span class="c-cm"># -*- coding: utf-8 -*-</span>
+<span class="c-cm">"""
+model_config.py —— 小智三代 · 0.1B 模型配置与预算自检脚本
+作用：定义模型超参 → 纯公式算参数/显存预算 → 与分词器词表对账 → PyTorch 真机建模冒烟
+用法：python model_config.py（装了 torch 自动做实机验证；没装也能看预算表）
+与 v2 的关系：架构（RMSNorm + RoPE + SwiGLU + 权重共享）一行不改，只换规模和数字
+"""</span>
+
+<span class="c-kw">import</span> json  <span class="c-cm"># 读取上一站产出的 tokenizer.json，做词表对账</span>
+<span class="c-kw">from</span> dataclasses <span class="c-kw">import</span> dataclass  <span class="c-cm"># 把配置打包成结构体，类似带类型提示的 dict</span>
+<span class="c-kw">from</span> pathlib <span class="c-kw">import</span> Path  <span class="c-cm"># 跨平台路径处理（macOS / Linux 通用）</span>
+
+<span class="c-cm"># torch 是可选依赖：有它就真机建模，没有就只看预算表（脚本不会崩）</span>
+<span class="c-kw">try</span>:
+    <span class="c-kw">import</span> torch
+    <span class="c-kw">import</span> torch.nn <span class="c-kw">as</span> nn
+    <span class="c-kw">import</span> torch.nn.functional <span class="c-kw">as</span> F
+
+    TORCH_OK = <span class="c-kw">True</span>
+<span class="c-kw">except</span> ImportError:
+    TORCH_OK = <span class="c-kw">False</span>
+
+
+<span class="c-cm"># ==================== 可调参数区（只改这里） ====================</span>
+<span class="c-str">@dataclass</span>
+<span class="c-kw">class</span> ModelConfig:
+    <span class="c-cm">"""全部超参集中在这一处：训练和推理脚本都引用它，保证口径唯一"""</span>
+
+    vocab_size: int = <span class="c-kw">16384</span>  <span class="c-cm"># 词表大小：必须与上一站 tokenizer.json 的实际词表一致！</span>
+    d_model: int = <span class="c-kw">768</span>  <span class="c-cm"># 隐藏维度：v2 的 64 是笔记本妥协，这一代回归主流小模型档位</span>
+    n_layers: int = <span class="c-kw">12</span>  <span class="c-cm"># Transformer 层数：210 万行语料养得起 12 层</span>
+    n_heads: int = <span class="c-kw">12</span>  <span class="c-cm"># 注意力头数：必须能整除 d_model（768/12=每头 64 维）</span>
+    d_ff: int = <span class="c-kw">2048</span>  <span class="c-cm"># 前馈网络中间维度（SwiGLU 三矩阵），约 2.7×d_model</span>
+    max_seq_len: int = <span class="c-kw">512</span>  <span class="c-cm"># 上下文窗口：与规范化脚本的文本长度上限配套</span>
+
+    <span class="c-kw">def</span> __post_init__(self):
+        <span class="c-cm">"""创建配置时立刻自检，不合规直接报错（防止带病进入训练）"""</span>
+        <span class="c-kw">assert</span> self.d_model % self.n_heads == <span class="c-kw">0</span>, <span class="c-str">"d_model 必须能被 n_heads 整除"</span>
+
+
+<span class="c-cm"># 预算合格区间：210 万行语料（约 3 亿 tokens）匹配 0.08B~0.12B 的模型</span>
+PARAM_MIN, PARAM_MAX = <span class="c-kw">80_000_000</span>, <span class="c-kw">120_000_000</span>
+
+<span class="c-cm"># 混合精度训练的显存系数（字节/参数）：</span>
+<span class="c-cm"># bf16 权重 2 + bf16 梯度 2 + fp32 主权重 4 + AdamW 一阶/二阶动量 8 = 16 字节</span>
+BYTES_PER_PARAM = <span class="c-kw">16</span>
+
+<span class="c-cm"># 上一站分词器的产出：存在就拿来做词表对账，不存在就跳过（不强制）</span>
+TOKENIZER_FILE = Path(<span class="c-str">"tokenizer/tokenizer.json"</span>)
+
+
+<span class="c-cm"># ==================== 预算计算（纯公式，零依赖） ====================</span>
+<span class="c-kw">class</span> BudgetCalculator:
+    <span class="c-cm">"""职责：只负责算账——用公式预估每个部件的参数和显存，不用真的建模"""</span>
+
+    <span class="c-kw">def</span> __init__(self, cfg):
+        <span class="c-cm">"""cfg：ModelConfig 实例"""</span>
+        self.cfg = cfg
+
+    <span class="c-kw">def</span> report(self):
+        <span class="c-cm">"""逐项计算并打印预算表；返回 (总参数, 嵌入参数)"""</span>
+        c = self.cfg
+        embed = c.vocab_size * c.d_model  <span class="c-cm"># 词嵌入（权重共享：输出层白嫖它）</span>
+        attn = c.n_layers * <span class="c-kw">4</span> * c.d_model**<span class="c-kw">2</span>  <span class="c-cm"># 每层 Q/K/V/O 四个方阵</span>
+        ffn = c.n_layers * <span class="c-kw">3</span> * c.d_model * c.d_ff  <span class="c-cm"># SwiGLU 每层三个矩阵</span>
+        norm = (c.n_layers * <span class="c-kw">2</span> + <span class="c-kw">1</span>) * c.d_model  <span class="c-cm"># RMSNorm 每层两个 + 结尾一个</span>
+        total = embed + attn + ffn + norm
+        print(<span class="c-str">f"[budget] 词嵌入(共享)  {embed/1e6:&gt;6.2f}M"</span>)
+        print(<span class="c-str">f"[budget] 注意力×{c.n_layers}   {attn/1e6:&gt;6.2f}M"</span>)
+        print(<span class="c-str">f"[budget] 前馈×{c.n_layers}     {ffn/1e6:&gt;6.2f}M"</span>)
+        print(<span class="c-str">f"[budget] 归一化        {norm/1e3:&gt;6.1f}K"</span>)
+        print(<span class="c-str">f"[budget] 合计 ≈ {total/1e6:.2f}M（非嵌入口径 {(total-embed)/1e6:.2f}M）"</span>)
+        <span class="c-cm"># 显存账：固定开销 = 参数+梯度+优化器状态；激活随 batch 浮动，另算</span>
+        vram = total * BYTES_PER_PARAM / <span class="c-kw">1e9</span>
+        print(<span class="c-str">f"[vram] 训练固定开销 ≈ {vram:.1f}GB（{BYTES_PER_PARAM} 字节/参数，激活另算）"</span>)
+        <span class="c-kw">return</span> total, embed
+
+
+<span class="c-cm"># ==================== 词表对账（与上一站分词器联动） ====================</span>
+<span class="c-kw">class</span> VocabAuditor:
+    <span class="c-cm">"""职责：只负责对账——配置里的 vocab_size 必须等于分词器的真实词表"""</span>
+
+    <span class="c-kw">def</span> check(self, cfg):
+        <span class="c-cm">"""读 tokenizer.json 数真实词表；不一致直接断言失败（带病不许训练）"""</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> TOKENIZER_FILE.exists():
+            print(<span class="c-str">f"[skip] 未找到 {TOKENIZER_FILE}，跳过词表对账（先跑分词器一站可开启）"</span>)
+            <span class="c-kw">return</span>
+        data = json.loads(TOKENIZER_FILE.read_text(encoding=<span class="c-str">"utf-8"</span>))
+        <span class="c-cm"># 真实词表按 token id 去重数：BpeTrainer 会把三个特殊标记直接编进词表，</span>
+        <span class="c-cm"># 而 added_tokens 里登记的是同一批——两处直接相加会把它们数两遍</span>
+        ids = set(data[<span class="c-str">"model"</span>][<span class="c-str">"vocab"</span>].values())
+        ids.update(t[<span class="c-str">"id"</span>] <span class="c-kw">for</span> t <span class="c-kw">in</span> data.get(<span class="c-str">"added_tokens"</span>, []))
+        real_vocab = len(ids)
+        <span class="c-kw">assert</span> real_vocab == cfg.vocab_size, (
+            <span class="c-str">f"词表对不上！分词器实际 {real_vocab}，配置写的 {cfg.vocab_size}"</span>
+        )
+        print(<span class="c-str">f"[vocab] 词表对账通过：分词器 {real_vocab} = 配置 {cfg.vocab_size} ✓"</span>)
+
+
+<span class="c-cm"># ==================== 模型本体（需要 torch；架构与 v2 完全一致） ====================</span>
+<span class="c-kw">if</span> TORCH_OK:
+
+    <span class="c-kw">class</span> RMSNorm(nn.Module):
+        <span class="c-cm">"""均方根归一化：只缩放不减均值，比 LayerNorm 少一步（类似简化版标准化）"""</span>
+
+        <span class="c-kw">def</span> __init__(self, dim, eps=<span class="c-kw">1e-6</span>):
+            <span class="c-kw">super</span>().__init__()
+            self.eps = eps
+            self.weight = nn.Parameter(torch.ones(dim))  <span class="c-cm"># 可学习的缩放系数</span>
+
+        <span class="c-kw">def</span> forward(self, x):
+            <span class="c-cm"># x / sqrt(mean(x²)) × weight：把每行的"能量"归一后再按权重缩放</span>
+            <span class="c-kw">return</span> (
+                x
+                * torch.rsqrt(x.pow(<span class="c-kw">2</span>).mean(-<span class="c-kw">1</span>, keepdim=<span class="c-kw">True</span>) + self.eps)
+                * self.weight
+            )
+
+    <span class="c-kw">class</span> RotaryEmbedding(nn.Module):
+        <span class="c-cm">"""RoPE 旋转位置编码：不给位置编号，给位置"转角"（零参数，只存预计算的旋转表）"""</span>
+
+        <span class="c-kw">def</span> __init__(self, head_dim, max_seq_len, base=<span class="c-kw">10000</span>):
+            <span class="c-kw">super</span>().__init__()
+            <span class="c-cm"># 每个维度对对应一个旋转频率：维度越低转得越慢（类似钟表的长短针）</span>
+            inv_freq = <span class="c-kw">1.0</span> / (base ** (torch.arange(<span class="c-kw">0</span>, head_dim, <span class="c-kw">2</span>).float() / head_dim))
+            t = torch.arange(max_seq_len).float()  <span class="c-cm"># 位置序号 0..T-1</span>
+            freqs = torch.outer(t, inv_freq)  <span class="c-cm"># 外积：(位置, 频率) → 转角表</span>
+            <span class="c-cm"># 预先存好 cos/sin 表，forward 时直接查（register_buffer = 不算参数但随模型保存）</span>
+            self.register_buffer(<span class="c-str">"cos"</span>, freqs.cos(), persistent=<span class="c-kw">False</span>)
+            self.register_buffer(<span class="c-str">"sin"</span>, freqs.sin(), persistent=<span class="c-kw">False</span>)
+
+        <span class="c-kw">def</span> forward(self, x):
+            <span class="c-cm">"""x 形状 (B, 头数, T, 头维度)；对每两个相邻维度做一次二维旋转"""</span>
+            T = x.size(<span class="c-kw">2</span>)
+            cos = self.cos[:T][<span class="c-kw">None</span>, <span class="c-kw">None</span>, :, :]  <span class="c-cm"># 加两个广播维度对齐 x</span>
+            sin = self.sin[:T][<span class="c-kw">None</span>, <span class="c-kw">None</span>, :, :]
+            x1, x2 = x[..., ::<span class="c-kw">2</span>], x[..., <span class="c-kw">1</span>::<span class="c-kw">2</span>]  <span class="c-cm"># 偶数位 / 奇数位拆开</span>
+            <span class="c-cm"># 二维旋转公式：偶位 = x1·cos − x2·sin；奇位 = x1·sin + x2·cos</span>
+            out = torch.stack([x1 * cos - x2 * sin, x1 * sin + x2 * cos], dim=-<span class="c-kw">1</span>)
+            <span class="c-kw">return</span> out.flatten(-<span class="c-kw">2</span>)  <span class="c-cm"># 交错拼回原来的维度顺序</span>
+
+    <span class="c-kw">class</span> CausalSelfAttention(nn.Module):
+        <span class="c-cm">"""因果自注意力：每个位置只能看自己和之前的位置（防作弊，生成必须从左往右）"""</span>
+
+        <span class="c-kw">def</span> __init__(self, cfg):
+            <span class="c-kw">super</span>().__init__()
+            self.n_heads = cfg.n_heads
+            self.head_dim = cfg.d_model // cfg.n_heads
+            self.qkv = nn.Linear(cfg.d_model, <span class="c-kw">3</span> * cfg.d_model, bias=<span class="c-kw">False</span>)  <span class="c-cm"># Q/K/V 一次算出</span>
+            self.proj = nn.Linear(cfg.d_model, cfg.d_model, bias=<span class="c-kw">False</span>)  <span class="c-cm"># 输出投影</span>
+            self.rope = RotaryEmbedding(self.head_dim, cfg.max_seq_len)
+
+        <span class="c-kw">def</span> forward(self, x):
+            B, T, _ = x.shape
+            q, k, v = self.qkv(x).chunk(<span class="c-kw">3</span>, dim=-<span class="c-kw">1</span>)  <span class="c-cm"># 沿最后一维切成三份</span>
+            <span class="c-cm"># 调整形状为 (B, 头数, T, 头维度)：每个头独立看一句话</span>
+            q = q.view(B, T, self.n_heads, self.head_dim).transpose(<span class="c-kw">1</span>, <span class="c-kw">2</span>)
+            k = k.view(B, T, self.n_heads, self.head_dim).transpose(<span class="c-kw">1</span>, <span class="c-kw">2</span>)
+            v = v.view(B, T, self.n_heads, self.head_dim).transpose(<span class="c-kw">1</span>, <span class="c-kw">2</span>)
+            q, k = self.rope(q), self.rope(k)  <span class="c-cm"># 只有 Q/K 加位置信息</span>
+            <span class="c-cm"># PyTorch 内置的高效注意力：is_causal=True 自动上因果掩码</span>
+            y = F.scaled_dot_product_attention(q, k, v, is_causal=<span class="c-kw">True</span>)
+            y = y.transpose(<span class="c-kw">1</span>, <span class="c-kw">2</span>).contiguous().view(B, T, -<span class="c-kw">1</span>)  <span class="c-cm"># 多头结果拼回去</span>
+            <span class="c-kw">return</span> self.proj(y)
+
+    <span class="c-kw">class</span> SwiGLU(nn.Module):
+        <span class="c-cm">"""门控前馈网络：w1 算"门"、w3 算"内容"，相乘后由 w2 降回原维度"""</span>
+
+        <span class="c-kw">def</span> __init__(self, cfg):
+            <span class="c-kw">super</span>().__init__()
+            self.w1 = nn.Linear(cfg.d_model, cfg.d_ff, bias=<span class="c-kw">False</span>)  <span class="c-cm"># 门控支路</span>
+            self.w3 = nn.Linear(cfg.d_model, cfg.d_ff, bias=<span class="c-kw">False</span>)  <span class="c-cm"># 内容支路</span>
+            self.w2 = nn.Linear(cfg.d_ff, cfg.d_model, bias=<span class="c-kw">False</span>)  <span class="c-cm"># 降维输出</span>
+
+        <span class="c-kw">def</span> forward(self, x):
+            <span class="c-cm"># silu(门) × 内容：让网络自己学会"哪些信息放行"</span>
+            <span class="c-kw">return</span> self.w2(F.silu(self.w1(x)) * self.w3(x))
+
+    <span class="c-kw">class</span> Block(nn.Module):
+        <span class="c-cm">"""一个 Transformer 层：Pre-Norm 结构（先归一化再进子层，残差兜底）"""</span>
+
+        <span class="c-kw">def</span> __init__(self, cfg):
+            <span class="c-kw">super</span>().__init__()
+            self.norm1 = RMSNorm(cfg.d_model)
+            self.attn = CausalSelfAttention(cfg)
+            self.norm2 = RMSNorm(cfg.d_model)
+            self.ffn = SwiGLU(cfg)
+
+        <span class="c-kw">def</span> forward(self, x):
+            x = x + self.attn(self.norm1(x))  <span class="c-cm"># 残差连接：原信息抄近道，防梯度消失</span>
+            x = x + self.ffn(self.norm2(x))
+            <span class="c-kw">return</span> x
+
+    <span class="c-kw">class</span> XiaozhiGPT(nn.Module):
+        <span class="c-cm">"""小智本体：嵌入 → N 个 Block → 归一化 → 输出层（与嵌入权重共享）"""</span>
+
+        <span class="c-kw">def</span> __init__(self, cfg):
+            <span class="c-kw">super</span>().__init__()
+            self.cfg = cfg
+            self.embed = nn.Embedding(cfg.vocab_size, cfg.d_model)
+            self.blocks = nn.ModuleList([Block(cfg) <span class="c-kw">for</span> _ <span class="c-kw">in</span> range(cfg.n_layers)])
+            self.norm_f = RMSNorm(cfg.d_model)
+            self.lm_head = nn.Linear(cfg.d_model, cfg.vocab_size, bias=<span class="c-kw">False</span>)
+            <span class="c-cm"># 权重共享的关键一行：输出层直接复用嵌入矩阵，白省 1258 万参数</span>
+            self.lm_head.weight = self.embed.weight
+            <span class="c-cm"># 参数初始化：全部改用小方差正态分布（GPT 惯例 std=0.02）</span>
+            <span class="c-cm"># PyTorch 默认初始化方差偏大，会让开局 loss 远超 ln(词表)，前期训练不稳</span>
+            self.apply(self._init_weights)
+
+        <span class="c-kw">def</span> _init_weights(self, module):
+            <span class="c-cm">"""对 Linear/Embedding 统一做 std=0.02 的正态初始化（self.apply 会遍历所有子模块）"""</span>
+            <span class="c-kw">if</span> isinstance(module, (nn.Linear, nn.Embedding)):
+                nn.init.normal_(module.weight, mean=<span class="c-kw">0.0</span>, std=<span class="c-kw">0.02</span>)
+
+        <span class="c-kw">def</span> forward(self, idx):
+            <span class="c-cm">"""idx 形状 (B, T) 的 token id；返回 (B, T, 词表) 的 logits（每个位置的下一个词打分）"""</span>
+            x = self.embed(idx)
+            <span class="c-kw">for</span> blk <span class="c-kw">in</span> self.blocks:
+                x = blk(x)
+            <span class="c-kw">return</span> self.lm_head(self.norm_f(x))
+
+
+<span class="c-cm"># ==================== 实机验证 ====================</span>
+<span class="c-kw">class</span> ForwardTester:
+    <span class="c-cm">"""职责：只负责真机验证——建模、对账参数、前向+反向冒烟"""</span>
+
+    <span class="c-kw">def</span> run(self, cfg, estimated_total):
+        <span class="c-cm">"""
+        参数：cfg 配置；estimated_total 公式估算的总参数
+        校验：实机参数必须等于估算（证明权重共享生效）；前向输出形状正确；反向梯度通畅
+        """</span>
+        model = XiaozhiGPT(cfg)
+        real = sum(p.numel() <span class="c-kw">for</span> p <span class="c-kw">in</span> model.parameters())  <span class="c-cm"># 数真实参数个数</span>
+        match = (
+            <span class="c-str">"一致 ✓（权重共享生效）"</span>
+            <span class="c-kw">if</span> real == estimated_total
+            <span class="c-kw">else</span> <span class="c-str">f"对不上！差 {real-estimated_total}"</span>
+        )
+        print(<span class="c-str">f"[model] 实机参数 {real/1e6:.2f}M，与估算{match}"</span>)
+
+        <span class="c-cm"># 前向冒烟：假装 2 条 16 token 的句子喂进去，看输出形状对不对</span>
+        idx = torch.randint(<span class="c-kw">0</span>, cfg.vocab_size, (<span class="c-kw">2</span>, <span class="c-kw">16</span>))
+        logits = model(idx)
+        <span class="c-kw">assert</span> logits.shape == (<span class="c-kw">2</span>, <span class="c-kw">16</span>, cfg.vocab_size), <span class="c-str">f"输出形状异常：{logits.shape}"</span>
+        print(<span class="c-str">f"[forward] 冒烟通过：logits {tuple(logits.shape)}"</span>)
+
+        <span class="c-cm"># 反向冒烟：对 logits 求和反传，确认每个参数都拿到梯度（训练能跑起来的最低证明）</span>
+        logits.sum().backward()
+        no_grad = [n <span class="c-kw">for</span> n, p <span class="c-kw">in</span> model.named_parameters() <span class="c-kw">if</span> p.grad <span class="c-kw">is</span> <span class="c-kw">None</span>]
+        <span class="c-kw">assert</span> <span class="c-kw">not</span> no_grad, <span class="c-str">f"这些参数没收到梯度：{no_grad}"</span>
+        print(<span class="c-str">"[backward] 冒烟通过：全部参数梯度通畅 ✓"</span>)
+        <span class="c-kw">return</span> real
+
+
+<span class="c-cm"># ==================== 编排 ====================</span>
+<span class="c-kw">class</span> ConfigPipeline:
+    <span class="c-cm">"""职责：只负责编排——配置 → 预算 → 词表对账 → 建模冒烟 → 给结论"""</span>
+
+    <span class="c-kw">def</span> run(self):
+        cfg = ModelConfig()
+        print(
+            <span class="c-str">f"[cfg] 词表 {cfg.vocab_size} · 维度 {cfg.d_model} · "</span>
+            <span class="c-str">f"{cfg.n_layers} 层 · {cfg.n_heads} 头 · 上下文 {cfg.max_seq_len}"</span>
+        )
+
+        <span class="c-cm"># ① 公式算预算（零依赖，永远可跑）</span>
+        total, _ = BudgetCalculator(cfg).report()
+
+        <span class="c-cm"># ② 与上一站分词器对账词表（文件不在就跳过）</span>
+        VocabAuditor().check(cfg)
+
+        <span class="c-cm"># ③ 真机验证（有 torch 才跑）</span>
+        <span class="c-kw">if</span> TORCH_OK:
+            ForwardTester().run(cfg, total)
+        <span class="c-kw">else</span>:
+            print(<span class="c-str">"[skip] 未安装 torch，跳过实机验证（pip install torch 后可跑）"</span>)
+
+        <span class="c-cm"># ④ 给结论</span>
+        <span class="c-kw">if</span> PARAM_MIN &lt;= total &lt;= PARAM_MAX:
+            print(
+                <span class="c-str">f"[done] 预算 {total/1e6:.2f}M 落在 {PARAM_MIN/1e6:.0f}~{PARAM_MAX/1e6:.0f}M 区间，配置达标！"</span>
+            )
+        <span class="c-kw">else</span>:
+            print(
+                <span class="c-str">f"[warn] 预算 {total/1e6:.2f}M 超出区间，请调整 d_model / n_layers / d_ff"</span>
+            )
+
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    ConfigPipeline().run()
+        </pre>
+      </div>
+    </section>
+
+    <!-- ============ 验收清单 ============ -->
+    <section class="tsec" id="check">
+      <h2 class="reveal">验收清单</h2>
+      <p class="cap reveal">对照报告的每一行，确认配置够格进入训练</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th style="width: 24%">检查项</th>
+            <th style="width: 40%">它在说什么</th>
+            <th style="width: 36%">怎样算通过</th>
+          </tr>
+          <tr class="hl">
+            <td class="mono">预算合计</td>
+            <td>公式算出的总参数量</td>
+            <td>≈ 97.5M，落在 <b>80~120M</b> 区间（M4 验收线）</td>
+          </tr>
+          <tr>
+            <td class="mono">显存固定开销</td>
+            <td>参数+梯度+AdamW 三件套</td>
+            <td>≈ 1.6GB，远小于单卡 16GB</td>
+          </tr>
+          <tr class="hl">
+            <td class="mono">词表对账</td>
+            <td>配置 vs tokenizer.json 的真实词表</td>
+            <td>打勾 ✓；若 [skip] 需确认只是分词器还没跑</td>
+          </tr>
+          <tr>
+            <td class="mono">实机对账</td>
+            <td>真机参数 vs 公式估算</td>
+            <td>两者一致（证明权重共享生效）</td>
+          </tr>
+          <tr>
+            <td class="mono">前向冒烟</td>
+            <td>logits 输出形状</td>
+            <td class="mono">(2, 16, 16384)</td>
+          </tr>
+          <tr>
+            <td class="mono">反向冒烟</td>
+            <td>反传后每个参数都有梯度</td>
+            <td>必须打勾；不勾说明计算图断了，先查模型代码</td>
+          </tr>
+          <tr>
+            <td class="mono">整除断言</td>
+            <td>d_model % n_heads == 0</td>
+            <td>脚本内置，改数字时不合规会直接报错</td>
+          </tr>
+        </table>
+      </div>
+
+      <h2 class="reveal" style="margin-top: 4.5rem">与 v2 配置的差异一表清</h2>
+      <p class="cap reveal">
+        五个数字全部放大，架构与纪律原样继承，另加两道新闸
+      </p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th style="width: 22%">维度</th>
+            <th style="width: 34%">v2（0.01B）</th>
+            <th style="width: 44%">v3（0.1B）</th>
+          </tr>
+          <tr>
+            <td class="mono">vocab_size</td>
+            <td class="mono">8192</td>
+            <td class="mono">16384（与上一站分词器对账锁定）</td>
+          </tr>
+          <tr class="hl">
+            <td class="mono">d_model</td>
+            <td class="mono">64（笔记本妥协）</td>
+            <td class="mono">768（主流小模型档位）</td>
+          </tr>
+          <tr>
+            <td class="mono">n_layers / n_heads</td>
+            <td class="mono">4 / 4</td>
+            <td class="mono">12 / 12（每头 64 维不变）</td>
+          </tr>
+          <tr>
+            <td class="mono">d_ff</td>
+            <td class="mono">192（3×64）</td>
+            <td class="mono">2048（≈2.7×768）</td>
+          </tr>
+          <tr class="hl">
+            <td><b>总参数</b></td>
+            <td class="mono">≈ 0.97M</td>
+            <td class="mono"><b>≈ 97.5M（×100）</b></td>
+          </tr>
+          <tr>
+            <td class="mono">max_seq_len</td>
+            <td class="mono">512</td>
+            <td class="mono">512（不变，与规范化配套）</td>
+          </tr>
+          <tr class="hl">
+            <td><b>新增关卡</b></td>
+            <td class="mono">无</td>
+            <td class="mono">
+              词表对账（联动 tokenizer.json）· 反向冒烟 · 显存账
+            </td>
+          </tr>
+          <tr>
+            <td>不变的部分</td>
+            <td colspan="2" class="mono">
+              RMSNorm · RoPE · SwiGLU · 权重共享 · std=0.02 初始化 · Pre-Norm
+              残差
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">骨架搭好，才轮得到数据往里灌</h2>
+        <p class="fin-sum reveal">
+          模型配置是"看不见但错不起"的一站：数字错了，训练不会报错，
+          只会默默地差。 公式预算、词表对账、前向反向冒烟——三关都过，
+          下一站预训练才能把 120 万行纯文本放心地灌进这副 0.1B 的骨架里。
+        </p>
+        <footer class="reveal">
+          <span>小智三代 · 模型配置实操手册</span>
+          <span>0.1B × 12 层 × 768 维 × 16384 词表 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "p4", "p5", "code", "check"].forEach((id) =>
+        io2.observe(document.getElementById(id)),
+      );
+
+      /* ========== 一键复制代码（取 innerText，自动去掉高亮标签） ========== */
+      document
+        .getElementById("copybtn")
+        .addEventListener("click", async (e) => {
+          const btn = e.target;
+          const text = document.getElementById("codeblock").innerText;
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = "已复制 ✓";
+          } catch {
+            btn.textContent = "复制失败，请手动全选";
+          }
+          setTimeout(() => (btn.textContent = "复制代码"), 1800);
+        });
+    </script>
+  </body>
+</html>

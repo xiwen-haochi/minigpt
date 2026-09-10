@@ -1308,8 +1308,8 @@
           </p>
           <p class="note">
             小样试跑时压缩率偏高属正常（语料太少，合并还没学够），
-            这正是体检存在的意义：用全量语料跑出来的报告才算数。
-            内存吃紧就把 <span class="mono">TRAIN_SAMPLE</span> 调小（如 200_000）再跑。
+            这正是体检存在的意义：用全量语料跑出来的报告才算数。 内存吃紧就把
+            <span class="mono">TRAIN_SAMPLE</span> 调小（如 200_000）再跑。
           </p>
         </div>
       </div>
@@ -1372,31 +1372,31 @@ GOOD_RATIO_MIN, GOOD_RATIO_MAX = <span class="c-kw">0.3</span>, <span class="c-k
     <span class="c-cm">"""职责：只负责供料——逐行流式读取 text 字段，内存占用与语料规模无关"""</span>
 
     <span class="c-kw">def</span> __init__(self, paths):
-        self.fed = <span class="c-kw">0</span>  <span class="c-cm"># 实际喂出的行数，供报告使用</span>
         <span class="c-cm">"""paths：教材文件路径列表（Path 对象列表）"""</span>
-        <span class="c-kw">for</span> p <span cla, limit=<span class="c-kw">None</span>ss="c-kw">in</span> paths:
-            <span class="c-kw">if</span> <span class="c-kw">not
-
-        参数：
-            limit: 最多产出多少行；None 表示不限。</span> p.exists():
-                   因 train 文件已洗牌，截取前 N 行等价于随机抽样                <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {p}（请先运行 normalize_data.py）"</span>)
+        <span class="c-kw">for</span> p <span class="c-kw">in</span> paths:
+            <span class="c-kw">if</span> <span class="c-kw">not</span> p.exists():
+                <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {p}（请先运行 normalize_data.py）"</span>)
         self.paths = paths
+        self.fed = <span class="c-kw">0</span>  <span class="c-cm"># 实际喂出的行数，供报告使用</span>
 
-    <spa""n</span>
-        self.fed = <span class= c-kwc>0lass="c-kw">def</span> iter_texts(self):
+    <span class="c-kw">def</span> iter_texts(self, limit=<span class="c-kw">None</span>):
         <span class="c-cm">"""生成器：每调用一次 next 才读一行，200 万行也不会撑爆内存
 
-        返回： <span class="c-kw">in</span> f:
-                   >if</span lmit <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">Noe <spanclass="c-kw">and</span> sel.fed &gt;= limit
-                        <span class="c-kw">return</span>  <span class="c-cm"># 到达抽样上限，提前收工</span>
+        参数：
+            limit: 最多产出多少行；None 表示不限。
+                   因 train 文件已洗牌，截取前 N 行等价于随机抽样
+        返回：
             逐条产出文本字符串的迭代器（类似 Python 的 generator）
         """</span>
-                        self.fed += <span class="c-kw">1</span>
+        self.fed = <span class="c-kw">0</span>
         <span class="c-kw">for</span> path <span class="c-kw">in</span> self.paths:
             <span class="c-kw">with</span> path.open(encoding=<span class="c-str">"utf-8"</span>) <span class="c-kw">as</span> f:
                 <span class="c-kw">for</span> line <span class="c-kw">in</span> f:
+                    <span class="c-kw">if</span> limit <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">None</span> <span class="c-kw">and</span> self.fed &gt;= limit:
+                        <span class="c-kw">return</span>  <span class="c-cm"># 到达抽样上限，提前收工</span>
                     <span class="c-kw">try</span>:
                         <span class="c-kw">yield</span> json.loads(line)[<span class="c-str">"text"</span>]
+                        self.fed += <span class="c-kw">1</span>
                     <span class="c-kw">except</span> (json.JSONDecodeError, KeyError):
                         <span class="c-kw">continue</span>  <span class="c-cm"># 坏行跳过，不干扰训练</span>
 
@@ -1680,11 +1680,6 @@ GOOD_RATIO_MIN, GOOD_RATIO_MAX = <span class="c-kw">0.3</span>, <span class="c-k
           } catch {
             btn.textContent = "复制失败，请手动全选";
           }
-          setTimeout(() => (btn.textContent = "复制代码"), 1800);
-        });
-    </script>
-  </body>
-</html>
           setTimeout(() => (btn.textContent = "复制代码"), 1800);
         });
     </script>
