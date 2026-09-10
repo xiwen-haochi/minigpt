@@ -1,0 +1,1549 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小智三代 · 数据规范化实操手册</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ========== 配色与全局（与 v3 规划页 / v1v2 手册同一套纸面风格） ========== */
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+        --term: #15130e;
+        --termtxt: #e8e2d2;
+        --termmut: #7a7261;
+      }
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      /* ========== 右侧圆点导航 ========== */
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      /* ========== 首屏 ========== */
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      /* ========== 章节骨架 ========== */
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+      .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9em;
+      }
+
+      /* ========== 手绘 SVG 插图通用类 ========== */
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tm {
+        fill: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10.5px;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      /* ========== 全景流程图区 ========== */
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ========== 代码区（深色终端风） ========== */
+      .codesec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        background: var(--term);
+        color: var(--termtxt);
+      }
+      .codesec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        color: var(--termtxt);
+      }
+      .codesec .cap {
+        text-align: center;
+        color: var(--termmut);
+        font-size: 0.9rem;
+        margin-bottom: 2.2rem;
+      }
+      .codewrap {
+        max-width: 980px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .codewrap pre {
+        background: #0e0c08;
+        border: 1px solid #3b372c;
+        border-radius: 14px;
+        padding: 1.6rem 1.4rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+        color: var(--termtxt);
+        max-height: 640px;
+        overflow-y: auto;
+      }
+      .codewrap .c-cm {
+        color: #7a7261;
+      }
+      .codewrap .c-kw {
+        color: #e8432c;
+      }
+      .codewrap .c-str {
+        color: #a8c686;
+      }
+      #copybtn {
+        position: sticky;
+        top: 0.8rem;
+        float: right;
+        margin: 0.8rem 0.8rem 0 0;
+        z-index: 5;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        background: var(--verm);
+        color: #fff;
+        border: none;
+        border-radius: 99px;
+        padding: 0.4rem 1.1rem;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      #copybtn:hover {
+        transform: scale(1.06);
+      }
+
+      /* ========== 表格区 ========== */
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      /* ========== 结尾 ========== */
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .fin-sum {
+        margin-top: 2rem;
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      /* ========== 滚动淡入 ========== */
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 认识原料</span></a>
+      <a href="#p1"><span>1 剥思维链</span></a>
+      <a href="#p2"><span>2 身份消毒</span></a>
+      <a href="#p3"><span>3 去重与质检</span></a>
+      <a href="#p4"><span>4 模板化与切分</span></a>
+      <a href="#p5"><span>5 跑起来</span></a>
+      <a href="#code"><span>完整代码</span></a>
+      <a href="#check"><span>验收清单</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">v3 第 02 站 · 对应规划 M2 里程碑</p>
+      <h1>数据规范化<br /><span class="red">实操手册</span></h1>
+      <p class="sub">
+        MiniMind 的 210 万行原料不是为你量身定做的：里面夹着模型的"草稿纸"，
+        还写着别人的名字。这一站做三件事——剥思维链、身份消毒、统一格式，
+        最后按 v2 的老纪律清洗切分，产出四份干净教材。脚本纯标准库，复制即可运行。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">剥思维链</span>
+        <span class="hb red">身份消毒</span>
+        <span class="hb">统一聊天模板</span>
+        <span class="hb">纯标准库 · 零安装</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景流水线 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 两条流水线一台戏</h2>
+      <p class="cap reveal">
+        SFT 对话走上面那条（工序多），预训练纯文本走下面那条（无需模板化）
+      </p>
+      <svg
+        viewBox="0 0 1150 300"
+        class="reveal"
+        role="img"
+        aria-label="两条规范化流水线"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <!-- SFT 泳道 -->
+        <text x="10" y="95" class="ta" font-size="13">SFT</text>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="150" y1="90" x2="196" y2="90" />
+          <line x1="316" y1="90" x2="362" y2="90" />
+          <line x1="482" y1="90" x2="528" y2="90" />
+          <line x1="648" y1="90" x2="694" y2="90" />
+          <line x1="814" y1="90" x2="860" y2="90" />
+          <line x1="980" y1="90" x2="1026" y2="90" />
+        </g>
+        <g font-family="'Noto Sans SC',sans-serif" font-size="12" text-anchor="middle">
+          <rect x="60" y="66" width="90" height="48" rx="12" fill="none" stroke="#191611" stroke-width="2" />
+          <text x="105" y="95" fill="#191611">读原料</text>
+          <rect x="196" y="66" width="120" height="48" rx="12" fill="#E8432C" />
+          <text x="256" y="95" fill="#fff">剥思维链</text>
+          <rect x="362" y="66" width="120" height="48" rx="12" fill="#E8432C" />
+          <text x="422" y="95" fill="#fff">身份消毒</text>
+          <rect x="528" y="66" width="120" height="48" rx="12" fill="none" stroke="#191611" stroke-width="2" />
+          <text x="588" y="95" fill="#191611">去重+质检</text>
+          <rect x="694" y="66" width="120" height="48" rx="12" fill="none" stroke="#191611" stroke-width="2" />
+          <text x="754" y="95" fill="#191611">模板化</text>
+          <rect x="860" y="66" width="120" height="48" rx="12" fill="none" stroke="#191611" stroke-width="2" />
+          <text x="920" y="95" fill="#191611">98:2 切分</text>
+          <rect x="1026" y="66" width="112" height="48" rx="12" fill="none" stroke="#191611" stroke-width="2" stroke-dasharray="4 4" />
+          <text x="1082" y="88" fill="#8a8271" font-size="11">sft_train</text>
+          <text x="1082" y="103" fill="#8a8271" font-size="11">sft_val</text>
+        </g>
+        <!-- 预训练泳道 -->
+        <text x="10" y="215" class="ta" font-size="13">预训练</text>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="256" y1="210" x2="362" y2="210" />
+          <line x1="482" y1="210" x2="588" y2="210" />
+          <line x1="708" y1="210" x2="814" y2="210" />
+          <line x1="934" y1="210" x2="1026" y2="210" />
+        </g>
+        <g font-family="'Noto Sans SC',sans-serif" font-size="12" text-anchor="middle">
+          <rect x="60" y="186" width="196" height="48" rx="12" fill="none" stroke="#191611" stroke-width="2" />
+          <text x="158" y="215" fill="#191611">读原料</text>
+          <rect x="362" y="186" width="120" height="48" rx="12" fill="#E8432C" />
+          <text x="422" y="215" fill="#fff">身份消毒</text>
+          <rect x="588" y="186" width="120" height="48" rx="12" fill="none" stroke="#191611" stroke-width="2" />
+          <text x="648" y="215" fill="#191611">去重+质检</text>
+          <rect x="814" y="186" width="120" height="48" rx="12" fill="none" stroke="#191611" stroke-width="2" />
+          <text x="874" y="215" fill="#191611">98:2 切分</text>
+          <rect x="1026" y="186" width="112" height="48" rx="12" fill="none" stroke="#191611" stroke-width="2" stroke-dasharray="4 4" />
+          <text x="1082" y="208" fill="#8a8271" font-size="11">pretrain_train</text>
+          <text x="1082" y="223" fill="#8a8271" font-size="11">pretrain_val</text>
+        </g>
+        <text x="575" y="280" text-anchor="middle" class="ts" font-size="12">
+          红色两站是 v3 新增工序；其余全部沿用 v2 清洗纪律
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 认识原料 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg viewBox="0 0 460 380" role="img" aria-label="两种原料结构对照">
+            <!-- 预训练结构 -->
+            <rect x="30" y="30" width="400" height="120" rx="14" class="sw" />
+            <rect x="30" y="30" width="400" height="34" rx="14" class="ac" />
+            <text x="230" y="53" fill="#fff" font-size="12.5" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono',monospace">
+              pretrain_t2t_mini.jsonl · 120 万行
+            </text>
+            <text x="52" y="92" class="tm">{"text": "清晨的阳光透过窗帘洒进房间……"}</text>
+            <text x="52" y="118" class="tm">{"text": "Transformer 通过自注意力机制……"}</text>
+            <text x="52" y="140" class="ts" font-size="10.5">一行一条 · 只有 text 一个字段</text>
+            <!-- SFT 结构 -->
+            <rect x="30" y="175" width="400" height="180" rx="14" class="sw" />
+            <rect x="30" y="175" width="400" height="34" rx="14" class="ac" />
+            <text x="230" y="198" fill="#fff" font-size="12.5" font-weight="700" text-anchor="middle" font-family="'JetBrains Mono',monospace">
+              sft_t2t_mini.jsonl · 90 万行
+            </text>
+            <text x="52" y="232" class="tm">{"conversations": [</text>
+            <text x="68" y="256" class="tm">{"role": "user", "content": "你是谁？"},</text>
+            <text x="68" y="280" class="tm">{"role": "assistant", "content": "我是……",</text>
+            <text x="82" y="304" class="ta" font-size="10.5">"reasoning_content": "好的，用户问……" ← 草稿纸</text>
+            <text x="52" y="330" class="tm">]}</text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">00</div>
+          <h2>先认识原料：两种结构，两种命运</h2>
+          <span class="whyl">看不懂结构就没法洗</span>
+          <p class="lead">
+            两个文件都是 jsonl（一行一条 JSON），但里面的"形状"完全不同，
+            所以脚本里有两条独立的流水线。
+          </p>
+          <p class="detail">
+            <b>预训练原料</b>：一行一段纯文本，结构简单，洗一洗就能用。
+            <br /><b>SFT 原料</b>：一行一整场多轮对话，user 问、assistant
+            答交替排列；麻烦的是部分回答里夹着一个
+            <span class="mono">reasoning_content</span> 字段——那是别人模型的
+            "内心独白"，必须剥掉。
+          </p>
+          <p class="note">
+            上百万行的文件不要人工翻。看懂结构靠
+            <span class="mono">dataset/</span> 里两份"大概结构"小样就够了。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 剥思维链 ============ -->
+    <section class="stage dark flip" id="p1">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg viewBox="0 0 460 360" role="img" aria-label="剥思维链前后对比">
+            <!-- 剥之前 -->
+            <rect x="30" y="35" width="400" height="130" rx="14" class="sw" />
+            <text x="52" y="64" class="ts" font-size="12">剥之前 · 一条 assistant 消息</text>
+            <rect x="52" y="80" width="356" height="30" rx="8" class="st" />
+            <text x="64" y="100" class="tm" font-size="10">reasoning_content: "好的，用户问我的模型……"</text>
+            <rect x="52" y="118" width="356" height="30" rx="8" class="acs" />
+            <text x="64" y="138" class="tm" font-size="10" style="fill: var(--ink)">content: "我的训练数据涵盖多领域……"</text>
+            <!-- 叉掉草稿纸 -->
+            <line x1="52" y1="80" x2="408" y2="110" class="acs" stroke-width="2.5" />
+            <line x1="52" y1="110" x2="408" y2="80" class="acs" stroke-width="2.5" />
+            <!-- 箭头 -->
+            <path d="M230 175 L230 210" class="acs" stroke-width="2.5" />
+            <path d="M222 202 L230 212 L238 202" class="acs" stroke-width="2.5" />
+            <!-- 剥之后 -->
+            <rect x="30" y="220" width="400" height="105" rx="14" class="sw" />
+            <text x="52" y="249" class="ta" font-size="12">剥之后 · 只留正式回答</text>
+            <rect x="52" y="264" width="356" height="30" rx="8" class="acs" />
+            <text x="64" y="284" class="tm" font-size="10" style="fill: var(--ink)">content: "我的训练数据涵盖多领域……"</text>
+            <text x="52" y="315" class="ts" font-size="11">脚本做法：解析时根本不读这个字段，并计数到体检报告</text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">01</div>
+          <h2>剥思维链：草稿纸不能当教材</h2>
+          <span class="whyl">v3 新增工序 · 之一</span>
+          <p class="lead">
+            <span class="mono">reasoning_content</span> 是别人模型回答前的"打草稿"过程。
+            它是写作的副产品，不是回答本身。
+          </p>
+          <p class="detail">
+            如果留着它训练，你的模型会养成坏习惯：<b>把内心独白脱口而出</b>，
+            回答前先背一段"好的，用户问了……"。所以解析时直接不读这个字段——
+            内容不进内存，就等于剥掉了，顺便记数到体检报告。
+          </p>
+          <p class="note">
+            以后想做"带思维链的推理模型"时可以把它捡回来单独训练，这一代的对话模型用不上。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 身份消毒 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg viewBox="0 0 460 360" role="img" aria-label="身份词替换对照">
+            <defs>
+              <marker
+                id="arw2"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto"
+              >
+                <path d="M0 0 L10 5 L0 10 z" class="ac" />
+              </marker>
+            </defs>
+            <!-- 替换表 -->
+            <g font-family="'JetBrains Mono',monospace" font-size="12.5">
+              <rect x="30" y="45" width="180" height="42" rx="10" class="sw" />
+              <text x="120" y="72" class="tt" text-anchor="middle" font-size="13">jingyaogong</text>
+              <rect x="30" y="105" width="180" height="42" rx="10" class="sw" />
+              <text x="120" y="132" class="tt" text-anchor="middle" font-size="13">nbhhd</text>
+              <rect x="30" y="165" width="180" height="42" rx="10" class="sw" />
+              <text x="120" y="192" class="tt" text-anchor="middle" font-size="13">MiniMind</text>
+              <rect x="30" y="225" width="180" height="42" rx="10" class="sw" />
+              <text x="120" y="252" class="tt" text-anchor="middle" font-size="13">minimind</text>
+            </g>
+            <g stroke="#E8432C" stroke-width="2.5" marker-end="url(#arw2)">
+              <line x1="220" y1="66" x2="262" y2="66" />
+              <line x1="220" y1="126" x2="262" y2="126" />
+              <line x1="220" y1="186" x2="262" y2="186" />
+              <line x1="220" y1="246" x2="262" y2="246" />
+            </g>
+            <g font-family="'Noto Serif SC',serif" font-weight="700" font-size="14">
+              <rect x="268" y="45" width="160" height="42" rx="10" fill="#E8432C" />
+              <text x="348" y="72" fill="#fff" text-anchor="middle">小智团队</text>
+              <rect x="268" y="105" width="160" height="42" rx="10" fill="#E8432C" />
+              <text x="348" y="132" fill="#fff" text-anchor="middle">小智团队</text>
+              <rect x="268" y="165" width="160" height="42" rx="10" fill="#E8432C" />
+              <text x="348" y="192" fill="#fff" text-anchor="middle">小智</text>
+              <rect x="268" y="225" width="160" height="42" rx="10" fill="#E8432C" />
+              <text x="348" y="252" fill="#fff" text-anchor="middle">小智</text>
+            </g>
+            <text x="230" y="310" text-anchor="middle" class="ts" font-size="12">
+              署名类 → 你的团队名；模型自称 → 你的模型名
+            </text>
+            <text x="230" y="334" text-anchor="middle" class="ta" font-size="11.5">
+              都在脚本的 IDENTITY_MAP 里，改成你的名字再跑
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">02</div>
+          <h2>身份消毒：把别人的名字换成你的</h2>
+          <span class="whyl">v3 新增工序 · 之二</span>
+          <p class="lead">
+            原料里明晃晃写着"我是由 jingyaogong / nbhhd 开发的"。
+            不处理的话，你的模型做自我介绍时就是在给别人打广告。
+          </p>
+          <p class="detail">
+            做法是最朴素的<b>字符串替换</b>：脚本顶部有一张
+            <span class="mono">IDENTITY_MAP</span> 对照表，
+            左边是原料里的词，右边是你的人设。
+            <b>先把表里的"小智 / 小智团队"改成你自己的名字</b>，再跑脚本。
+            每处替换都会计数，体检报告里能看到命中了多少次。
+          </p>
+          <p class="note">
+            不用追求完美：几百万行里偶尔漏一个生僻写法无伤大雅，
+            高频署名（本样例里命中的这四个）覆盖掉就解决了 99% 的问题。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 去重与质检 ============ -->
+    <section class="stage dark flip" id="p3">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg viewBox="0 0 460 380" role="img" aria-label="三层过滤漏斗">
+            <!-- 漏斗三层 -->
+            <path d="M60 40 L400 40 L330 130 L130 130 Z" class="sw" />
+            <text x="230" y="80" class="tt" text-anchor="middle" font-size="13">① 精确去重</text>
+            <text x="230" y="103" class="ts" text-anchor="middle" font-size="11">
+              整条算 MD5 指纹，一模一样只留一条
+            </text>
+            <path d="M130 140 L330 140 L285 215 L175 215 Z" class="sw" />
+            <text x="230" y="172" class="tt" text-anchor="middle" font-size="13">② 近似去重</text>
+            <text x="230" y="195" class="ts" text-anchor="middle" font-size="10.5">
+              归一化后取前缀，"换皮重复"也算重复
+            </text>
+            <path d="M175 225 L285 225 L262 295 L198 295 Z" class="sw" />
+            <text x="230" y="252" class="tt" text-anchor="middle" font-size="12">③ 质量过滤</text>
+            <text x="230" y="275" class="ts" text-anchor="middle" font-size="10">
+              长度越界 / 黑名单 / 模板泄漏
+            </text>
+            <!-- 滴落的产出 -->
+            <g class="fl">
+              <circle cx="230" cy="325" r="7" class="ac" />
+              <circle cx="210" cy="345" r="5" class="ac" opacity="0.7" />
+              <circle cx="250" cy="350" r="5" class="ac" opacity="0.7" />
+            </g>
+            <text x="290" y="335" class="ta" font-size="11.5">干净教材</text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">03</div>
+          <h2>去重与质检：直接沿用 v2 的老纪律</h2>
+          <span class="whyl">经过一代验证的方法</span>
+          <p class="lead">
+            三层过滤的顺序不能乱：<b>先让数据变"纯"（去重），再让数据变"好"（质检）</b>。
+          </p>
+          <p class="detail">
+            <b>精确去重</b>：整条样本算 MD5，完全相同只留一条；
+            <b>近似去重</b>：把文本归一化（去空白标点）后取前缀当钥匙，
+            "换个逗号就重来"的换皮重复也跑不掉；
+            <b>质量过滤</b>：长度越界、触碰人设黑名单、
+            混入 <span class="mono">&lt;|</span> 模板标记的，整条丢弃。
+            SFT 和预训练两条流水线共用同一套逻辑。
+          </p>
+          <p class="note">
+            SFT 的近似去重以"首个问题"为钥匙——同一个问题换十种回答，只留一种。
+            多轮对话还要求结构合法：必须一问一答交替，缺答或连问的整条丢弃。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04 模板化与切分 ============ -->
+    <section class="stage" id="p4">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg viewBox="0 0 460 380" role="img" aria-label="多轮模板化与九八二切分">
+            <!-- 多轮模板条 -->
+            <text x="30" y="40" class="ta" font-size="12.5">多轮对话 · 首尾相接拼成一条</text>
+            <g font-family="'JetBrains Mono',monospace" font-size="10.5">
+              <rect x="30" y="58" width="128" height="34" rx="9" class="sw" />
+              <text x="94" y="79" text-anchor="middle" class="tm">&lt;|user|&gt;问1</text>
+              <rect x="162" y="58" width="150" height="34" rx="9" class="acs" />
+              <text x="237" y="79" text-anchor="middle" class="ta">&lt;|assistant|&gt;答1&lt;|end|&gt;</text>
+              <rect x="30" y="100" width="128" height="34" rx="9" class="sw" />
+              <text x="94" y="121" text-anchor="middle" class="tm">&lt;|user|&gt;问2</text>
+              <rect x="162" y="100" width="150" height="34" rx="9" class="acs" />
+              <text x="237" y="121" text-anchor="middle" class="ta">&lt;|assistant|&gt;答2&lt;|end|&gt;</text>
+            </g>
+            <text x="330" y="120" class="ts" font-size="11">…第 N 轮同理</text>
+            <!-- 超长丢弃 -->
+            <rect x="30" y="155" width="400" height="42" rx="10" class="st" />
+            <text x="230" y="181" text-anchor="middle" class="ts" font-size="11.5">
+              拼完超过 1800 字符的整条丢弃（装不进 512 token 的窗口）
+            </text>
+            <!-- 切分 -->
+            <text x="30" y="240" class="ta" font-size="12.5">最后一步才切分（铁律）</text>
+            <rect x="30" y="256" width="392" height="44" rx="10" class="sw" />
+            <rect x="30" y="256" width="384" height="44" rx="10" fill="none" stroke="#191611" stroke-width="2" />
+            <rect x="414" y="256" width="16" height="44" fill="#E8432C" />
+            <text x="200" y="283" text-anchor="middle" class="ts" font-size="12">
+              训练集 98%（先洗牌，种子 42 可复现）
+            </text>
+            <text x="442" y="283" text-anchor="middle" class="ta" font-size="10">2%</text>
+            <text x="230" y="335" text-anchor="middle" class="ts" font-size="11.5">
+              切分放在流水线最后：保证验证集里的每一条都没被训练集见过
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">04</div>
+          <h2>模板化与切分：格式统一，顺序不变</h2>
+          <span class="whyl">全项目最重要的常量</span>
+          <p class="lead">
+            SFT 数据套上 v2 的聊天模板：
+            <span class="mono">&lt;|user|&gt;问&lt;|assistant|&gt;答&lt;|end|&gt;</span>，
+            多轮对话就一轮接一轮往后拼。预训练纯文本无需模板，原样输出。
+          </p>
+          <p class="detail">
+            模板是<b>全项目最重要的常量</b>：清洗时怎么拼，训练就怎么读，
+            推理就怎么用，三个地方一字不差。
+            拼完太长的（超过 <span class="mono">MAX_TOTAL_CHARS</span>）整条丢弃，
+            免得训练时塞不进窗口被截断出"半个回答"。
+          </p>
+          <p class="note">
+            切分永远是最后一步：先洗牌（种子 42），再取前 2% 当验证集。
+            顺序反了，验证集就可能泄漏进训练集，监考就失效了。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 05 跑起来 ============ -->
+    <section class="stage dark flip" id="p5">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg viewBox="0 0 460 400" role="img" aria-label="运行方式与体检报告示例">
+            <!-- 命令 -->
+            <rect x="30" y="30" width="400" height="58" rx="12" fill="#0e0c08" stroke="#3b372c" stroke-width="1.5" />
+            <text x="50" y="55" fill="#7a7261" font-size="11" font-family="'JetBrains Mono',monospace">$ conda activate f10</text>
+            <text x="50" y="76" fill="#a8c686" font-size="11" font-family="'JetBrains Mono',monospace">$ python normalize_data.py</text>
+            <!-- 报告 -->
+            <rect x="30" y="110" width="400" height="230" rx="12" fill="#0e0c08" stroke="#3b372c" stroke-width="1.5" />
+            <g font-family="'JetBrains Mono',monospace" font-size="10" fill="#e8e2d2">
+              <text x="48" y="136">======== SFT 对话数据 ========</text>
+              <text x="48" y="158">[read] 原料 8 条（坏行/结构异常 2 条）</text>
+              <text x="48" y="178" fill="#e8432c">[strip] 剥掉思维链 2 段</text>
+              <text x="48" y="198" fill="#e8432c">[sanitize] 身份词替换 3 处</text>
+              <text x="48" y="218">[dedup] 精确去重 -1，近似去重 -0</text>
+              <text x="48" y="238">[filter] 质量过滤 -2 → 剩余 5 条</text>
+              <text x="48" y="258">[split] 训练集 4 条，验证集 1 条</text>
+              <text x="48" y="278">[dist] 轮次分布：{1: 3, 2: 1, 3: 1}</text>
+              <text x="48" y="300">======== 预训练纯文本 ========</text>
+              <text x="48" y="320" fill="#7a7261">……同样的一套报告，再出一遍</text>
+            </g>
+            <text x="230" y="372" text-anchor="middle" class="ts" font-size="11">
+              ↑ 小样试跑的真实输出；跑全量时数字会大得多，格式不变
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">05</div>
+          <h2>跑起来：一条命令，两份报告</h2>
+          <span class="whyl">脚本使用说明</span>
+          <p class="lead">
+            从下一节复制完整脚本，保存为 <span class="mono">normalize_data.py</span>，
+            放在 <span class="mono">dataset/</span> 的上级目录，运行即可。
+            <b>纯标准库，不用装任何包。</b>
+          </p>
+          <p class="detail">
+            <b>跑完看三样东西：</b>①
+            <span class="mono">[strip]</span> 和 <span class="mono">[sanitize]</span>
+            两行不为 0——证明新工序真的命中了；②
+            各环节淘汰比例是否离谱（洗完全剩不到一半，说明原料或阈值有问题）；③
+            <span class="mono">[dist]</span> 轮次分布，看看多轮对话占比。
+          </p>
+          <p class="note">
+            脚本可反复重跑：只读原料、重写输出文件，不累积不污染。
+            改了阈值或身份词表，重跑一次看报告变化即可。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 完整代码 ============ -->
+    <section class="codesec" id="code">
+      <h2 class="reveal">完整可运行脚本 · normalize_data.py</h2>
+      <p class="cap reveal">
+        复制 → 保存到 dataset/ 的上级目录 → conda activate f10 &amp;&amp;
+        python normalize_data.py
+      </p>
+      <div class="codewrap reveal">
+        <button id="copybtn">复制代码</button>
+        <pre id="codeblock">
+<span class="c-cm"># -*- coding: utf-8 -*-</span>
+<span class="c-cm">"""
+normalize_data.py —— 小智三代 · 数据规范化脚本
+作用：把 MiniMind 开源数据集（预训练纯文本 + SFT 多轮对话）规范化成统一教材
+输入：
+  dataset/pretrain_t2t_mini.jsonl  每行 {"text": "..."}（约 120 万行）
+  dataset/sft_t2t_mini.jsonl       每行 {"conversations": [...]}（约 90 万行）
+输出（均写到本脚本所在目录）：
+  pretrain_train.jsonl / pretrain_val.jsonl  {"text": "纯文本"}
+  sft_train.jsonl / sft_val.jsonl            {"text": "&lt;|user|&gt;问&lt;|assistant|&gt;答&lt;|end|&gt;..."}
+用法：python normalize_data.py（纯标准库，无需安装任何依赖）
+"""</span>
+
+<span class="c-kw">import</span> hashlib  <span class="c-cm"># 计算整条样本的指纹，用于精确去重</span>
+<span class="c-kw">import</span> json  <span class="c-cm"># 读写 jsonl 数据行</span>
+<span class="c-kw">import</span> random  <span class="c-cm"># 切分前洗牌，保证训练/验证分布一致</span>
+<span class="c-kw">import</span> re  <span class="c-cm"># 归一化文本（去标点空白），用于近似去重</span>
+<span class="c-kw">from</span> pathlib <span class="c-kw">import</span> Path  <span class="c-cm"># 跨平台路径处理（macOS / Linux 通用）</span>
+
+<span class="c-cm"># ==================== 可调参数区（只改这里） ====================</span>
+DATA_DIR = Path(<span class="c-str">"dataset"</span>)  <span class="c-cm"># 原料目录</span>
+PRETRAIN_IN = DATA_DIR / <span class="c-str">"pretrain_t2t_mini.jsonl"</span>  <span class="c-cm"># 预训练原料</span>
+SFT_IN = DATA_DIR / <span class="c-str">"sft_t2t_mini.jsonl"</span>  <span class="c-cm"># SFT 原料</span>
+
+PRETRAIN_TRAIN = Path(<span class="c-str">"pretrain_train.jsonl"</span>)  <span class="c-cm"># 输出：预训练训练集</span>
+PRETRAIN_VAL = Path(<span class="c-str">"pretrain_val.jsonl"</span>)  <span class="c-cm"># 输出：预训练验证集</span>
+SFT_TRAIN = Path(<span class="c-str">"sft_train.jsonl"</span>)  <span class="c-cm"># 输出：SFT 训练集</span>
+SFT_VAL = Path(<span class="c-str">"sft_val.jsonl"</span>)  <span class="c-cm"># 输出：SFT 验证集</span>
+
+VAL_RATIO = <span class="c-kw">0.02</span>  <span class="c-cm"># 验证集占比（98:2 切分）</span>
+SEED = <span class="c-kw">42</span>  <span class="c-cm"># 洗牌随机种子：固定后每次切分结果一致，便于复现</span>
+
+<span class="c-cm"># ==================== 聊天模板（全项目最重要的常量） ====================</span>
+<span class="c-cm"># 纪律：训练时用什么模板，推理时就要一字不差地用什么模板</span>
+USER_TOKEN = <span class="c-str">"&lt;|user|&gt;"</span>  <span class="c-cm"># 用户发言起始标记</span>
+ASSISTANT_TOKEN = <span class="c-str">"&lt;|assistant|&gt;"</span>  <span class="c-cm"># 助手发言起始标记</span>
+END_TOKEN = <span class="c-str">"&lt;|end|&gt;"</span>  <span class="c-cm"># 一轮对话结束标记</span>
+
+<span class="c-cm"># ==================== 身份消毒词表 ====================</span>
+<span class="c-cm"># MiniMind 数据里残留了它自己的开发者/模型名，必须替换成你自己的人设，</span>
+<span class="c-cm"># 否则模型做自我介绍时会报别人的名字。左边是原料里的词，右边是替换结果。</span>
+MY_MODEL = <span class="c-str">"小智"</span>  <span class="c-cm"># 你的模型名字</span>
+MY_DEVELOPER = <span class="c-str">"小智团队"</span>  <span class="c-cm"># 你的开发者署名</span>
+IDENTITY_MAP = {
+    <span class="c-str">"jingyaogong"</span>: MY_DEVELOPER,  <span class="c-cm"># MiniMind 作者署名</span>
+    <span class="c-str">"nbhhd"</span>: MY_DEVELOPER,  <span class="c-cm"># 数据里出现的另一个署名</span>
+    <span class="c-str">"MiniMind"</span>: MY_MODEL,  <span class="c-cm"># 模型自称（大写）</span>
+    <span class="c-str">"minimind"</span>: MY_MODEL,  <span class="c-cm"># 模型自称（小写）</span>
+}
+
+<span class="c-cm"># ==================== 质量过滤规则 ====================</span>
+MIN_Q_LEN, MAX_Q_LEN = <span class="c-kw">2</span>, <span class="c-kw">300</span>  <span class="c-cm"># 单轮用户发言长度边界（字符数）</span>
+MIN_A_LEN, MAX_A_LEN = <span class="c-kw">2</span>, <span class="c-kw">1000</span>  <span class="c-cm"># 单轮助手回答长度边界</span>
+MAX_TOTAL_CHARS = <span class="c-kw">1800</span>  <span class="c-cm"># 模板化后整条文本上限（防止超出 max_seq_len=512 个 token）</span>
+MIN_PT_LEN, MAX_PT_LEN = <span class="c-kw">10</span>, <span class="c-kw">2000</span>  <span class="c-cm"># 预训练文本长度边界</span>
+BAN_WORDS = [  <span class="c-cm"># 人设漏出黑名单：出现即整条丢弃</span>
+    <span class="c-str">"作为AI"</span>,
+    <span class="c-str">"作为一个人工智能"</span>,
+    <span class="c-str">"作为语言模型"</span>,
+    <span class="c-str">"作为聊天机器人"</span>,
+]
+
+
+<span class="c-cm"># ==================== 工具函数 ====================</span>
+<span class="c-kw">def</span> norm_text(text):
+    <span class="c-cm">"""归一化：去掉所有空白和常见标点，用于识别"换皮重复"
+
+    参数：
+        text: 原始字符串
+    返回：
+        去掉空白与标点后的字符串
+    """</span>
+    <span class="c-kw">return</span> re.sub(<span class="c-str">r"[\s，。！？、：；,.!?:;~…·—'\"\"''（）()【】「」《》&lt;&gt;-]"</span>, <span class="c-str">""</span>, text)
+
+
+<span class="c-kw">def</span> sanitize(text, counter):
+    <span class="c-cm">"""身份消毒：把原料里的别人名字替换成自己的人设
+
+    参数：
+        text: 原始字符串
+        counter: dict，累计每个词被替换的次数（用于体检报告）
+    返回：
+        消毒后的字符串
+    """</span>
+    <span class="c-kw">for</span> old, new <span class="c-kw">in</span> IDENTITY_MAP.items():
+        <span class="c-kw">if</span> old <span class="c-kw">in</span> text:
+            counter[old] = counter.get(old, <span class="c-kw">0</span>) + text.count(old)  <span class="c-cm"># 记录命中次数</span>
+            text = text.replace(old, new)
+    <span class="c-kw">return</span> text
+
+
+<span class="c-cm"># ==================== 六个类，一个类只做一件事 ====================</span>
+<span class="c-kw">class</span> SftLoader:
+    <span class="c-cm">"""职责：把 SFT 原料解析成统一的多轮对话列表，同时剥掉思维链"""</span>
+
+    <span class="c-kw">def</span> __init__(self, path):
+        <span class="c-cm">"""path：SFT 原料文件路径（Path 对象）"""</span>
+        self.path = path
+        self.reasoning_dropped = <span class="c-kw">0</span>  <span class="c-cm"># 统计被剥掉的思维链条数</span>
+
+    <span class="c-kw">def</span> load(self):
+        <span class="c-cm">"""读取全部行；返回 (对话列表, 坏行数)
+
+        每条对话统一为 [(问题1, 回答1), (问题2, 回答2), ...] 的轮次列表。
+        解析时完成两件事：
+        ① 剥思维链——assistant 消息里的 reasoning_content 字段直接不读；
+        ② 结构校验——必须 user 问、assistant 答交替出现，异常即丢弃。
+        """</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> self.path.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到原料文件：{self.path}"</span>)
+        dialogs, bad = [], <span class="c-kw">0</span>
+        <span class="c-kw">with</span> self.path.open(encoding=<span class="c-str">"utf-8"</span>) <span class="c-kw">as</span> f:
+            <span class="c-kw">for</span> line <span class="c-kw">in</span> f:
+                <span class="c-kw">try</span>:
+                    msgs = json.loads(line)[<span class="c-str">"conversations"</span>]
+                    turns = self._parse(msgs)
+                    <span class="c-kw">if</span> turns:
+                        dialogs.append(turns)
+                    <span class="c-kw">else</span>:
+                        bad += <span class="c-kw">1</span>  <span class="c-cm"># 结构异常的对话按坏行处理</span>
+                <span class="c-kw">except</span> (json.JSONDecodeError, KeyError, TypeError):
+                    bad += <span class="c-kw">1</span>
+        <span class="c-kw">return</span> dialogs, bad
+
+    <span class="c-kw">def</span> _parse(self, msgs):
+        <span class="c-cm">"""把 conversations 数组解析成轮次列表；结构异常返回 None
+
+        参数：
+            msgs: 原始 conversations 数组（list of dict）
+        返回：
+            [(问, 答), ...] 或 None
+        """</span>
+        turns, cur_q = [], <span class="c-kw">None</span>
+        <span class="c-kw">for</span> m <span class="c-kw">in</span> msgs:
+            role = m.get(<span class="c-str">"role"</span>)
+            <span class="c-kw">if</span> role == <span class="c-str">"assistant"</span> <span class="c-kw">and</span> m.get(<span class="c-str">"reasoning_content"</span>):
+                self.reasoning_dropped += <span class="c-kw">1</span>  <span class="c-cm"># 思维链命中计数（内容不读即等于剥掉）</span>
+            content = (m.get(<span class="c-str">"content"</span>) <span class="c-kw">or</span> <span class="c-str">""</span>).strip()
+            <span class="c-kw">if</span> <span class="c-kw">not</span> content:
+                <span class="c-kw">continue</span>  <span class="c-cm"># 空发言无意义，跳过</span>
+            <span class="c-kw">if</span> role == <span class="c-str">"user"</span>:
+                <span class="c-kw">if</span> cur_q <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">None</span>:
+                    <span class="c-kw">return</span> <span class="c-kw">None</span>  <span class="c-cm"># 连续两个 user，结构异常</span>
+                cur_q = content
+            <span class="c-kw">elif</span> role == <span class="c-str">"assistant"</span>:
+                <span class="c-kw">if</span> cur_q <span class="c-kw">is</span> <span class="c-kw">None</span>:
+                    <span class="c-kw">return</span> <span class="c-kw">None</span>  <span class="c-cm"># 没有提问就回答，结构异常</span>
+                turns.append((cur_q, content))
+                cur_q = <span class="c-kw">None</span>
+            <span class="c-cm"># 其他 role（如 system）不参与训练，直接跳过</span>
+        <span class="c-cm"># 末尾未配对的问题（cur_q 残留）随返回值一起丢弃</span>
+        <span class="c-kw">return</span> turns <span class="c-kw">or</span> <span class="c-kw">None</span>
+
+
+<span class="c-kw">class</span> PretrainLoader:
+    <span class="c-cm">"""职责：把预训练原料解析成纯文本列表"""</span>
+
+    <span class="c-kw">def</span> __init__(self, path):
+        <span class="c-cm">"""path：预训练原料文件路径（Path 对象）"""</span>
+        self.path = path
+
+    <span class="c-kw">def</span> load(self):
+        <span class="c-cm">"""读取全部行；返回 (文本列表, 坏行数)"""</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> self.path.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到原料文件：{self.path}"</span>)
+        texts, bad = [], <span class="c-kw">0</span>
+        <span class="c-kw">with</span> self.path.open(encoding=<span class="c-str">"utf-8"</span>) <span class="c-kw">as</span> f:
+            <span class="c-kw">for</span> line <span class="c-kw">in</span> f:
+                <span class="c-kw">try</span>:
+                    text = json.loads(line)[<span class="c-str">"text"</span>].strip()
+                    <span class="c-kw">if</span> text:
+                        texts.append(text)
+                    <span class="c-kw">else</span>:
+                        bad += <span class="c-kw">1</span>  <span class="c-cm"># 空文本按坏行处理</span>
+                <span class="c-kw">except</span> (json.JSONDecodeError, KeyError, AttributeError):
+                    bad += <span class="c-kw">1</span>
+        <span class="c-kw">return</span> texts, bad
+
+
+<span class="c-kw">class</span> DedupFilter:
+    <span class="c-cm">"""职责：通用清洗——精确去重 → 近似去重（对两种数据复用同一套纪律）"""</span>
+
+    <span class="c-kw">def</span> dedup(self, fp_of, key_of, items):
+        <span class="c-cm">"""依次执行两步去重
+
+        参数：
+            fp_of: 函数，从一条样本算出精确指纹字符串
+            key_of: 函数，从一条样本算出近似去重键
+            items: 样本列表
+        返回：
+            (存活列表, 统计 dict)
+        """</span>
+        report = {<span class="c-str">"exact_dup"</span>: <span class="c-kw">0</span>, <span class="c-str">"near_dup"</span>: <span class="c-kw">0</span>}
+
+        <span class="c-cm"># ① 精确去重：整条样本算 MD5 指纹，完全相同只留一条</span>
+        seen_hash, step1 = set(), []
+        <span class="c-kw">for</span> it <span class="c-kw">in</span> items:
+            fp = hashlib.md5(fp_of(it).encode(<span class="c-str">"utf-8"</span>)).hexdigest()
+            <span class="c-kw">if</span> fp <span class="c-kw">in</span> seen_hash:
+                report[<span class="c-str">"exact_dup"</span>] += <span class="c-kw">1</span>
+                <span class="c-kw">continue</span>
+            seen_hash.add(fp)
+            step1.append(it)
+
+        <span class="c-cm"># ② 近似去重：归一化后取前缀作键，相同视为换皮重复</span>
+        seen_near, kept = set(), []
+        <span class="c-kw">for</span> it <span class="c-kw">in</span> step1:
+            key = key_of(it)
+            <span class="c-kw">if</span> key <span class="c-kw">in</span> seen_near:
+                report[<span class="c-str">"near_dup"</span>] += <span class="c-kw">1</span>
+                <span class="c-kw">continue</span>
+            seen_near.add(key)
+            kept.append(it)
+        <span class="c-kw">return</span> kept, report
+
+
+<span class="c-kw">class</span> SftQualityGate:
+    <span class="c-cm">"""职责：SFT 质检——长度越界 / 人设漏出 / 模板标记泄漏 → 整条丢弃"""</span>
+
+    <span class="c-kw">def</span> check(self, turns):
+        <span class="c-cm">"""返回 True 表示合格
+
+        参数：
+            turns: [(问, 答), ...] 轮次列表
+        """</span>
+        <span class="c-kw">for</span> q, a <span class="c-kw">in</span> turns:
+            <span class="c-kw">if</span> <span class="c-kw">not</span> (MIN_Q_LEN &lt;= len(q) &lt;= MAX_Q_LEN):
+                <span class="c-kw">return</span> <span class="c-kw">False</span>
+            <span class="c-kw">if</span> <span class="c-kw">not</span> (MIN_A_LEN &lt;= len(a) &lt;= MAX_A_LEN):
+                <span class="c-kw">return</span> <span class="c-kw">False</span>
+            <span class="c-kw">if</span> any(w <span class="c-kw">in</span> q + a <span class="c-kw">for</span> w <span class="c-kw">in</span> BAN_WORDS):
+                <span class="c-kw">return</span> <span class="c-kw">False</span>
+            <span class="c-kw">if</span> <span class="c-str">"&lt;|"</span> <span class="c-kw">in</span> q + a:  <span class="c-cm"># 原料里不该出现模板标记，出现即泄漏</span>
+                <span class="c-kw">return</span> <span class="c-kw">False</span>
+        <span class="c-kw">return</span> <span class="c-kw">True</span>
+
+
+<span class="c-kw">class</span> ChatTemplater:
+    <span class="c-cm">"""职责：把多轮对话序列化成带特殊标记的训练文本"""</span>
+
+    <span class="c-kw">def</span> render(self, turns):
+        <span class="c-cm">"""序列化格式：&lt;|user|&gt;问&lt;|assistant|&gt;答&lt;|end|&gt;（多轮首尾相接）
+
+        参数：
+            turns: [(问, 答), ...] 轮次列表
+        返回：
+            拼接好的模板文本
+        """</span>
+        <span class="c-kw">return</span> <span class="c-str">""</span>.join(
+            <span class="c-str">f"{USER_TOKEN}{q}{ASSISTANT_TOKEN}{a}{END_TOKEN}"</span> <span class="c-kw">for</span> q, a <span class="c-kw">in</span> turns
+        )
+
+
+<span class="c-kw">class</span> DataSplitter:
+    <span class="c-cm">"""职责：洗牌后按 98:2 切成训练/验证集并写盘"""</span>
+
+    <span class="c-kw">def</span> split_and_write(self, rows, train_path, val_path):
+        <span class="c-cm">"""切分永远是流水线最后一步，保证验证集与训练集零重叠
+
+        参数：
+            rows: 模板化后的数据行列表
+            train_path / val_path: 输出文件路径
+        返回：
+            (训练集条数, 验证集条数)
+        """</span>
+        random.Random(SEED).shuffle(rows)  <span class="c-cm"># 固定种子洗牌，结果可复现</span>
+        n_val = max(<span class="c-kw">1</span>, int(len(rows) * VAL_RATIO))  <span class="c-cm"># 至少留 1 条验证</span>
+        self._write(val_path, rows[:n_val])
+        self._write(train_path, rows[n_val:])
+        <span class="c-kw">return</span> len(rows) - n_val, n_val
+
+    <span class="c-kw">@staticmethod</span>
+    <span class="c-kw">def</span> _write(path, rows):
+        <span class="c-cm">"""按行写入 jsonl（每行一条 JSON，UTF-8 中文不转义）"""</span>
+        <span class="c-kw">with</span> path.open(<span class="c-str">"w"</span>, encoding=<span class="c-str">"utf-8"</span>) <span class="c-kw">as</span> f:
+            <span class="c-kw">for</span> r <span class="c-kw">in</span> rows:
+                f.write(json.dumps(r, ensure_ascii=<span class="c-kw">False</span>) + <span class="c-str">"\n"</span>)
+
+
+<span class="c-kw">class</span> NormalizePipeline:
+    <span class="c-cm">"""职责：编排两条流水线（SFT 一条、预训练一条），并打印体检报告"""</span>
+
+    <span class="c-kw">def</span> run(self):
+        <span class="c-cm">"""先规范化 SFT，再规范化预训练；各自独立产出 train/val"""</span>
+        self._run_sft()
+        self._run_pretrain()
+        print(<span class="c-str">"[done] 数据规范化完成！下一站：重训 BPE 分词器"</span>)
+
+    <span class="c-cm"># ---------- SFT 流水线：读 → 消毒 → 去重 → 质检 → 模板化 → 切分 ----------</span>
+    <span class="c-kw">def</span> _run_sft(self):
+        print(<span class="c-str">"="</span> * <span class="c-kw">20</span>, <span class="c-str">"SFT 对话数据"</span>, <span class="c-str">"="</span> * <span class="c-kw">20</span>)
+
+        <span class="c-cm"># ① 读原料（解析时已剥掉思维链）</span>
+        loader = SftLoader(SFT_IN)
+        dialogs, bad = loader.load()
+        print(<span class="c-str">f"[read] 原料 {len(dialogs)} 条（坏行/结构异常 {bad} 条）"</span>)
+        print(<span class="c-str">f"[strip] 剥掉思维链 {loader.reasoning_dropped} 段（reasoning_content）"</span>)
+
+        <span class="c-cm"># ② 身份消毒：把别人的名字换成自己的人设</span>
+        hits = {}
+        dialogs = [
+            [(sanitize(q, hits), sanitize(a, hits)) <span class="c-kw">for</span> q, a <span class="c-kw">in</span> turns]
+            <span class="c-kw">for</span> turns <span class="c-kw">in</span> dialogs
+        ]
+        print(<span class="c-str">f"[sanitize] 身份词替换 {sum(hits.values())} 处：{hits}"</span>)
+
+        <span class="c-cm"># ③ 去重：精确（整条对话）→ 近似（首个问题归一化前 15 字）</span>
+        dialogs, rep = DedupFilter().dedup(
+            fp_of=<span class="c-kw">lambda</span> t: <span class="c-str">""</span>.join(q + a <span class="c-kw">for</span> q, a <span class="c-kw">in</span> t),
+            key_of=<span class="c-kw">lambda</span> t: norm_text(t[<span class="c-kw">0</span>][<span class="c-kw">0</span>])[:<span class="c-kw">15</span>],
+            items=dialogs,
+        )
+        print(<span class="c-str">f"[dedup] 精确去重 -{rep['exact_dup']}，近似去重 -{rep['near_dup']}"</span>)
+
+        <span class="c-cm"># ④ 质检 + ⑤ 模板化（超长整条文本一并丢弃）</span>
+        gate, templater = SftQualityGate(), ChatTemplater()
+        rows, dropped = [], <span class="c-kw">0</span>
+        <span class="c-kw">for</span> turns <span class="c-kw">in</span> dialogs:
+            <span class="c-kw">if</span> <span class="c-kw">not</span> gate.check(turns):
+                dropped += <span class="c-kw">1</span>
+                <span class="c-kw">continue</span>
+            text = templater.render(turns)
+            <span class="c-kw">if</span> len(text) &gt; MAX_TOTAL_CHARS:
+                dropped += <span class="c-kw">1</span>
+                <span class="c-kw">continue</span>
+            turns_n = len(turns)
+            rows.append({<span class="c-str">"text"</span>: text, <span class="c-str">"turns"</span>: turns_n})
+        print(<span class="c-str">f"[filter] 质量过滤 -{dropped} → 剩余 {len(rows)} 条"</span>)
+
+        <span class="c-cm"># ⑥ 切分（流水线最后一步，防验证集泄漏）</span>
+        n_tr, n_va = DataSplitter().split_and_write(rows, SFT_TRAIN, SFT_VAL)
+        print(<span class="c-str">f"[split] 训练集 {n_tr} 条 → {SFT_TRAIN}，验证集 {n_va} 条 → {SFT_VAL}"</span>)
+
+        <span class="c-cm"># ---- 轮次分布体检：看看多轮对话占多少 ----</span>
+        dist = {}
+        <span class="c-kw">for</span> r <span class="c-kw">in</span> rows:
+            dist[r[<span class="c-str">"turns"</span>]] = dist.get(r[<span class="c-str">"turns"</span>], <span class="c-kw">0</span>) + <span class="c-kw">1</span>
+        print(<span class="c-str">f"[dist] 轮次分布（轮数: 条数）：{dict(sorted(dist.items()))}"</span>)
+
+    <span class="c-cm"># ---------- 预训练流水线：读 → 消毒 → 去重 → 质检 → 切分 ----------</span>
+    <span class="c-kw">def</span> _run_pretrain(self):
+        print(<span class="c-str">"="</span> * <span class="c-kw">20</span>, <span class="c-str">"预训练纯文本"</span>, <span class="c-str">"="</span> * <span class="c-kw">20</span>)
+
+        <span class="c-cm"># ① 读原料</span>
+        texts, bad = PretrainLoader(PRETRAIN_IN).load()
+        print(<span class="c-str">f"[read] 原料 {len(texts)} 条（坏行 {bad} 条）"</span>)
+
+        <span class="c-cm"># ② 身份消毒</span>
+        hits = {}
+        texts = [sanitize(t, hits) <span class="c-kw">for</span> t <span class="c-kw">in</span> texts]
+        print(<span class="c-str">f"[sanitize] 身份词替换 {sum(hits.values())} 处：{hits}"</span>)
+
+        <span class="c-cm"># ③ 去重：精确（全文）→ 近似（归一化前 20 字）</span>
+        texts, rep = DedupFilter().dedup(
+            fp_of=<span class="c-kw">lambda</span> t: t,
+            key_of=<span class="c-kw">lambda</span> t: norm_text(t)[:<span class="c-kw">20</span>],
+            items=texts,
+        )
+        print(<span class="c-str">f"[dedup] 精确去重 -{rep['exact_dup']}，近似去重 -{rep['near_dup']}"</span>)
+
+        <span class="c-cm"># ④ 质检：长度越界 / 黑名单 / 模板泄漏 → 丢弃</span>
+        kept = [
+            t
+            <span class="c-kw">for</span> t <span class="c-kw">in</span> texts
+            <span class="c-kw">if</span> MIN_PT_LEN &lt;= len(t) &lt;= MAX_PT_LEN
+            <span class="c-kw">and</span> <span class="c-kw">not</span> any(w <span class="c-kw">in</span> t <span class="c-kw">for</span> w <span class="c-kw">in</span> BAN_WORDS)
+            <span class="c-kw">and</span> <span class="c-str">"&lt;|"</span> <span class="c-kw">not</span> <span class="c-kw">in</span> t
+        ]
+        print(<span class="c-str">f"[filter] 质量过滤 -{len(texts) - len(kept)} → 剩余 {len(kept)} 条"</span>)
+
+        <span class="c-cm"># ⑤ 切分（预训练无需模板化，直接包 {"text": ...}）</span>
+        rows = [{<span class="c-str">"text"</span>: t} <span class="c-kw">for</span> t <span class="c-kw">in</span> kept]
+        n_tr, n_va = DataSplitter().split_and_write(rows, PRETRAIN_TRAIN, PRETRAIN_VAL)
+        print(
+            <span class="c-str">f"[split] 训练集 {n_tr} 条 → {PRETRAIN_TRAIN}，"</span>
+            <span class="c-str">f"验证集 {n_va} 条 → {PRETRAIN_VAL}"</span>
+        )
+
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    NormalizePipeline().run()
+        </pre>
+      </div>
+    </section>
+
+    <!-- ============ 验收清单 ============ -->
+    <section class="tsec" id="check">
+      <h2 class="reveal">验收清单</h2>
+      <p class="cap reveal">对照报告的每一行，确认每一站都真的干了活</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th style="width: 22%">报告行</th>
+            <th style="width: 40%">它在说什么</th>
+            <th style="width: 38%">怎样算通过</th>
+          </tr>
+          <tr>
+            <td class="mono">[read]</td>
+            <td>原料读进来多少条，坏了多少条</td>
+            <td>数量级对得上（几十万级）；坏行占比 &lt; 1%</td>
+          </tr>
+          <tr class="hl">
+            <td class="mono">[strip]</td>
+            <td>剥掉了多少段思维链</td>
+            <td><b>不为 0</b>（为 0 说明没读到字段，检查原料版本）</td>
+          </tr>
+          <tr class="hl">
+            <td class="mono">[sanitize]</td>
+            <td>身份词替换了几处，命中了哪些词</td>
+            <td><b>不为 0</b>，且命中的词都在词表里</td>
+          </tr>
+          <tr>
+            <td class="mono">[dedup]</td>
+            <td>精确 / 近似各去掉多少重复</td>
+            <td>有淘汰但不伤筋动骨（总量剩余过半）</td>
+          </tr>
+          <tr>
+            <td class="mono">[filter]</td>
+            <td>质量过滤淘汰多少</td>
+            <td>淘汰比例异常高时，回头调阈值而不是硬跑</td>
+          </tr>
+          <tr>
+            <td class="mono">[split]</td>
+            <td>训练 / 验证各多少条，写到了哪里</td>
+            <td>比例约 98:2，四个输出文件都生成</td>
+          </tr>
+          <tr>
+            <td class="mono">[dist]</td>
+            <td>SFT 的轮次分布</td>
+            <td>能看到多轮（2 轮以上）占一定比例</td>
+          </tr>
+        </table>
+      </div>
+
+      <h2 class="reveal" style="margin-top: 4.5rem">输入输出一表清</h2>
+      <p class="cap reveal">两个文件进来，四个文件出去</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th style="width: 12%">方向</th>
+            <th style="width: 40%">文件</th>
+            <th style="width: 48%">内容</th>
+          </tr>
+          <tr>
+            <td rowspan="2"><b>输入</b></td>
+            <td class="mono">dataset/pretrain_t2t_mini.jsonl</td>
+            <td class="mono">{"text": "..."} 纯文本，约 120 万行</td>
+          </tr>
+          <tr>
+            <td class="mono">dataset/sft_t2t_mini.jsonl</td>
+            <td class="mono">{"conversations": [...]} 多轮对话，约 90 万行</td>
+          </tr>
+          <tr class="hl">
+            <td rowspan="4"><b>输出</b></td>
+            <td class="mono">pretrain_train.jsonl</td>
+            <td>预训练训练集（第一阶段"读书"用）</td>
+          </tr>
+          <tr class="hl">
+            <td class="mono">pretrain_val.jsonl</td>
+            <td>预训练验证集（预训练阶段的监考）</td>
+          </tr>
+          <tr class="hl">
+            <td class="mono">sft_train.jsonl</td>
+            <td>SFT 训练集（第二阶段"刷题"用，已套模板）</td>
+          </tr>
+          <tr class="hl">
+            <td class="mono">sft_val.jsonl</td>
+            <td>SFT 验证集（SFT 阶段的监考）</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">规范化做扎实，后面站站都轻松</h2>
+        <p class="fin-sum reveal">
+          数据规范化是 v3 最不起眼、却最决定成败的一站：
+          思维链剥干净了，模型就不会自言自语；
+          身份消过毒了，自我介绍才不会为别人做嫁衣；
+          格式统一了，分词器、训练、评估全都能沿用 v2 的老代码。
+          这一站过了，下一站去重训 BPE 分词器。
+        </p>
+        <footer class="reveal">
+          <span>小智三代 · 数据规范化实操手册</span>
+          <span>剥思维链 × 身份消毒 × 统一模板 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "p4", "p5", "code", "check"].forEach((id) =>
+        io2.observe(document.getElementById(id)),
+      );
+
+      /* ========== 一键复制代码（取 innerText，自动去掉高亮标签） ========== */
+      document.getElementById("copybtn").addEventListener("click", async (e) => {
+        const btn = e.target;
+        const text = document.getElementById("codeblock").innerText;
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = "已复制 ✓";
+        } catch {
+          btn.textContent = "复制失败，请手动全选";
+        }
+        setTimeout(() => (btn.textContent = "复制代码"), 1800);
+      });
+    </script>
+  </body>
+</html>
