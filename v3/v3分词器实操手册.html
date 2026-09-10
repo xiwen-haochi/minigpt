@@ -611,9 +611,9 @@
           text-anchor="middle"
         >
           <rect x="40" y="62" width="178" height="56" rx="12" fill="#E8432C" />
-          <text x="129" y="86" fill="#fff">流式供料</text>
+          <text x="129" y="86" fill="#fff">流式+抽样供料</text>
           <text x="129" y="104" fill="#fff" font-size="10.5">
-            逐行读 · 内存恒定
+            最多喂 40 万行
           </text>
           <rect
             x="266"
@@ -987,47 +987,53 @@
             <text x="352" y="90" class="tm" font-size="10">yield 一行</text>
             <text x="352" y="108" class="tm" font-size="10">练一行</text>
             <!-- 改造二 -->
-            <text x="30" y="262" class="ta" font-size="12.5">
-              改造② min_frequency=2：一次性噪声片段不许进词表
+            <text x="30" y="246" class="ta" font-size="12.5">
+              改造② 抽样训练：最多喂 40 万行，词频表内存封顶（核心）
             </text>
             <!-- 改造三 -->
-            <text x="30" y="296" class="ta" font-size="12.5">
-              改造③ 抽样体检：验证集几万条，抽 2000 条估压缩率
+            <text x="30" y="276" class="ta" font-size="12.5">
+              改造③ min_frequency=2：一次性噪声片段不许进词表
             </text>
-            <rect x="30" y="310" width="400" height="42" rx="10" class="st" />
+            <!-- 改造四 -->
+            <text x="30" y="306" class="ta" font-size="12.5">
+              改造④ 抽样体检：验证集几万条，抽 2000 条估压缩率
+            </text>
+            <rect x="30" y="320" width="400" height="42" rx="10" class="st" />
             <text
               x="230"
-              y="336"
+              y="346"
               class="ts"
               text-anchor="middle"
               font-size="11.5"
             >
-              验证集在规范化时已洗过牌，前 2000 条就是随机样本
+              训练集在规范化时已洗过牌，取前 N 行就是随机样本
             </text>
           </svg>
         </figure>
         <div class="reveal">
           <div class="num">02</div>
           <h2>百万行适配：v2 的做法不能照搬</h2>
-          <span class="whyl">这一代的三处关键改造</span>
+          <span class="whyl">这一代的四处关键改造</span>
           <p class="lead">
-            v2 的脚本是为几万条数据写的，直接搬到 210 万行上，
-            会在内存和词表质量两个地方翻车。
+            v2 的脚本是为几万条数据写的，直接搬到 217 万行（2.8GB）上，
+            会在内存上翻车——而且翻车点不在 Python，在训练器内部。
           </p>
           <p class="detail">
-            <b>① 流式供料</b>：v2 把全部文本一次读进列表，210 万行就是几个 GB
-            常驻内存；v3 改成生成器逐行喂给
-            <span class="mono">train_from_iterator</span
-            >，内存占用与语料规模脱钩。 <br /><b>② 噪声过滤</b>：<span
-              class="mono"
-              >min_frequency=2</span
-            >，
-            只出现一次的片段（乱码、偶然拼凑）不得入表，词表名额留给真高频词。
-            <br /><b>③ 抽样体检</b>：压缩率用 2000
-            条抽样估算，不必编码全部验证集。
+            <b>① 流式供料</b>：生成器逐行喂给
+            <span class="mono">train_from_iterator</span>，Python 侧内存恒定。
+            但这只解决一半：<b>Rust 训练器内部要建一张"片段→次数"的词频表</b>，
+            语料全量喂入时它会膨胀到十几 GB，32G 内存的机器直接卡死。 <br /><b
+              >② 抽样训练（核心）</b
+            >：BPE 的词频统计在几十万行时早已收敛， 喂 40 万行和 217
+            万行训出的词表几乎一样。
+            <span class="mono">TRAIN_SAMPLE = 400_000</span> 封顶喂入行数，
+            词频表随之锁死在几 GB 内——内存紧张就调小，词表质量几乎无损。
+            <br /><b>③ 噪声过滤</b>：<span class="mono">min_frequency=2</span>，
+            一次性片段不得入表。<b>④ 抽样体检</b>：2000 条估压缩率。
           </p>
           <p class="note">
-            训练集/验证集的界限不变：分词器只用 train 系列文件练， val
+            分词器训练是<b>纯 CPU 活，不吃显存</b>——16G 显存这一站用不上，
+            要守护的只有内存。另外训练集/验证集界限不变：只用 train 系列练， val
             系列只在体检时露脸。
           </p>
         </div>
@@ -1240,33 +1246,36 @@
               fill="#e8e2d2"
             >
               <text x="48" y="136">
-                [read] 训练语料流式读取中；体检样本 2000 条
+                [read] 体检样本 2000 条；训练语料流式读取中
               </text>
-              <text x="48" y="158">
+              <text x="48" y="156">
+                [train] 实际喂入 400000 行（抽样上限 400000）
+              </text>
+              <text x="48" y="176">
                 [train] 分词器已保存 → tokenizer/tokenizer.json
               </text>
-              <text x="48" y="178">
+              <text x="48" y="196">
                 [check] 实际词表大小：16384（目标 16384）
               </text>
-              <text x="48" y="198">
+              <text x="48" y="216">
                 [check] 压缩率：0.55 token/字（健康区间 0.3~0.9）
               </text>
-              <text x="48" y="218">
+              <text x="48" y="236">
                 [check] 特殊标记 &lt;|user|&gt; → id [0]
               </text>
-              <text x="48" y="238">
+              <text x="48" y="256">
                 [check] 特殊标记 &lt;|assistant|&gt; → id [1]
               </text>
-              <text x="48" y="258">
+              <text x="48" y="276">
                 [check] 特殊标记 &lt;|end|&gt; → id [2]
               </text>
-              <text x="48" y="278" fill="#a8c686">
+              <text x="48" y="296" fill="#a8c686">
                 [check] 特殊标记独占一格：✓
               </text>
-              <text x="48" y="298" fill="#a8c686">
+              <text x="48" y="314" fill="#a8c686">
                 [check] 编解码往返一致：✓
               </text>
-              <text x="48" y="322" fill="#a8c686">
+              <text x="48" y="336" fill="#a8c686">
                 [done] 体检全部通过！可交付训练阶段使用
               </text>
             </g>
@@ -1300,6 +1309,7 @@
           <p class="note">
             小样试跑时压缩率偏高属正常（语料太少，合并还没学够），
             这正是体检存在的意义：用全量语料跑出来的报告才算数。
+            内存吃紧就把 <span class="mono">TRAIN_SAMPLE</span> 调小（如 200_000）再跑。
           </p>
         </div>
       </div>
@@ -1322,10 +1332,12 @@ train_tokenizer.py —— 小智三代 · BPE 分词器训练脚本
 用法：pip install tokenizers &amp;&amp; python train_tokenizer.py
 依赖：仅需第三方库 tokenizers（HuggingFace 出品，Rust 内核，支持流式训练）
 
-与 v2 版的三处关键差异（都是为百万行语料准备的）：
-  ① 流式供料——逐行生成文本，内存占用与语料规模无关（v2 是全量读进内存）
-  ② min_frequency=2——只合并出现过 2 次以上的片段，抑制大语料里的噪声合并
-  ③ 抽样体检——验证集最多取 2000 条算压缩率，不必编码全部几万条
+与 v2 版的关键差异（都是为百万行语料准备的）：
+  ① 流式供料——逐行生成文本，Python 侧内存占用与语料规模无关（v2 是全量读进内存）
+  ② 抽样训练——BPE 的词频统计在几十万行时早已收敛，喂 40 万行和 217 万行训出的
+     词表几乎一样；而训练器内部的词频表是内存大头，限制喂入行数就锁死了内存上限
+  ③ min_frequency=2——只合并出现过 2 次以上的片段，抑制大语料里的噪声合并
+  ④ 抽样体检——验证集最多取 2000 条算压缩率，不必编码全部几万条
 """</span>
 
 <span class="c-kw">import</span> json  <span class="c-cm"># 读取 jsonl 教材</span>
@@ -1339,6 +1351,11 @@ TRAIN_FILES = [Path(<span class="c-str">"pretrain_train.jsonl"</span>), Path(<sp
 VAL_FILES = [Path(<span class="c-str">"pretrain_val.jsonl"</span>), Path(<span class="c-str">"sft_val.jsonl"</span>)]  <span class="c-cm"># 体检考场</span>
 OUT_DIR = Path(<span class="c-str">"tokenizer"</span>)  <span class="c-cm"># 输出目录：tokenizer.json 存在这里</span>
 VOCAB_SIZE = <span class="c-kw">16384</span>  <span class="c-cm"># 词表大小：v3 语料比 v2 大两个量级，词表跟着翻倍（v2 是 8192）</span>
+
+<span class="c-cm"># 抽样训练上限：train 文件在规范化时已洗过牌，取前 N 行即随机样本。</span>
+<span class="c-cm"># 40 万行约 500MB 文本，词频统计早已收敛；内存占用因此封顶在几 GB 内。</span>
+<span class="c-cm"># 机器内存紧张就调小（如 200_000），宽裕想更精确就调大，词表质量差异极小。</span>
+TRAIN_SAMPLE = <span class="c-kw">400_000</span>
 MIN_FREQUENCY = <span class="c-kw">2</span>  <span class="c-cm"># 至少出现 2 次的片段才允许入词表，过滤一次性噪声</span>
 CHECK_SAMPLE = <span class="c-kw">2000</span>  <span class="c-cm"># 体检抽样条数：验证集有几万条，抽 2000 条估压缩率足够准</span>
 
@@ -1355,18 +1372,26 @@ GOOD_RATIO_MIN, GOOD_RATIO_MAX = <span class="c-kw">0.3</span>, <span class="c-k
     <span class="c-cm">"""职责：只负责供料——逐行流式读取 text 字段，内存占用与语料规模无关"""</span>
 
     <span class="c-kw">def</span> __init__(self, paths):
+        self.fed = <span class="c-kw">0</span>  <span class="c-cm"># 实际喂出的行数，供报告使用</span>
         <span class="c-cm">"""paths：教材文件路径列表（Path 对象列表）"""</span>
-        <span class="c-kw">for</span> p <span class="c-kw">in</span> paths:
-            <span class="c-kw">if</span> <span class="c-kw">not</span> p.exists():
-                <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {p}（请先运行 normalize_data.py）"</span>)
+        <span class="c-kw">for</span> p <span cla, limit=<span class="c-kw">None</span>ss="c-kw">in</span> paths:
+            <span class="c-kw">if</span> <span class="c-kw">not
+
+        参数：
+            limit: 最多产出多少行；None 表示不限。</span> p.exists():
+                   因 train 文件已洗牌，截取前 N 行等价于随机抽样                <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {p}（请先运行 normalize_data.py）"</span>)
         self.paths = paths
 
-    <span class="c-kw">def</span> iter_texts(self):
+    <spa""n</span>
+        self.fed = <span class= c-kwc>0lass="c-kw">def</span> iter_texts(self):
         <span class="c-cm">"""生成器：每调用一次 next 才读一行，200 万行也不会撑爆内存
 
-        返回：
+        返回： <span class="c-kw">in</span> f:
+                   >if</span lmit <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">Noe <spanclass="c-kw">and</span> sel.fed &gt;= limit
+                        <span class="c-kw">return</span>  <span class="c-cm"># 到达抽样上限，提前收工</span>
             逐条产出文本字符串的迭代器（类似 Python 的 generator）
         """</span>
+                        self.fed += <span class="c-kw">1</span>
         <span class="c-kw">for</span> path <span class="c-kw">in</span> self.paths:
             <span class="c-kw">with</span> path.open(encoding=<span class="c-str">"utf-8"</span>) <span class="c-kw">as</span> f:
                 <span class="c-kw">for</span> line <span class="c-kw">in</span> f:
@@ -1383,16 +1408,11 @@ GOOD_RATIO_MIN, GOOD_RATIO_MAX = <span class="c-kw">0.3</span>, <span class="c-k
         返回：
             不超过 n 条的文本列表
         """</span>
-        texts = []
-        <span class="c-kw">for</span> t <span class="c-kw">in</span> self.iter_texts():
-            texts.append(t)
-            <span class="c-kw">if</span> len(texts) &gt;= n:
-                <span class="c-kw">break</span>
-        <span class="c-kw">return</span> texts
+        <span class="c-kw">return</span> list(self.iter_texts(limit=n))
 
 
 <span class="c-kw">class</span> BpeTrainerRunner:
-    <span class="c-cm">"""职责：只负责训练——在你的语料上流式训练专属 BPE 分词器并保存"""</span>
+    <span class="c-cm">"""职责：只负责训练——在抽样语料上流式训练专属 BPE 分词器并保存"""</span>
 
     <span class="c-kw">def</span> train(self, text_stream):
         <span class="c-cm">"""
@@ -1412,7 +1432,7 @@ GOOD_RATIO_MIN, GOOD_RATIO_MAX = <span class="c-kw">0.3</span>, <span class="c-k
             initial_alphabet=pre_tokenizers.ByteLevel.alphabet(),
             show_progress=<span class="c-kw">True</span>,
         )
-        <span class="c-cm"># train_from_iterator 天生吃迭代器：边读边统计词频，全程流式</span>
+        <span class="c-cm"># train_from_iterator 天生吃迭代器：边读边统计词频，Python 侧全程流式</span>
         tokenizer.train_from_iterator(text_stream, trainer)
         OUT_DIR.mkdir(exist_ok=<span class="c-kw">True</span>)
         out_path = OUT_DIR / <span class="c-str">"tokenizer.json"</span>
@@ -1460,13 +1480,15 @@ GOOD_RATIO_MIN, GOOD_RATIO_MAX = <span class="c-kw">0.3</span>, <span class="c-k
     <span class="c-cm">"""职责：只负责编排——供料 → 训练 → 保存 → 体检 → 给结论"""</span>
 
     <span class="c-kw">def</span> run(self):
-        <span class="c-cm"># ① 供料：训练集流式练分词器，验证集抽样当体检考场</span>
-        train_stream = CorpusStreamer(TRAIN_FILES).iter_texts()
+        <span class="c-cm"># ① 供料：训练集流式 + 抽样练分词器，验证集抽样当体检考场</span>
+        feeder = CorpusStreamer(TRAIN_FILES)
+        train_stream = feeder.iter_texts(limit=TRAIN_SAMPLE)
         val_sample = CorpusStreamer(VAL_FILES).sample_texts(CHECK_SAMPLE)
-        print(<span class="c-str">f"[read] 训练语料流式读取中；体检样本 {len(val_sample)} 条"</span>)
+        print(<span class="c-str">f"[read] 体检样本 {len(val_sample)} 条；训练语料流式读取中"</span>)
 
-        <span class="c-cm"># ② 流式训练 + 保存（语料不进内存，Rust 内核逐行统计）</span>
+        <span class="c-cm"># ② 流式训练 + 保存（语料不进内存，Rust 内核逐行统计词频）</span>
         out_path = BpeTrainerRunner().train(train_stream)
+        print(<span class="c-str">f"[train] 实际喂入 {feeder.fed} 行（抽样上限 {TRAIN_SAMPLE}）"</span>)
         print(<span class="c-str">f"[train] 分词器已保存 → {out_path}"</span>)
 
         <span class="c-cm"># ③ 保存后重新加载一次，验证文件本身可用（防止"存了个坏的"）</span>
@@ -1553,7 +1575,14 @@ GOOD_RATIO_MIN, GOOD_RATIO_MAX = <span class="c-kw">0.3</span>, <span class="c-k
           <tr class="hl">
             <td><b>供料方式</b></td>
             <td class="mono">read_text 全量进内存</td>
-            <td class="mono">生成器逐行流式读取，内存恒定</td>
+            <td class="mono">生成器逐行流式读取，Python 侧内存恒定</td>
+          </tr>
+          <tr class="hl">
+            <td><b>训练规模</b></td>
+            <td class="mono">全量语料喂入（几万条无所谓）</td>
+            <td class="mono">
+              抽样 40 万行封顶（TRAIN_SAMPLE 可调），词频表内存锁死在几 GB
+            </td>
           </tr>
           <tr class="hl">
             <td><b>噪声控制</b></td>
@@ -1651,6 +1680,11 @@ GOOD_RATIO_MIN, GOOD_RATIO_MAX = <span class="c-kw">0.3</span>, <span class="c-k
           } catch {
             btn.textContent = "复制失败，请手动全选";
           }
+          setTimeout(() => (btn.textContent = "复制代码"), 1800);
+        });
+    </script>
+  </body>
+</html>
           setTimeout(() => (btn.textContent = "复制代码"), 1800);
         });
     </script>
