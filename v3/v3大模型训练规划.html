@@ -1,0 +1,1818 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>v3 · 预训练 + SFT 两阶段训练规划</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ========== 配色与全局（沿用 v1/v2 手册风格：米色纸面 + 墨色 + 朱红） ========== */
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+      }
+      /* 暗色章节：只需给容器加 .dark，内部变量整体翻转 */
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      /* 顶部红色阅读进度条 */
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      /* ========== 右侧圆点导航 ========== */
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      /* ========== 首屏 hero ========== */
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      /* ========== 章节骨架：左图右文 / 右图左文（.flip 翻转） ========== */
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      /* 描边大序号 */
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      /* 红色胶囊标签 */
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+
+      /* ========== 手绘 SVG 插图通用类 ========== */
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tg {
+        fill: #2e7d4f;
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      /* ========== 全景流程图区 ========== */
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ========== 表格区 ========== */
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      /* ========== 结尾 ========== */
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2.5rem 4rem;
+        margin: 2.5rem 0 3.5rem;
+      }
+      .stat b {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2rem, 4.2vw, 3.2rem);
+        line-height: 1.25;
+        transition: 0.25s;
+      }
+      .stat:hover b {
+        color: var(--verm);
+      }
+      .stat em {
+        display: block;
+        font-style: normal;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .fin-sum {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      /* ========== 滚动淡入动画 ========== */
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      /* 窄屏：隐藏圆点导航，图文改单列 */
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 两阶段认知</span></a>
+      <a href="#p1"><span>1 获取数据集</span></a>
+      <a href="#p2"><span>2 数据规范化</span></a>
+      <a href="#p3"><span>3 分词器</span></a>
+      <a href="#p4"><span>4 模型配置</span></a>
+      <a href="#p5"><span>5 预训练</span></a>
+      <a href="#p6"><span>6 SFT 微调</span></a>
+      <a href="#p7"><span>7 评估</span></a>
+      <a href="#deps"><span>依赖包</span></a>
+      <a href="#time"><span>里程碑</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">v3 · 小智 数据集 · 先预训练再微调</p>
+      <h1>第三代小智<br /><span class="red">作战手册</span></h1>
+      <p class="sub">
+        这一代不再自己造数据：直接拿 小智 开源数据集的 210 万行现成语料，
+        走一条和大模型工业界一模一样的路——先用纯文本做<b>预训练</b>让模型"学会说话"，
+        再用对话数据做
+        <b>SFT 微调</b>让它"学会回答"。数据、分词器、模型、训练全部规范化。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">预训练 → SFT 两阶段</span>
+        <span class="hb">数据 210 万行（小智）</span>
+        <span class="hb">参数 0.01B → 0.1B</span>
+        <span class="hb">16G×2 显存 · 64G 内存</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 八个阶段一条河</h2>
+      <p class="cap reveal">
+        上游是数据和分词器，中游是模型和两阶段训练，下游是评估
+      </p>
+      <svg
+        viewBox="0 0 1150 190"
+        class="reveal"
+        role="img"
+        aria-label="八个阶段流程图"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="122" y1="80" x2="172" y2="80" />
+          <line x1="252" y1="80" x2="302" y2="80" />
+          <line x1="382" y1="80" x2="432" y2="80" />
+          <line x1="512" y1="80" x2="562" y2="80" />
+          <line x1="642" y1="80" x2="692" y2="80" />
+          <line x1="772" y1="80" x2="822" y2="80" />
+          <line x1="902" y1="80" x2="952" y2="80" />
+        </g>
+        <g
+          font-family="'Noto Serif SC',serif"
+          font-weight="900"
+          font-size="22"
+          text-anchor="middle"
+        >
+          <circle
+            cx="72"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="72" y="88" fill="#191611">00</text>
+          <circle
+            cx="212"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="212" y="88" fill="#191611">01</text>
+          <circle cx="342" cy="80" r="40" fill="#E8432C" />
+          <text x="342" y="88" fill="#fff">02</text>
+          <circle
+            cx="472"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="472" y="88" fill="#191611">03</text>
+          <circle
+            cx="602"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="602" y="88" fill="#191611">04</text>
+          <circle cx="732" cy="80" r="40" fill="#E8432C" />
+          <text x="732" y="88" fill="#fff">05</text>
+          <circle cx="862" cy="80" r="40" fill="#E8432C" />
+          <text x="862" y="88" fill="#fff">06</text>
+          <circle
+            cx="1002"
+            cy="80"
+            r="40"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="1002" y="88" fill="#191611">07</text>
+        </g>
+        <g
+          class="ts"
+          text-anchor="middle"
+          font-size="12.5"
+          style="fill: #8a8271"
+        >
+          <text x="72" y="148">两阶段认知</text>
+          <text x="212" y="148">获取数据集</text>
+          <text x="342" y="148" style="fill: #e8432c; font-weight: 700">
+            数据规范化
+          </text>
+          <text x="472" y="148">重训分词器</text>
+          <text x="602" y="148">0.1B 配置</text>
+          <text x="732" y="148" style="fill: #e8432c; font-weight: 700">
+            预训练
+          </text>
+          <text x="862" y="148" style="fill: #e8432c; font-weight: 700">
+            SFT 微调
+          </text>
+          <text x="1002" y="148">评估对比</text>
+        </g>
+        <text x="575" y="180" text-anchor="middle" class="ts" font-size="12">
+          红色的三个阶段，是 v3 相对 v2 全新的地方
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 两阶段认知 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 360"
+            role="img"
+            aria-label="两阶段比喻：先读书学说话，再刷题学对话"
+          >
+            <defs>
+              <marker
+                id="arw0"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto"
+              >
+                <path d="M0 0 L10 5 L0 10 z" class="ac" />
+              </marker>
+            </defs>
+            <!-- 阶段一：读书 -->
+            <rect x="30" y="40" width="180" height="130" rx="14" class="sw" />
+            <text x="120" y="66" class="tt" font-size="14" text-anchor="middle">
+              预训练
+            </text>
+            <!-- 书本 -->
+            <path
+              d="M75 100 Q100 88 120 100 Q140 88 165 100 L165 140 Q140 128 120 140 Q100 128 75 140 Z"
+              class="s"
+            />
+            <line x1="120" y1="100" x2="120" y2="140" class="s" />
+            <text x="120" y="162" class="ts" text-anchor="middle">
+              读 120 万行纯文本
+            </text>
+            <!-- 阶段二：刷题 -->
+            <rect x="250" y="40" width="180" height="130" rx="14" class="sw" />
+            <text x="340" y="66" class="tt" font-size="14" text-anchor="middle">
+              SFT 微调
+            </text>
+            <!-- 对话气泡 -->
+            <rect x="275" y="88" width="90" height="30" rx="10" class="s" />
+            <rect x="300" y="126" width="105" height="30" rx="10" class="acs" />
+            <text x="340" y="178" class="ts" text-anchor="middle">
+              刷 90 万轮一问一答
+            </text>
+            <!-- 连接箭头 -->
+            <line
+              x1="210"
+              y1="105"
+              x2="246"
+              y2="105"
+              class="acs"
+              marker-end="url(#arw0)"
+            />
+            <!-- 下方结果 -->
+            <rect x="30" y="215" width="400" height="115" rx="14" class="st" />
+            <text x="50" y="245" class="ts" font-size="12.5">
+              预训练毕业：会接龙，但不会回答问题（问它问题，它可能再补一个问题）
+            </text>
+            <text x="50" y="272" class="ta" font-size="12.5">
+              SFT 毕业：听得懂"轮到我了"，会给出完整回答并主动停下
+            </text>
+            <text x="50" y="305" class="ts" font-size="11.5">
+              一句话：预训练给「能力」，SFT 给「规矩」。顺序不能反。
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">00</div>
+          <h2>先想清楚：这一代到底在干什么</h2>
+          <span class="whyl">为什么先读这一章</span>
+          <p class="lead">
+            v2 是"请老师现编教材"（蒸馏），v3 是"直接买一套现成的教材"（小智
+            开源数据集）。数据不再自己造，训练流程也随之升级为工业界标准两步走。
+          </p>
+          <p class="detail">
+            <b>第一步 预训练</b
+            >：给模型喂海量纯文本，让它学"下一个字最可能是什么"。
+            结束后它精通语法和常识，但只会接话不会聊天。<br />
+            <b>第二步 SFT 微调</b
+            >：在预训练的成果上，改用"一问一答"的对话数据继续训练，
+            教它"看到问题要回答，答完要停下"。
+          </p>
+          <p class="note">
+            ChatGPT、DeepSeek 等大模型全部走这两步（后面还有 RLHF，本代不做）。
+            你在自己的机器上跑的，是同构的缩小版。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 获取数据集 ============ -->
+    <section class="stage dark flip" id="p1">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 360"
+            role="img"
+            aria-label="两个数据文件：预训练 120 万行，SFT 90 万行"
+          >
+            <!-- 预训练文件 -->
+            <g class="fl">
+              <rect x="30" y="50" width="190" height="150" rx="14" class="sw" />
+              <rect x="30" y="50" width="190" height="38" rx="14" class="ac" />
+              <text
+                x="125"
+                y="75"
+                fill="#fff"
+                font-size="13"
+                font-weight="700"
+                text-anchor="middle"
+                font-family="'Noto Sans SC',sans-serif"
+              >
+                pretrain_t2t_mini
+              </text>
+              <text
+                x="125"
+                y="118"
+                class="tt"
+                font-size="30"
+                text-anchor="middle"
+              >
+                120 万行
+              </text>
+              <text x="125" y="145" class="ts" text-anchor="middle">
+                每行一个 {"{"}"text": "…"{"}"}
+              </text>
+              <text x="125" y="168" class="ts" text-anchor="middle">
+                纯文本 · 预训练的"课本"
+              </text>
+            </g>
+            <!-- SFT 文件 -->
+            <g class="fl" style="animation-delay: -2s">
+              <rect
+                x="240"
+                y="50"
+                width="190"
+                height="150"
+                rx="14"
+                class="sw"
+              />
+              <rect x="240" y="50" width="190" height="38" rx="14" class="ac" />
+              <text
+                x="335"
+                y="75"
+                fill="#fff"
+                font-size="13"
+                font-weight="700"
+                text-anchor="middle"
+                font-family="'Noto Sans SC',sans-serif"
+              >
+                sft_t2t_mini
+              </text>
+              <text
+                x="335"
+                y="118"
+                class="tt"
+                font-size="30"
+                text-anchor="middle"
+              >
+                90 万行
+              </text>
+              <text x="335" y="145" class="ts" text-anchor="middle">
+                每行一个 {"{"}"conversations": […]{"}"}
+              </text>
+              <text x="335" y="168" class="ts" text-anchor="middle">
+                多轮问答 · SFT 的"习题集"
+              </text>
+            </g>
+            <!-- 真实样例 -->
+            <rect x="30" y="230" width="400" height="100" rx="14" class="st" />
+            <text x="48" y="258" class="ts" font-size="12">
+              预训练样例：{"{"}"text": "清晨的阳光透过窗帘洒进房间……"{"}"}
+            </text>
+            <text x="48" y="284" class="ts" font-size="12">
+              SFT 样例：user 问 → assistant 答 → user 再问 → assistant 再答
+            </text>
+            <text x="48" y="310" class="ta" font-size="11.5">
+              注意：部分 assistant 消息还夹带
+              reasoning_content（思维链），下一站处理它
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">01</div>
+          <h2>获取数据集：教材直接买现成的</h2>
+          <span class="whyl">这一站做什么</span>
+          <p class="lead">
+            从 小智 开源项目下载两个 jsonl 文件，放进
+            <span class="mono">v3/code/dataset/</span>，数据关就算过了。
+          </p>
+          <p class="detail">
+            两个文件分工明确：<b>pretrain</b> 是纯文本长河，供第一阶段"读书"；
+            <b>sft</b> 是多轮对话，供第二阶段"刷题"。 一行一条样本， jsonl
+            格式与 v2 的蒸馏产物同宗—— 意味着 v2 的读取、清洗代码可以大量复用。
+          </p>
+          <p class="note">
+            文件各上百万行，无需人工翻阅。读懂结构靠
+            <span class="mono">微调数据大概结构.jsonl</span> 和
+            <span class="mono">预训练数据大概结构.jsonl</span> 两份小样即可。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 数据规范化 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg viewBox="0 0 460 380" role="img" aria-label="数据规范化三道工序">
+            <defs>
+              <marker
+                id="arw2"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto"
+              >
+                <path d="M0 0 L10 5 L0 10 z" class="ac" />
+              </marker>
+            </defs>
+            <!-- 工序 1 -->
+            <rect x="30" y="30" width="400" height="84" rx="14" class="sw" />
+            <circle cx="66" cy="72" r="20" class="ac" />
+            <text
+              x="66"
+              y="79"
+              fill="#fff"
+              font-size="16"
+              font-weight="900"
+              text-anchor="middle"
+              font-family="'Noto Serif SC',serif"
+            >
+              1
+            </text>
+            <text x="100" y="62" class="tt" font-size="13.5">剥掉思维链</text>
+            <text x="100" y="88" class="ts" font-size="12">
+              assistant 消息里的 reasoning_content 字段整段丢弃，只留 content
+            </text>
+            <!-- 箭头 -->
+            <line
+              x1="230"
+              y1="114"
+              x2="230"
+              y2="142"
+              class="acs"
+              marker-end="url(#arw2)"
+            />
+            <!-- 工序 2 -->
+            <rect x="30" y="146" width="400" height="84" rx="14" class="sw" />
+            <circle cx="66" cy="188" r="20" class="ac" />
+            <text
+              x="66"
+              y="195"
+              fill="#fff"
+              font-size="16"
+              font-weight="900"
+              text-anchor="middle"
+              font-family="'Noto Serif SC',serif"
+            >
+              2
+            </text>
+            <text x="100" y="178" class="tt" font-size="13.5">身份消毒</text>
+            <text x="100" y="204" class="ts" font-size="12">
+              数据残留别人的开发者名（nbhhd / jingyaogong）→ 替换成你自己的人设
+            </text>
+            <!-- 箭头 -->
+            <line
+              x1="230"
+              y1="230"
+              x2="230"
+              y2="258"
+              class="acs"
+              marker-end="url(#arw2)"
+            />
+            <!-- 工序 3 -->
+            <rect x="30" y="262" width="400" height="96" rx="14" class="sw" />
+            <circle cx="66" cy="310" r="20" class="ac" />
+            <text
+              x="66"
+              y="317"
+              fill="#fff"
+              font-size="16"
+              font-weight="900"
+              text-anchor="middle"
+              font-family="'Noto Serif SC',serif"
+            >
+              3
+            </text>
+            <text x="100" y="300" class="tt" font-size="13.5">
+              统一格式 + 沿用 v2 清洗纪律
+            </text>
+            <text x="100" y="326" class="ts" font-size="12">
+              去重 → 过滤 → 套聊天模板 → 最后才 98:2 切分，顺序一步不能乱
+            </text>
+            <text x="100" y="348" class="ta" font-size="11.5">
+              产出：pretrain.jsonl（{"{"}text{"}"}）+
+              sft_train/val.jsonl（{"{"}text{"}"} 模板化）
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">02</div>
+          <h2>数据规范化：v3 的第一场硬仗</h2>
+          <span class="whyl">为什么是新重点</span>
+          <p class="lead">
+            别人的数据集不会为你的项目量身定制。直接拿来训练，模型会<b>报别人的名字</b>、
+            还可能学会把"内心独白"脱口而出。
+          </p>
+          <p class="detail">
+            三道工序：<b>剥思维链</b>——SFT 数据里部分回答带 reasoning_content
+            字段，那是模型的"草稿纸"，不能当教材；
+            <b>身份消毒</b>——样例里明晃晃写着"由 jingyaogong开发"，
+            必须替换成自己模型的名字，否则自我介绍全为别人做嫁衣；
+            <b>统一格式</b>——预训练数据直通，SFT 数据套上 v2 的
+            <span class="mono"
+              >&lt;|user|&gt;…&lt;|assistant|&gt;…&lt;|end|&gt;</span
+            >
+            模板，清洗切分纪律原样沿用。
+          </p>
+          <p class="note">
+            v2 的 clean_split.py 只需小改：输入从蒸馏 jsonl 换成 小智 jsonl，
+            多一步 reasoning_content 剥离和身份词表替换。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 重训分词器 ============ -->
+    <section class="stage dark flip" id="p3">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 360"
+            role="img"
+            aria-label="分词器在更大语料上重训，词表翻倍"
+          >
+            <!-- 句子被切碎 -->
+            <rect x="30" y="40" width="400" height="70" rx="14" class="sw" />
+            <text x="52" y="83" class="tt" font-size="15">
+              大模型通过自注意力机制建模上下文
+            </text>
+            <!-- 切分线 -->
+            <g class="acs">
+              <line x1="150" y1="55" x2="150" y2="95" />
+              <line x1="225" y1="55" x2="225" y2="95" />
+              <line x1="300" y1="55" x2="300" y2="95" />
+              <line x1="360" y1="55" x2="360" y2="95" />
+            </g>
+            <!-- token 块 -->
+            <g class="fl">
+              <rect x="45" y="150" width="80" height="40" rx="10" class="sw" />
+              <text
+                x="85"
+                y="175"
+                class="ts"
+                text-anchor="middle"
+                font-size="12"
+              >
+                大模型
+              </text>
+              <rect
+                x="140"
+                y="150"
+                width="100"
+                height="40"
+                rx="10"
+                class="sw"
+              />
+              <text
+                x="190"
+                y="175"
+                class="ts"
+                text-anchor="middle"
+                font-size="12"
+              >
+                通过自注意
+              </text>
+              <rect x="255" y="150" width="80" height="40" rx="10" class="sw" />
+              <text
+                x="295"
+                y="175"
+                class="ts"
+                text-anchor="middle"
+                font-size="12"
+              >
+                力机制
+              </text>
+              <rect x="350" y="150" width="70" height="40" rx="10" class="sw" />
+              <text
+                x="385"
+                y="175"
+                class="ts"
+                text-anchor="middle"
+                font-size="12"
+              >
+                建模
+              </text>
+            </g>
+            <!-- 词表对比 -->
+            <rect x="30" y="225" width="190" height="105" rx="14" class="st" />
+            <text
+              x="125"
+              y="255"
+              class="ts"
+              text-anchor="middle"
+              font-size="12"
+            >
+              v2 词表
+            </text>
+            <text
+              x="125"
+              y="295"
+              class="tt"
+              text-anchor="middle"
+              font-size="26"
+            >
+              8192
+            </text>
+            <text
+              x="125"
+              y="318"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              几万条蒸馏对话上训练
+            </text>
+            <rect x="240" y="225" width="190" height="105" rx="14" class="sw" />
+            <text
+              x="335"
+              y="255"
+              class="ta"
+              text-anchor="middle"
+              font-size="12"
+            >
+              v3 词表
+            </text>
+            <text
+              x="335"
+              y="295"
+              class="tt"
+              text-anchor="middle"
+              font-size="26"
+            >
+              16384
+            </text>
+            <text
+              x="335"
+              y="318"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              210 万行真实语料上重训
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">03</div>
+          <h2>重训分词器：教材换了，字典也要重编</h2>
+          <span class="whyl">为什么不能沿用 v2 的</span>
+          <p class="lead">
+            分词器是"在什么样的语料上，就学会什么样的切法"。 v2
+            的字典只见过几万条蒸馏闲聊，面对 210 万行真实语料会切得很碎。
+          </p>
+          <p class="detail">
+            做法与 v2 完全一致：ByteLevel BPE、全字节字母表兜底、
+            三道体检（压缩率 / 特殊标记独占 / 编解码往返）一项不少。
+            只改两处：<b>训练语料</b>换成规范化后的全量文本，
+            <b>词表</b> 8192 → 16384。
+          </p>
+          <p class="note">
+            三个特殊标记
+            <span class="mono"
+              >&lt;|user|&gt; &lt;|assistant|&gt; &lt;|end|&gt;</span
+            >
+            原样保留——下游所有模板代码因此零改动。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04 模型配置 ============ -->
+    <section class="stage" id="p4">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 370"
+            role="img"
+            aria-label="参数量预算：积木塔对比 v2 与 v3"
+          >
+            <!-- v2 小塔 -->
+            <text x="105" y="45" class="ts" text-anchor="middle" font-size="12">
+              v2 · 约 100 万
+            </text>
+            <rect x="75" y="280" width="60" height="30" rx="6" class="sw" />
+            <rect x="75" y="245" width="60" height="30" rx="6" class="sw" />
+            <rect x="75" y="210" width="60" height="30" rx="6" class="sw" />
+            <rect x="75" y="175" width="60" height="30" rx="6" class="sw" />
+            <text
+              x="105"
+              y="340"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              d=64 · 4 层 · 笔记本可跑
+            </text>
+            <!-- v3 高塔 -->
+            <text x="325" y="45" class="ta" text-anchor="middle" font-size="12">
+              v3 · 约 1 亿（0.1B）
+            </text>
+            <g>
+              <rect x="290" y="280" width="70" height="26" rx="6" class="sw" />
+              <rect x="290" y="250" width="70" height="26" rx="6" class="sw" />
+              <rect x="290" y="220" width="70" height="26" rx="6" class="sw" />
+              <rect x="290" y="190" width="70" height="26" rx="6" class="sw" />
+              <rect x="290" y="160" width="70" height="26" rx="6" class="sw" />
+              <rect x="290" y="130" width="70" height="26" rx="6" class="sw" />
+              <rect x="290" y="100" width="70" height="26" rx="6" class="acs" />
+              <rect x="290" y="70" width="70" height="26" rx="6" class="acs" />
+              <text x="370" y="87" class="ts" font-size="10.5">… 共 12 层</text>
+            </g>
+            <text
+              x="325"
+              y="340"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              d=768 · 12 层 · 16G 显存轻松装下
+            </text>
+            <!-- 显存账 -->
+            <rect x="30" y="60" width="200" height="0" rx="0" class="st" />
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">04</div>
+          <h2>模型配置：显存从瓶颈变成余粮</h2>
+          <span class="whyl">这一代能放开手脚</span>
+          <p class="lead">
+            v2 在笔记本上精打细算出百万参数；v3 的训练机有
+            <b>16GB×2 显存、64GB 内存、16 核 CPU</b>，可以直接上一个量级。
+          </p>
+          <p class="detail">
+            推荐配置：<span class="mono"
+              >d_model=768, n_layers=12, n_heads=12, d_ff=2048, max_seq=512,
+              vocab=16384</span
+            >，总参数约 <b>9700 万（0.1B）</b>。架构原封不动沿用 v2： RMSNorm +
+            RoPE + SwiGLU + 权重共享，一行不用改，只换数字。
+          </p>
+          <p class="note">
+            显存粗账：0.1B 参数混合精度训练，参数+梯度+AdamW 状态合计约
+            2GB，加激活也远低于单卡 16GB。先单卡跑通，双卡 DDP 留作后续升级。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 05 预训练 ============ -->
+    <section class="stage dark flip" id="p5">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 370"
+            role="img"
+            aria-label="预训练：文本接成 token 长河，随机切窗口学接龙"
+          >
+            <!-- token 长河 -->
+            <path
+              d="M30 90 Q120 60 210 90 T390 90"
+              class="acs"
+              stroke-width="3"
+            />
+            <path
+              d="M30 120 Q120 90 210 120 T390 120"
+              class="s"
+              opacity="0.4"
+            />
+            <g class="ts" font-size="11">
+              <text x="55" y="82">清晨</text>
+              <text x="115" y="72">的阳</text>
+              <text x="175" y="80">光透</text>
+              <text x="240" y="86">过窗</text>
+              <text x="305" y="78">帘洒</text>
+              <text x="365" y="84">进…</text>
+            </g>
+            <text x="30" y="55" class="ta" font-size="12">
+              120 万行文本 → 一条 token 长河
+            </text>
+            <!-- 随机窗口 -->
+            <rect x="120" y="170" width="220" height="54" rx="12" class="sw" />
+            <text
+              x="230"
+              y="194"
+              class="ts"
+              text-anchor="middle"
+              font-size="12"
+            >
+              随机切下一个 512 token 的窗口
+            </text>
+            <text
+              x="230"
+              y="214"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              看前面，猜下一个
+            </text>
+            <!-- 预测演示 -->
+            <rect x="60" y="255" width="340" height="86" rx="12" class="st" />
+            <text x="82" y="287" class="ts" font-size="12.5">
+              输入：清晨的阳光透过
+            </text>
+            <text x="82" y="314" class="ts" font-size="12.5">
+              目标：
+              <tspan class="ta" font-weight="700">窗</tspan>
+              ← 只学"接下一个字"，没有人问它问题
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">05</div>
+          <h2>预训练：只学"接龙"，不学"回答"</h2>
+          <span class="whyl">这一步在学什么</span>
+          <p class="lead">
+            把规范化后的 120 万行纯文本接成一条 token 长河，随机切窗口训练。
+            代码层面几乎就是 v2 的 train.py：TokenStreamer、随机窗口、
+            warmup+余弦、验证集早停，全部沿用。
+          </p>
+          <p class="detail">
+            结束后去聊天，你会发现它<b>不爱回答问题，甚至反问你一个</b>——
+            这不是失败，是预训练的标准产出：它学会了语言本身，
+            但还没学过"对话的规则"。别慌，下一站就是干这个的。
+          </p>
+          <p class="note">
+            数据量决定这一代的天花板：语料比 v2 大两个量级，
+            同样多刷几轮（epoch），loss 会降到 v2 从未见过的区间。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 06 SFT 微调 ============ -->
+    <section class="stage" id="p6">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 380"
+            role="img"
+            aria-label="SFT：只对回答部分打分（loss mask）"
+          >
+            <!-- 模板条 -->
+            <rect x="30" y="40" width="400" height="120" rx="14" class="sw" />
+            <!-- user 段：灰色 -->
+            <rect x="48" y="62" width="150" height="34" rx="9" class="st" />
+            <text x="123" y="84" class="ts" text-anchor="middle" font-size="12">
+              &lt;|user|&gt; 问题
+            </text>
+            <!-- assistant 段：红色高亮 -->
+            <rect
+              x="204"
+              y="62"
+              width="170"
+              height="34"
+              rx="9"
+              class="acs"
+              stroke-width="2.5"
+            />
+            <text x="289" y="84" class="ta" text-anchor="middle" font-size="12">
+              &lt;|assistant|&gt; 回答 &lt;|end|&gt;
+            </text>
+            <!-- 打分标注 -->
+            <line x1="123" y1="104" x2="123" y2="122" class="st" />
+            <text
+              x="123"
+              y="140"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              不算分（mask 掉）
+            </text>
+            <line x1="289" y1="104" x2="289" y2="122" class="acs" />
+            <text
+              x="289"
+              y="140"
+              class="ta"
+              text-anchor="middle"
+              font-size="11"
+            >
+              只对这部分算 loss ✓
+            </text>
+            <!-- 多轮 -->
+            <rect x="30" y="185" width="400" height="60" rx="14" class="st" />
+            <text
+              x="230"
+              y="210"
+              class="ts"
+              text-anchor="middle"
+              font-size="12"
+            >
+              多轮对话：一问一答首尾相接拼成一条
+            </text>
+            <text
+              x="230"
+              y="232"
+              class="ts"
+              text-anchor="middle"
+              font-size="11"
+            >
+              每一个 assistant 段都单独算分，user 段全部 mask
+            </text>
+            <!-- 学习率对比 -->
+            <rect x="30" y="270" width="190" height="80" rx="14" class="sw" />
+            <text
+              x="125"
+              y="298"
+              class="ts"
+              text-anchor="middle"
+              font-size="12"
+            >
+              预训练学习率
+            </text>
+            <text
+              x="125"
+              y="330"
+              class="tt"
+              text-anchor="middle"
+              font-size="20"
+            >
+              1e-3
+            </text>
+            <rect x="240" y="270" width="190" height="80" rx="14" class="sw" />
+            <text
+              x="335"
+              y="298"
+              class="ta"
+              text-anchor="middle"
+              font-size="12"
+            >
+              SFT 学习率（降到 1/5）
+            </text>
+            <text
+              x="335"
+              y="330"
+              class="tt"
+              text-anchor="middle"
+              font-size="20"
+            >
+              2e-4
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">06</div>
+          <h2>SFT 微调：在成品上"精修"，不是重练</h2>
+          <span class="whyl">v3 最重要的一条新纪律</span>
+          <p class="lead">
+            加载预训练的最佳 checkpoint，数据换成模板化对话，继续训练。
+            但多了一条 v2 没有的铁律：<b>loss mask</b>。
+          </p>
+          <p class="detail">
+            模型只需要为<b>回答</b>负责——用户提了什么问题是"题目"，不是"作业"。
+            把 user 段的 loss 全部 mask 掉，模型才会专心学"怎么答"，
+            而不会分心去模仿"怎么问"。多轮对话里，每个 assistant 段单独算分。
+            <br />学习率降到预训练的 1/5、步数更少：力气太大，
+            会把预训练学到的语言能力"洗掉"（灾难性遗忘）。
+          </p>
+          <p class="note">
+            验收直觉：SFT 前的模型问它"你是谁"，它可能续写一段百科； SFT
+            后它会说"我是……"然后用 &lt;|end|&gt; 主动收尾。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 07 评估 ============ -->
+    <section class="stage dark flip" id="p7">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 370"
+            role="img"
+            aria-label="评估：四科考卷 + 两阶段对比"
+          >
+            <!-- 考卷 -->
+            <rect x="30" y="40" width="250" height="290" rx="14" class="sw" />
+            <rect x="30" y="40" width="250" height="36" rx="14" class="ac" />
+            <text
+              x="155"
+              y="64"
+              fill="#fff"
+              font-size="13"
+              font-weight="700"
+              text-anchor="middle"
+              font-family="'Noto Sans SC',sans-serif"
+            >
+              固定考卷 · 四科
+            </text>
+            <g class="ts" font-size="12">
+              <text x="55" y="108">① 自我介绍（人设稳不稳）</text>
+              <text x="55" y="140">② 闲聊（接不接得住话）</text>
+              <text x="55" y="172">③ 超纲认怂（会不会硬编）</text>
+              <text x="55" y="204">④ 知识问答（预训练学到啥）</text>
+            </g>
+            <line x1="50" y1="225" x2="260" y2="225" class="st" />
+            <g class="ts" font-size="11.5">
+              <text x="55" y="252">采样纪律不变：</text>
+              <text x="55" y="276">温度 0.8 · top-k 50</text>
+              <text x="55" y="300">遇到 &lt;|end|&gt; 就停</text>
+            </g>
+            <!-- 对比实验 -->
+            <g class="fl">
+              <rect
+                x="305"
+                y="70"
+                width="130"
+                height="110"
+                rx="14"
+                class="sw"
+              />
+              <text
+                x="370"
+                y="100"
+                class="tt"
+                text-anchor="middle"
+                font-size="13"
+              >
+                预训练版
+              </text>
+              <text
+                x="370"
+                y="128"
+                class="ts"
+                text-anchor="middle"
+                font-size="11"
+              >
+                同题作答
+              </text>
+              <text
+                x="370"
+                y="150"
+                class="ts"
+                text-anchor="middle"
+                font-size="11"
+              >
+                爱接龙
+              </text>
+            </g>
+            <g class="fl" style="animation-delay: -2.2s">
+              <rect
+                x="305"
+                y="205"
+                width="130"
+                height="110"
+                rx="14"
+                class="sw"
+              />
+              <text
+                x="370"
+                y="235"
+                class="ta"
+                text-anchor="middle"
+                font-size="13"
+              >
+                SFT 版
+              </text>
+              <text
+                x="370"
+                y="263"
+                class="ts"
+                text-anchor="middle"
+                font-size="11"
+              >
+                同题作答
+              </text>
+              <text
+                x="370"
+                y="285"
+                class="ts"
+                text-anchor="middle"
+                font-size="11"
+              >
+                会回答
+              </text>
+            </g>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">07</div>
+          <h2>评估：加一科，再加一场"对比实验"</h2>
+          <span class="whyl">怎么知道练成了</span>
+          <p class="lead">
+            v2 的三科固定考卷原样保留，新添一科<b>知识问答</b>—— 检验预训练从
+            120 万行文本里到底吸收了多少常识。
+          </p>
+          <p class="detail">
+            最好玩也最有说服力的是<b>对比实验</b>：同一道题， 分别问预训练
+            checkpoint 和 SFT checkpoint。
+            前者大概率续写接龙，后者规规矩矩回答——
+            两阶段各自的价值，一张图就看懂。
+          </p>
+          <p class="note">
+            采样参数与停止规则不变，保证三代模型之间的成绩可比。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 依赖包清单 ============ -->
+    <section class="tsec" id="deps">
+      <h2 class="reveal">要用哪些包，各自干什么</h2>
+      <p class="cap reveal">
+        第三代只需三个第三方包；v2 的蒸馏工具链（requests / dotenv）这一代退役
+      </p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th style="width: 18%">包</th>
+            <th style="width: 34%">一句话作用</th>
+            <th style="width: 48%">在 v3 里具体干什么</th>
+          </tr>
+          <tr class="hl">
+            <td class="mono">torch</td>
+            <td>深度学习发动机</td>
+            <td>
+              搭模型（04）、跑训练（05/06）：张量计算、GPU
+              加速、自动求导、AdamW、混合精度、
+              <span class="mono">scaled_dot_product_attention</span> 全在它身上
+            </td>
+          </tr>
+          <tr class="hl">
+            <td class="mono">tokenizers</td>
+            <td>分词器工具箱（HF，Rust 内核）</td>
+            <td>
+              训字典（03）、把文本切成 token（05/06）、把 token
+              还原成文字（07）。 快且跨平台，训练 210 万行语料也不吃力
+            </td>
+          </tr>
+          <tr>
+            <td class="mono">modelscope</td>
+            <td>数据集下载器</td>
+            <td>
+              小智 数据集托管在 ModelScope，一行命令把两个 jsonl 拉进
+              <span class="mono">dataset/</span>（01）；也可用
+              <span class="mono">huggingface_hub</span> 平替
+            </td>
+          </tr>
+          <tr>
+            <td>标准库全家桶</td>
+            <td>不用安装，开箱即用</td>
+            <td class="mono">
+              json（读写 jsonl）· hashlib（MD5 精确去重）· re（归一化近似去重）·
+              random（洗牌切分）· pathlib（跨平台路径）· math（余弦退火）·
+              dataclasses（模型配置结构体）
+            </td>
+          </tr>
+          <tr>
+            <td class="mono" style="color: var(--muted)">requests · dotenv</td>
+            <td style="color: var(--muted)">v2 蒸馏专用，v3 退役</td>
+            <td style="color: var(--muted)">
+              这一代数据直接下载，不再请求老师模型 API，这两个包用不上了
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th style="width: 18%">安装命令</th>
+            <td class="mono">
+              conda activate f10 && pip install torch tokenizers modelscope
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 两阶段对照 + 里程碑 ============ -->
+    <section class="tsec" id="time">
+      <h2 class="reveal">两阶段一表看清</h2>
+      <p class="cap reveal">预训练与 SFT 的全部区别，收敛在这张表里</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th style="width: 14%">维度</th>
+            <th style="width: 40%">第一阶段 · 预训练</th>
+            <th style="width: 46%">第二阶段 · SFT 微调</th>
+          </tr>
+          <tr>
+            <td><b>数据</b></td>
+            <td class="mono">pretrain_t2t_mini（120 万行 {"text"}）</td>
+            <td class="mono">sft_t2t_mini（90 万行 {"conversations"}）</td>
+          </tr>
+          <tr class="hl">
+            <td><b>学什么</b></td>
+            <td>语言能力：语法、常识、接龙</td>
+            <td>对话规矩：问→答→主动停下</td>
+          </tr>
+          <tr>
+            <td><b>数据形态</b></td>
+            <td>纯文本 token 长河，随机切 512 窗口</td>
+            <td>套聊天模板，多轮拼接成一条</td>
+          </tr>
+          <tr class="hl">
+            <td><b>loss 范围</b></td>
+            <td>整个窗口全部算分</td>
+            <td>只算 assistant 段，user 段 mask 掉</td>
+          </tr>
+          <tr>
+            <td><b>起点</b></td>
+            <td>随机初始化（一张白纸）</td>
+            <td>预训练最佳 checkpoint</td>
+          </tr>
+          <tr>
+            <td><b>学习率</b></td>
+            <td class="mono">1e-3，warmup + 余弦退火</td>
+            <td class="mono">约 2e-4（预训练的 1/5），步数更少</td>
+          </tr>
+          <tr>
+            <td><b>毕业标志</b></td>
+            <td>验证集 loss 收敛、接龙通顺</td>
+            <td>四科考卷通过，遇 &lt;|end|&gt; 会停</td>
+          </tr>
+        </table>
+      </div>
+
+      <h2 class="reveal" style="margin-top: 4.5rem">里程碑顺序</h2>
+      <p class="cap reveal">不排日期，只排依赖：前一个验收不过，不进下一站</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th style="width: 10%">顺序</th>
+            <th style="width: 22%">里程碑</th>
+            <th style="width: 38%">产出物</th>
+            <th style="width: 30%">验收标准</th>
+          </tr>
+          <tr>
+            <td class="mono">M1</td>
+            <td>数据集就位</td>
+            <td class="mono">dataset/ 下两个全量 jsonl</td>
+            <td>行数核对：120 万 / 90 万</td>
+          </tr>
+          <tr>
+            <td class="mono">M2</td>
+            <td>数据规范化</td>
+            <td class="mono">pretrain / sft_train / sft_val.jsonl</td>
+            <td>思维链剥净、身份词替换、抽样人工读 20 条</td>
+          </tr>
+          <tr>
+            <td class="mono">M3</td>
+            <td>分词器重训</td>
+            <td class="mono">tokenizer/tokenizer.json（vocab 16384）</td>
+            <td>三道体检全过</td>
+          </tr>
+          <tr>
+            <td class="mono">M4</td>
+            <td>模型配置</td>
+            <td class="mono">model_config.py（0.1B）</td>
+            <td>公式预算参数量 ≈ 9700 万</td>
+          </tr>
+          <tr>
+            <td class="mono">M5</td>
+            <td>预训练</td>
+            <td class="mono">checkpoints/pretrain_best.pt</td>
+            <td>验证 loss 收敛，接龙通顺</td>
+          </tr>
+          <tr>
+            <td class="mono">M6</td>
+            <td>SFT 微调</td>
+            <td class="mono">checkpoints/sft_best.pt</td>
+            <td>带 loss mask，考卷四科通过</td>
+          </tr>
+          <tr>
+            <td class="mono">M7</td>
+            <td>评估对比</td>
+            <td>预训练 vs SFT 同题对比记录</td>
+            <td>肉眼可见的"会接龙 → 会回答"</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">二代学"对话"，三代学"先会说话，再会对话"</h2>
+        <div class="stats reveal">
+          <div class="stat">
+            <b>×100</b><em>参数规模 · 约 100 万 → 约 1 亿</em>
+          </div>
+          <div class="stat">
+            <b>210 万行</b><em>现成开源语料 · 不再自己造数据</em>
+          </div>
+          <div class="stat">
+            <b>2 阶段</b><em>预训练 → SFT · 工业界标准路径</em>
+          </div>
+          <div class="stat">
+            <b>1 条铁律不变</b><em>训练与推理模板一字不差</em>
+          </div>
+        </div>
+        <p class="fin-sum reveal">
+          v1 证明了"我能造出一个会说话的程序"，v2
+          证明了"我能用工程纪律把它训稳"， v3
+          要证明的是"我能走通工业界训练大模型的完整路径"。
+          数据规范化、两阶段训练、loss mask——这三件事做扎实，
+          你和千亿参数模型之间的差距，就只剩下算力，不再是认知。
+        </p>
+        <footer class="reveal">
+          <span>v3 · 预训练 + SFT 两阶段训练规划</span>
+          <span>小智 数据集 × 0.1B × 16G×2 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "deps", "time"].forEach(
+        (id) => io2.observe(document.getElementById(id)),
+      );
+    </script>
+  </body>
+</html>
