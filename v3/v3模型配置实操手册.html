@@ -1146,7 +1146,7 @@
               text-anchor="middle"
               font-size="11"
             >
-              激活另算：batch=8 × 512 长度约 1~2GB，仍然绰绰有余
+              激活另算：batch 32×512 全开缓存会顶穿 16G → 训练站用梯度检查点压住
             </text>
           </svg>
         </figure>
@@ -1161,9 +1161,15 @@
           <p class="detail">
             拆开看：bf16 权重 2 字节、bf16 梯度 2 字节、fp32 主权重 4 字节、
             AdamW 的一阶/二阶动量各 4 字节。 9750 万 × 16 ≈
-            <b>1.6GB 固定开销</b>， 加上激活（batch=8、长度 512 时约 1~2GB），
-            单卡 16GB 连三分之一都用不满。 这就是为什么规划里说"先单卡跑通，双卡
-            DDP 留作升级"。
+            <b>1.6GB 固定开销</b>， 单卡 16GB 的固定部分连六分之一都不到。
+            这就是为什么规划里说"先单卡跑通，双卡 DDP 留作升级"。
+          </p>
+          <p class="detail">
+            <b>但激活是另一笔账</b>：batch 32×512 窗口下，12
+            层的注意力/前馈中间结果层层堆着等反向， 实测会把 16G 顶穿（OOM）。
+            所以模型本体预留了<b>梯度检查点</b>开关：
+            前向只存每层入口、反向重算层内激活，用约 30% 速度换激活显存从
+            O(层数) 降到 O(1)——05 站训练脚本会打开它。
           </p>
           <p class="note">
             脚本里的 <span class="mono">BYTES_PER_PARAM = 16</span> 就是这笔账；
@@ -1440,6 +1446,7 @@ model_config.py —— 小智三代 · 0.1B 模型配置与预算自检脚本
     <span class="c-kw">import</span> torch
     <span class="c-kw">import</span> torch.nn <span class="c-kw">as</span> nn
     <span class="c-kw">import</span> torch.nn.functional <span class="c-kw">as</span> F
+    <span class="c-kw">from</span> torch.utils.checkpoint <span class="c-kw">import</span> checkpoint <span class="c-kw">as</span> grad_ckpt_fn  <span class="c-cm"># 梯度检查点：重算换显存</span>
 
     TORCH_OK = <span class="c-kw">True</span>
 <span class="c-kw">except</span> ImportError:
@@ -1631,6 +1638,9 @@ TOKENIZER_FILE = Path(<span class="c-str">"tokenizer/tokenizer.json"</span>)
             <span class="c-cm"># 参数初始化：全部改用小方差正态分布（GPT 惯例 std=0.02）</span>
             <span class="c-cm"># PyTorch 默认初始化方差偏大，会让开局 loss 远超 ln(词表)，前期训练不稳</span>
             self.apply(self._init_weights)
+            <span class="c-cm"># 梯度检查点开关：默认关；训练站会打开它——前向只存每层入口，</span>
+            <span class="c-cm"># 反向时重算层内激活，用约 30% 速度换激活显存从 O(层数) 降到 O(1)</span>
+            self.grad_ckpt = <span class="c-kw">False</span>
 
         <span class="c-kw">def</span> _init_weights(self, module):
             <span class="c-cm">"""对 Linear/Embedding 统一做 std=0.02 的正态初始化（self.apply 会遍历所有子模块）"""</span>
@@ -1641,7 +1651,11 @@ TOKENIZER_FILE = Path(<span class="c-str">"tokenizer/tokenizer.json"</span>)
             <span class="c-cm">"""idx 形状 (B, T) 的 token id；返回 (B, T, 词表) 的 logits（每个位置的下一个词打分）"""</span>
             x = self.embed(idx)
             <span class="c-kw">for</span> blk <span class="c-kw">in</span> self.blocks:
-                x = blk(x)
+                <span class="c-cm"># 训练且开了检查点：块内激活不存，反向时重算；推理/冒烟走原路</span>
+                <span class="c-kw">if</span> self.training <span class="c-kw">and</span> self.grad_ckpt:
+                    x = grad_ckpt_fn(blk, x, use_reentrant=<span class="c-kw">False</span>)
+                <span class="c-kw">else</span>:
+                    x = blk(x)
             <span class="c-kw">return</span> self.lm_head(self.norm_f(x))
 
 
@@ -1674,6 +1688,15 @@ TOKENIZER_FILE = Path(<span class="c-str">"tokenizer/tokenizer.json"</span>)
         no_grad = [n <span class="c-kw">for</span> n, p <span class="c-kw">in</span> model.named_parameters() <span class="c-kw">if</span> p.grad <span class="c-kw">is</span> <span class="c-kw">None</span>]
         <span class="c-kw">assert</span> <span class="c-kw">not</span> no_grad, <span class="c-str">f"这些参数没收到梯度：{no_grad}"</span>
         print(<span class="c-str">"[backward] 冒烟通过：全部参数梯度通畅 ✓"</span>)
+
+        <span class="c-cm"># 检查点路径冒烟：训练站实际走的就是这条路（重算式反向），单独验证一次</span>
+        model.grad_ckpt = <span class="c-kw">True</span>
+        model.train()
+        model.zero_grad(set_to_none=<span class="c-kw">True</span>)
+        model(idx).sum().backward()
+        no_grad = [n <span class="c-kw">for</span> n, p <span class="c-kw">in</span> model.named_parameters() <span class="c-kw">if</span> p.grad <span class="c-kw">is</span> <span class="c-kw">None</span>]
+        <span class="c-kw">assert</span> <span class="c-kw">not</span> no_grad, <span class="c-str">f"检查点路径下这些参数没收到梯度：{no_grad}"</span>
+        print(<span class="c-str">"[backward] 梯度检查点路径冒烟通过 ✓"</span>)
         <span class="c-kw">return</span> real
 
 
@@ -1757,6 +1780,11 @@ TOKENIZER_FILE = Path(<span class="c-str">"tokenizer/tokenizer.json"</span>)
             <td class="mono">反向冒烟</td>
             <td>反传后每个参数都有梯度</td>
             <td>必须打勾；不勾说明计算图断了，先查模型代码</td>
+          </tr>
+          <tr>
+            <td class="mono">检查点路径冒烟</td>
+            <td>梯度检查点（训练站省显存的实际路径）下梯度仍通畅</td>
+            <td>必须打勾；05 站训练走的就是这条路</td>
           </tr>
           <tr>
             <td class="mono">整除断言</td>
