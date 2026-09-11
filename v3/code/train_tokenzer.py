@@ -5,10 +5,12 @@ train_tokenizer.py —— 小智三代 · BPE 分词器训练脚本
 用法：pip install tokenizers && python train_tokenizer.py
 依赖：仅需第三方库 tokenizers（HuggingFace 出品，Rust 内核，支持流式训练）
 
-与 v2 版的三处关键差异（都是为百万行语料准备的）：
-  ① 流式供料——逐行生成文本，内存占用与语料规模无关（v2 是全量读进内存）
-  ② min_frequency=2——只合并出现过 2 次以上的片段，抑制大语料里的噪声合并
-  ③ 抽样体检——验证集最多取 2000 条算压缩率，不必编码全部几万条
+与 v2 版的关键差异（都是为百万行语料准备的）：
+  ① 流式供料——逐行生成文本，Python 侧内存占用与语料规模无关（v2 是全量读进内存）
+  ② 抽样训练——BPE 的词频统计在几十万行时早已收敛，喂 40 万行和 217 万行训出的
+     词表几乎一样；而训练器内部的词频表是内存大头，限制喂入行数就锁死了内存上限
+  ③ min_frequency=2——只合并出现过 2 次以上的片段，抑制大语料里的噪声合并
+  ④ 抽样体检——验证集最多取 2000 条算压缩率，不必编码全部几万条
 """
 
 import json  # 读取 jsonl 教材
@@ -22,6 +24,11 @@ TRAIN_FILES = [Path("pretrain_train.jsonl"), Path("sft_train.jsonl")]
 VAL_FILES = [Path("pretrain_val.jsonl"), Path("sft_val.jsonl")]  # 体检考场
 OUT_DIR = Path("tokenizer")  # 输出目录：tokenizer.json 存在这里
 VOCAB_SIZE = 16384  # 词表大小：v3 语料比 v2 大两个量级，词表跟着翻倍（v2 是 8192）
+
+# 抽样训练上限：train 文件在规范化时已洗过牌，取前 N 行即随机样本。
+# 40 万行约 500MB 文本，词频统计早已收敛；内存占用因此封顶在几 GB 内。
+# 机器内存紧张就调小（如 200_000），宽裕想更精确就调大，词表质量差异极小。
+TRAIN_SAMPLE = 400_000
 MIN_FREQUENCY = 2  # 至少出现 2 次的片段才允许入词表，过滤一次性噪声
 CHECK_SAMPLE = 2000  # 体检抽样条数：验证集有几万条，抽 2000 条估压缩率足够准
 
@@ -43,18 +50,26 @@ class CorpusStreamer:
             if not p.exists():
                 raise SystemExit(f"[stop] 找不到 {p}（请先运行 normalize_data.py）")
         self.paths = paths
+        self.fed = 0  # 实际喂出的行数，供报告使用
 
-    def iter_texts(self):
+    def iter_texts(self, limit=None):
         """生成器：每调用一次 next 才读一行，200 万行也不会撑爆内存
 
+        参数：
+            limit: 最多产出多少行；None 表示不限。
+                   因 train 文件已洗牌，截取前 N 行等价于随机抽样
         返回：
             逐条产出文本字符串的迭代器（类似 Python 的 generator）
         """
+        self.fed = 0
         for path in self.paths:
             with path.open(encoding="utf-8") as f:
                 for line in f:
+                    if limit is not None and self.fed >= limit:
+                        return  # 到达抽样上限，提前收工
                     try:
                         yield json.loads(line)["text"]
+                        self.fed += 1
                     except (json.JSONDecodeError, KeyError):
                         continue  # 坏行跳过，不干扰训练
 
@@ -66,16 +81,11 @@ class CorpusStreamer:
         返回：
             不超过 n 条的文本列表
         """
-        texts = []
-        for t in self.iter_texts():
-            texts.append(t)
-            if len(texts) >= n:
-                break
-        return texts
+        return list(self.iter_texts(limit=n))
 
 
 class BpeTrainerRunner:
-    """职责：只负责训练——在你的语料上流式训练专属 BPE 分词器并保存"""
+    """职责：只负责训练——在抽样语料上流式训练专属 BPE 分词器并保存"""
 
     def train(self, text_stream):
         """
@@ -95,7 +105,7 @@ class BpeTrainerRunner:
             initial_alphabet=pre_tokenizers.ByteLevel.alphabet(),
             show_progress=True,
         )
-        # train_from_iterator 天生吃迭代器：边读边统计词频，全程流式
+        # train_from_iterator 天生吃迭代器：边读边统计词频，Python 侧全程流式
         tokenizer.train_from_iterator(text_stream, trainer)
         OUT_DIR.mkdir(exist_ok=True)
         out_path = OUT_DIR / "tokenizer.json"
@@ -143,13 +153,15 @@ class TokenizerPipeline:
     """职责：只负责编排——供料 → 训练 → 保存 → 体检 → 给结论"""
 
     def run(self):
-        # ① 供料：训练集流式练分词器，验证集抽样当体检考场
-        train_stream = CorpusStreamer(TRAIN_FILES).iter_texts()
+        # ① 供料：训练集流式 + 抽样练分词器，验证集抽样当体检考场
+        feeder = CorpusStreamer(TRAIN_FILES)
+        train_stream = feeder.iter_texts(limit=TRAIN_SAMPLE)
         val_sample = CorpusStreamer(VAL_FILES).sample_texts(CHECK_SAMPLE)
-        print(f"[read] 训练语料流式读取中；体检样本 {len(val_sample)} 条")
+        print(f"[read] 体检样本 {len(val_sample)} 条；训练语料流式读取中")
 
-        # ② 流式训练 + 保存（语料不进内存，Rust 内核逐行统计）
+        # ② 流式训练 + 保存（语料不进内存，Rust 内核逐行统计词频）
         out_path = BpeTrainerRunner().train(train_stream)
+        print(f"[train] 实际喂入 {feeder.fed} 行（抽样上限 {TRAIN_SAMPLE}）")
         print(f"[train] 分词器已保存 → {out_path}")
 
         # ③ 保存后重新加载一次，验证文件本身可用（防止"存了个坏的"）

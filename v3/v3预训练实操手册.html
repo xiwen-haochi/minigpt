@@ -568,7 +568,8 @@
       </p>
       <div class="hero-badges">
         <span class="hb red">流式编码 + memmap · 内存恒定</span>
-        <span class="hb red">bf16 混合精度</span>
+        <span class="hb red">半精度自适应 · bf16 / fp16</span>
+        <span class="hb red">梯度检查点 · 显存兜底</span>
         <span class="hb">1e-3 · warmup + 余弦退火</span>
         <span class="hb">验证集监考 · 只存最佳</span>
       </div>
@@ -895,7 +896,7 @@
           <svg
             viewBox="0 0 460 360"
             role="img"
-            aria-label="bf16 混合精度：前向 bf16 快速算，权重 fp32 精确存"
+            aria-label="混合精度：前向半精度快速算，权重 fp32 精确存"
           >
             <!-- 前向 -->
             <rect x="30" y="45" width="400" height="110" rx="14" class="sw" />
@@ -911,7 +912,7 @@
               text-anchor="middle"
               font-family="'JetBrains Mono',monospace"
             >
-              bf16 张量计算
+              bf16/fp16 张量计算
             </text>
             <text x="240" y="117" class="ts" font-size="11">
               ← 快、省显存，GPU 张量核全速
@@ -951,22 +952,32 @@
         </figure>
         <div class="reveal">
           <div class="num">02</div>
-          <h2>百万行改造 ②：bf16 混合精度</h2>
+          <h2>百万行改造 ②：混合精度，新卡老卡各吃各的</h2>
           <span class="whyl">一代账一代还</span>
           <p class="lead">
-            04 站算显存账时按"bf16 权重 + bf16 梯度 + fp32 主权重 + AdamW
+            04 站算显存账时按"半精度权重 + 半精度梯度 + fp32 主权重 + AdamW
             动量"计的 16 字节/参数—— 那笔账要兑现，训练就得真开混合精度。
+            但"开哪种半精度"要看显卡代际，脚本自动判。
           </p>
           <p class="detail">
-            做法只有一层 <span class="mono">torch.autocast</span>：
-            前向反向时张量自动切成 <b>bf16</b>（快、省显存），
-            优化器手里始终攥着 <b>fp32 主权重</b>做精确更新。 选 bf16 而不是
-            fp16 的原因：数值范围与 fp32 相同，不会梯度下溢，
-            <b>不需要 GradScaler</b>，代码反而更短。
+            <b>新卡（Ampere 及以后）</b>有 bf16 张量核：数值范围与 fp32
+            相同，不会梯度下溢，<b>不需要 GradScaler</b>，代码最短。
+            <b>老卡（如 T4）</b>只有 fp16 张量核：bf16 在上面是"软模拟"，
+            吃不到加速还白占语义—— 所以自动回落 <b>fp16 + GradScaler</b>（把
+            loss 放大再反传，防梯度下溢成 0）。 判断依据是算力代际（新版 torch 的 is_bf16_supported 会把软模拟误报为支持，不可信），只有一行：
+            <span class="mono">torch.cuda.get_device_capability() >= (8, 0)</span>。
+          </p>
+          <p class="detail">
+            <b>但半精度救不了激活显存</b>——这是实跑撞出来的教训：
+            batch 32×512 下 12 层的注意力/前馈中间结果层层堆着等反向，
+            加上 logits 那步 fp32 交叉熵，峰值直接顶穿 16G（OOM）。
+            解药是<b>梯度检查点</b>（<span class="mono">GRAD_CKPT = True</span>）：
+            前向只存每层的入口，反向时把层内激活重算一遍， 用约 30%
+            的速度换激活显存从 O(层数) 降到 O(1)，batch 不用砍。
           </p>
           <p class="note">
-            autocast 只在 cuda 上开启；在本机（mps/cpu）冒烟时自动回落 fp32，
-            同一份代码两处都能跑。
+            混合精度只在 cuda 上开启；在本机（mps/cpu）冒烟时自动回落 fp32。
+            三档精度（bf16 / fp16 / 关）同一份代码，由设备自己决定。
           </p>
         </div>
       </div>
@@ -1191,7 +1202,7 @@
               </text>
               <text x="48" y="154">[data] 训练长河 246,000,000 tokens</text>
               <text x="48" y="174">
-                [model] 参数 97.54M · 设备 cuda · 混合精度 bf16
+                [model] 参数 97.54M · 设备 cuda · 混合精度 fp16+GradScaler
               </text>
               <text x="48" y="194">
                 [train] step 0 | loss 9.7042 | lr 3.33e-06
@@ -1272,8 +1283,9 @@ pretrain.py —— 小智三代 · 预训练脚本（token 长河 + 随机窗口
 与 v2 版的关键差异（都是为百万行语料准备的）：
   ① token 流不进内存——v2 把全部 id 装进 Python list，120 万行会吃掉十几 GB 内存；
      v3 流式编码成 uint32 二进制文件，训练时用 memmap 按需调页，RAM 占用恒定
-  ② 混合精度——cuda 上用 bf16 autocast 训练，兑现 04 站"每参数 16 字节"的显存账；
-     bf16 数值范围与 fp32 相同，不需要 GradScaler
+  ② 混合精度自适应——cuda 上自动选半精度：Ampere 及以后的新卡有 bf16 张量核，
+     用 bf16（数值范围同 fp32，无需 GradScaler）；T4 等老卡只有 fp16 张量核，
+     自动回落 fp16 + GradScaler（放大 loss 防梯度下溢）。两种精度的显存账相同
   ③ 训练规模——步数从 500 提到约 1 epoch（≈15000 步），batch 32×512
   ④ 梯度检查点——0.1B×512 窗口的激活显存远超 04 站"1~2GB"的乐观估计：
      注意力/前馈中间结果层层堆积会顶穿 16G 显存。开启后前向只存每层入口、
@@ -1409,8 +1421,19 @@ ENCODE_FLUSH_LINES = <span class="c-kw">10_000</span>
         self.train_batch = WindowSampler(train_bin, SEQ_LEN)
         self.val_batch = WindowSampler(val_bin, SEQ_LEN)
         self.sched = LrScheduler()
-        <span class="c-cm"># bf16 autocast 只在 cuda 上开启（mps/cpu 上 fp32 更稳，反正冒烟用）</span>
+        <span class="c-cm"># 混合精度只在 cuda 上开启（mps/cpu 冒烟用 fp32 更稳）。</span>
+        <span class="c-cm"># 半精度自动二选一：新卡（Ampere+）有 bf16 张量核 → bf16；</span>
+        <span class="c-cm"># T4 等老卡只有 fp16 张量核 → fp16（靠下面的 GradScaler 防梯度下溢）</span>
         self.amp = self.device == <span class="c-str">"cuda"</span>
+        self.bf16 = self.amp <span class="c-kw">and</span> torch.cuda.get_device_capability() >= (<span class="c-kw">8</span>, <span class="c-kw">0</span>)  <span class="c-cm"># 算力 8.0（Ampere）起才有 bf16 张量核；T4 是 7.5</span>
+        self.dtype = torch.bfloat16 <span class="c-kw">if</span> self.bf16 <span class="c-kw">else</span> torch.float16
+        <span class="c-cm"># GradScaler 只有 fp16 需要；bf16 / 不开混合精度时它是关闭态，各方法自动退化为透传</span>
+        <span class="c-kw">try</span>:
+            <span class="c-cm"># torch≥2.3 的新接口（旧接口已弃用告警）</span>
+            self.scaler = torch.amp.GradScaler(<span class="c-str">"cuda"</span>, enabled=self.amp <span class="c-kw">and</span> <span class="c-kw">not</span> self.bf16)
+        <span class="c-kw">except</span> (TypeError, AttributeError):
+            <span class="c-cm"># torch&lt;2.3 的旧接口兜底</span>
+            self.scaler = torch.cuda.amp.GradScaler(enabled=self.amp <span class="c-kw">and</span> <span class="c-kw">not</span> self.bf16)
 
     <span class="c-kw">@staticmethod</span>
     <span class="c-kw">def</span> _pick_device():
@@ -1422,8 +1445,8 @@ ENCODE_FLUSH_LINES = <span class="c-kw">10_000</span>
         <span class="c-kw">return</span> <span class="c-str">"cpu"</span>
 
     <span class="c-kw">def</span> _forward_loss(self, x, y):
-        <span class="c-cm">"""混合精度前向并算交叉熵：autocast 内部自动选 bf16/fp32，外部代码无感"""</span>
-        <span class="c-kw">with</span> torch.autocast(device_type=self.device, dtype=torch.bfloat16, enabled=self.amp):
+        <span class="c-cm">"""混合精度前向并算交叉熵：autocast 内部按 self.dtype 自动选 bf16/fp16，外部代码无感"""</span>
+        <span class="c-kw">with</span> torch.autocast(device_type=self.device, dtype=self.dtype, enabled=self.amp):
             logits = self.model(x)
             <span class="c-cm"># 交叉熵：模型猜下一个词 vs 标准答案，逐 token 算分</span>
             <span class="c-kw">return</span> F.cross_entropy(logits.view(-<span class="c-kw">1</span>, logits.size(-<span class="c-kw">1</span>)), y.view(-<span class="c-kw">1</span>))
@@ -1467,9 +1490,13 @@ ENCODE_FLUSH_LINES = <span class="c-kw">10_000</span>
             x, y = self.train_batch.sample(BATCH_SIZE, self.device)
             loss = self._forward_loss(x, y)
             self.opt.zero_grad(set_to_none=<span class="c-kw">True</span>)
-            loss.backward()  <span class="c-cm"># bf16 无需 GradScaler：数值范围与 fp32 相同</span>
+            <span class="c-cm"># GradScaler 三件套：放大 loss 防 fp16 梯度下溢 → 还原梯度后裁剪 → 无异常才更新</span>
+            <span class="c-cm"># bf16 或不开混合精度时 scaler 是关闭态，下面五行自动退化为普通 backward/clip/step</span>
+            self.scaler.scale(loss).backward()
+            self.scaler.unscale_(self.opt)
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), GRAD_CLIP)
-            self.opt.step()
+            self.scaler.step(self.opt)
+            self.scaler.update()
 
             <span class="c-kw">if</span> step % <span class="c-kw">100</span> == <span class="c-kw">0</span>:
                 print(
@@ -1520,9 +1547,15 @@ ENCODE_FLUSH_LINES = <span class="c-kw">10_000</span>
         cfg = ModelConfig(vocab_size=builder.tok.get_vocab_size())
         trainer = Trainer(cfg, train_bin, val_bin)
         n_params = sum(p.numel() <span class="c-kw">for</span> p <span class="c-kw">in</span> trainer.model.parameters())
+        <span class="c-kw">if</span> <span class="c-kw">not</span> trainer.amp:
+            prec = <span class="c-str">"关"</span>
+        <span class="c-kw">elif</span> trainer.bf16:
+            prec = <span class="c-str">"bf16"</span>
+        <span class="c-kw">else</span>:
+            prec = <span class="c-str">"fp16 + GradScaler"</span>
         print(
             <span class="c-str">f"[model] 参数 {n_params/1e6:.2f}M · 设备 {trainer.device} · "</span>
-            <span class="c-str">f"混合精度 {'bf16' <span class="c-kw">if</span> trainer.amp <span class="c-kw">else</span> '关'}"</span>
+            <span class="c-str">f"混合精度 {prec}"</span>
         )
 
         <span class="c-cm"># ③ 开训</span>
@@ -1593,7 +1626,9 @@ ENCODE_FLUSH_LINES = <span class="c-kw">10_000</span>
           <tr class="hl">
             <td><b>训练精度</b></td>
             <td class="mono">fp32</td>
-            <td class="mono">cuda 上 bf16 autocast（兑现 04 站显存账）</td>
+            <td class="mono">
+              cuda 上自适应半精度：新卡 bf16 / T4 等老卡 fp16 + GradScaler
+            </td>
           </tr>
           <tr class="hl">
             <td><b>激活显存</b></td>

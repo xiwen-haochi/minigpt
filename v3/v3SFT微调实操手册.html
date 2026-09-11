@@ -1,0 +1,1576 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小智三代 · SFT 微调实操手册</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ========== 配色与全局（与 v3 前几站手册同一套纸面风格） ========== */
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+        --term: #15130e;
+        --termtxt: #e8e2d2;
+        --termmut: #7a7261;
+      }
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      /* ========== 右侧圆点导航 ========== */
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      /* ========== 首屏 ========== */
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      /* ========== 章节骨架 ========== */
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+      .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9em;
+      }
+
+      /* ========== 手绘 SVG 插图通用类 ========== */
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tm {
+        fill: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10.5px;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      /* ========== 全景流程图区 ========== */
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ========== 代码区（深色终端风） ========== */
+      .codesec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        background: var(--term);
+        color: var(--termtxt);
+      }
+      .codesec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        color: var(--termtxt);
+      }
+      .codesec .cap {
+        text-align: center;
+        color: var(--termmut);
+        font-size: 0.9rem;
+        margin-bottom: 2.2rem;
+      }
+      .codewrap {
+        max-width: 980px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .codewrap pre {
+        background: #0e0c08;
+        border: 1px solid #3b372c;
+        border-radius: 14px;
+        padding: 1.6rem 1.4rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+        color: var(--termtxt);
+        max-height: 640px;
+        overflow-y: auto;
+      }
+      .codewrap .c-cm {
+        color: #7a7261;
+      }
+      .codewrap .c-kw {
+        color: #e8432c;
+      }
+      .codewrap .c-str {
+        color: #a8c686;
+      }
+      #copybtn {
+        position: sticky;
+        top: 0.8rem;
+        float: right;
+        margin: 0.8rem 0.8rem 0 0;
+        z-index: 5;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        background: var(--verm);
+        color: #fff;
+        border: none;
+        border-radius: 99px;
+        padding: 0.4rem 1.1rem;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      #copybtn:hover {
+        transform: scale(1.06);
+      }
+
+      /* ========== 表格区 ========== */
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      /* ========== 结尾 ========== */
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .fin-sum {
+        margin-top: 2rem;
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      /* ========== 滚动淡入 ========== */
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 在学什么</span></a>
+      <a href="#p1"><span>1 loss mask</span></a>
+      <a href="#p2"><span>2 数据工程</span></a>
+      <a href="#p3"><span>3 训练配置</span></a>
+      <a href="#p4"><span>4 跑起来</span></a>
+      <a href="#code"><span>完整代码</span></a>
+      <a href="#check"><span>验收清单</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">v3 第 06 站 · 对应规划 M6 里程碑</p>
+      <h1>SFT 微调<br /><span class="red">实操手册</span></h1>
+      <p class="sub">
+        预训练给了小智"会说话"的能力，这一站教它"会回答"的规矩：
+        从 pretrain_best.pt 热启动，用 90 万轮模板化对话继续训练，
+        但只为回答打分（loss mask）——问题是题目，不是作业。
+        学习率降到 1/5，半精度自适应与梯度检查点原样沿用。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">loss mask · 只算回答</span>
+        <span class="hb red">从预训练存档热启动</span>
+        <span class="hb">学习率 2e-4（预训练的 1/5）</span>
+        <span class="hb">半精度自适应 + 梯度检查点</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景流水线 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 六步立规矩</h2>
+      <p class="cap reveal">
+        红色两步是 SFT 独有的新工序，其余沿用预训练已验证的做法
+      </p>
+      <svg
+        viewBox="0 0 1150 210"
+        class="reveal"
+        role="img"
+        aria-label="SFT 六步流程"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="200" y1="90" x2="236" y2="90" />
+          <line x1="380" y1="90" x2="416" y2="90" />
+          <line x1="560" y1="90" x2="596" y2="90" />
+          <line x1="740" y1="90" x2="776" y2="90" />
+          <line x1="920" y1="90" x2="956" y2="90" />
+        </g>
+        <g
+          font-family="'Noto Sans SC',sans-serif"
+          font-size="12.5"
+          text-anchor="middle"
+        >
+          <rect x="40" y="62" width="160" height="56" rx="12" fill="#E8432C" />
+          <text x="120" y="86" fill="#fff">加载预训练存档</text>
+          <text x="120" y="104" fill="#fff" font-size="10.5">
+            权重+config 一起读
+          </text>
+          <rect x="236" y="62" width="144" height="56" rx="12" fill="#E8432C" />
+          <text x="308" y="86" fill="#fff">编码 + 打 mask</text>
+          <text x="308" y="104" fill="#fff" font-size="10.5">
+            定长样本双数组落盘
+          </text>
+          <rect
+            x="416"
+            y="62"
+            width="144"
+            height="56"
+            rx="12"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="488" y="86" fill="#191611">memmap 组批</text>
+          <text x="488" y="104" fill="#8a8271" font-size="10.5">
+            随机抽条不占 RAM
+          </text>
+          <rect
+            x="596"
+            y="62"
+            width="144"
+            height="56"
+            rx="12"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="668" y="86" fill="#191611">半精度训练</text>
+          <text x="668" y="104" fill="#8a8271" font-size="10.5">
+            只算回答的 loss
+          </text>
+          <rect
+            x="776"
+            y="62"
+            width="144"
+            height="56"
+            rx="12"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="848" y="86" fill="#191611">监考早停</text>
+          <text x="848" y="104" fill="#8a8271" font-size="10.5">
+            4 次没进步收工
+          </text>
+          <rect
+            x="956"
+            y="62"
+            width="144"
+            height="56"
+            rx="12"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="1028" y="86" fill="#191611">最佳存档</text>
+          <text x="1028" y="104" fill="#8a8271" font-size="10.5">
+            sft_best.pt
+          </text>
+        </g>
+        <g class="ts" text-anchor="middle" font-size="11.5">
+          <text x="120" y="155">不是随机开局</text>
+          <text x="308" y="155">user 段全部 -100</text>
+          <text x="488" y="155">沿用 05 站思路</text>
+          <text x="668" y="155">T4 自动 fp16</text>
+          <text x="848" y="155">微调更易过拟合</text>
+          <text x="1028" y="155">评估站的输入</text>
+        </g>
+        <text x="575" y="195" text-anchor="middle" class="ts" font-size="12">
+          铁律：模型只为"回答"负责——user 段是题目，不是作业
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 在学什么 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 360"
+            role="img"
+            aria-label="预训练给能力，SFT 给规矩"
+          >
+            <!-- 预训练模型 -->
+            <rect x="30" y="60" width="150" height="200" rx="14" class="st" />
+            <text x="105" y="90" class="ts" text-anchor="middle" font-size="12">
+              预训练毕业
+            </text>
+            <text x="105" y="150" class="tt" text-anchor="middle" font-size="13">
+              满腹经纶
+            </text>
+            <text x="105" y="180" class="ts" text-anchor="middle" font-size="11">
+              但只会接龙
+            </text>
+            <text x="105" y="205" class="ts" text-anchor="middle" font-size="11">
+              问它问题会反问
+            </text>
+            <!-- 箭头 -->
+            <g class="acs" marker-end="url(#arw0)">
+              <line x1="192" y1="160" x2="268" y2="160" />
+            </g>
+            <text x="230" y="142" class="ta" text-anchor="middle" font-size="11.5">
+              SFT 微调
+            </text>
+            <!-- SFT 毕业 -->
+            <rect x="280" y="60" width="150" height="200" rx="14" class="sw" />
+            <text x="355" y="90" class="tt" text-anchor="middle" font-size="12">
+              SFT 毕业
+            </text>
+            <text x="355" y="150" class="tt" text-anchor="middle" font-size="13">
+              会回答
+            </text>
+            <text x="355" y="180" class="ts" text-anchor="middle" font-size="11">
+              听懂"轮到我了"
+            </text>
+            <text x="355" y="205" class="ts" text-anchor="middle" font-size="11">
+              答完主动停下
+            </text>
+            <!-- 底部 -->
+            <text x="230" y="310" class="ts" text-anchor="middle" font-size="11.5">
+              预训练给「能力」，SFT 给「规矩」——顺序不能反
+            </text>
+            <text x="230" y="336" class="ta" text-anchor="middle" font-size="11.5">
+              力气要小：学习率降到 1/5，别把能力洗掉
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">00</div>
+          <h2>SFT 在学什么：规矩，不是能力</h2>
+          <span class="whyl">先校准预期再开跑</span>
+          <p class="lead">
+            预训练毕业的模型满腹经纶但只会接龙。 SFT
+            用一问一答的对话数据继续训练，教它三件事： 看到
+            <span class="mono">&lt;|user|&gt;</span> 知道在问它、 轮到自己就给出完整回答、
+            答完用 <span class="mono">&lt;|end|&gt;</span> 主动停下。
+          </p>
+          <p class="detail">
+            这一站最大的风险是<b>灾难性遗忘</b>：力气太大，
+            会把预训练刚学会的语言能力洗掉。 所以学习率降到预训练的 1/5（2e-4）、
+            步数也更少（约 0.4 epoch）——微调是"精修"，不是"重练"。
+          </p>
+          <p class="note">
+            起点是 <span class="mono">checkpoints/pretrain_best.pt</span>，
+            不是随机初始化。05 站没跑完，这一站无从谈起。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 loss mask ============ -->
+    <section class="stage dark flip" id="p1">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 380"
+            role="img"
+            aria-label="loss mask：user 段不算分，assistant 段才算分"
+          >
+            <!-- 模板条 -->
+            <rect x="30" y="35" width="400" height="110" rx="14" class="sw" />
+            <rect x="48" y="57" width="150" height="34" rx="9" class="st" />
+            <text x="123" y="79" class="ts" text-anchor="middle" font-size="12">
+              &lt;|user|&gt; 问题
+            </text>
+            <rect
+              x="204"
+              y="57"
+              width="170"
+              height="34"
+              rx="9"
+              class="acs"
+              stroke-width="2.5"
+            />
+            <text x="289" y="79" class="ta" text-anchor="middle" font-size="12">
+              &lt;|assistant|&gt; 回答 &lt;|end|&gt;
+            </text>
+            <line x1="123" y1="99" x2="123" y2="117" class="st" />
+            <text x="123" y="135" class="ts" text-anchor="middle" font-size="11">
+              labels = -100（不算分）
+            </text>
+            <line x1="289" y1="99" x2="289" y2="117" class="acs" />
+            <text x="289" y="135" class="ta" text-anchor="middle" font-size="11">
+              labels = 真实 token（算分）✓
+            </text>
+            <!-- 实现机制 -->
+            <rect x="30" y="170" width="400" height="120" rx="14" class="st" />
+            <text x="55" y="200" class="tt" font-size="12.5">
+              实现靠 03 站埋的伏笔：特殊标记各占一个 id
+            </text>
+            <g class="ts" font-size="11">
+              <text x="55" y="228">① 编码后扫描 id 序列，找 &lt;|assistant|&gt; 的 id</text>
+              <text x="55" y="252">② 它之后到 &lt;|end|&gt;（含）之间 → labels 填真值</text>
+              <text x="55" y="276">③ 其余全部 -100，cross_entropy 自动跳过</text>
+            </g>
+            <!-- 多轮 -->
+            <text x="230" y="330" class="ts" text-anchor="middle" font-size="11">
+              多轮对话：每个 assistant 段单独算分，互不干扰
+            </text>
+            <text x="230" y="354" class="ta" text-anchor="middle" font-size="11">
+              截断的断尾回答（&lt;|end|&gt; 被切掉）自动整段不算分
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">01</div>
+          <h2>loss mask：只为回答打分</h2>
+          <span class="whyl">SFT 的灵魂工序</span>
+          <p class="lead">
+            如果对整个模板算 loss，模型会连"怎么提问"一起学——
+            结果是它抢着自问自答。 mask 掉 user 段，
+            它才会专心学"怎么答"。
+          </p>
+          <p class="detail">
+            实现出乎意料地简单，靠的是 03 站的体检成果：
+            <b>三个特殊标记各自只占一个 token id</b>。 编码后在 id
+            序列上做一次双指针扫描：遇到
+            <span class="mono">&lt;|assistant|&gt;</span> 就开区间，遇到配对的
+            <span class="mono">&lt;|end|&gt;</span> 就闭区间，区间内 labels
+            填真实 token，其余填 <span class="mono">-100</span>
+            （cross_entropy 的 <span class="mono">ignore_index</span> 会跳过它们）。
+          </p>
+          <p class="note">
+            超 512 截断的样本，断尾回答找不到配对
+            <span class="mono">&lt;|end|&gt;</span>，整段自动不算分—— 模型不会学到"答一半"。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 数据工程 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 380"
+            role="img"
+            aria-label="定长样本：每条对话 pad 到等长，ids 与 labels 双数组落盘"
+          >
+            <!-- 双数组 -->
+            <rect x="30" y="40" width="400" height="170" rx="14" class="sw" />
+            <text x="55" y="70" class="tt" font-size="12.5">
+              每条对话 → 定长 513 的两个数组
+            </text>
+            <!-- ids 行 -->
+            <rect x="55" y="88" width="120" height="26" rx="6" class="acs" />
+            <rect x="179" y="88" width="100" height="26" rx="6" class="st" />
+            <rect x="283" y="88" width="100" height="26" rx="6" class="st" />
+            <text x="115" y="106" class="ta" text-anchor="middle" font-size="10.5">ids</text>
+            <text x="229" y="106" class="ts" text-anchor="middle" font-size="10">…</text>
+            <text x="333" y="106" class="ts" text-anchor="middle" font-size="10">pad 0</text>
+            <!-- labs 行 -->
+            <rect x="55" y="126" width="120" height="26" rx="6" class="acs" />
+            <rect x="179" y="126" width="100" height="26" rx="6" class="st" />
+            <rect x="283" y="126" width="100" height="26" rx="6" class="st" />
+            <text x="115" y="144" class="ta" text-anchor="middle" font-size="10.5">labels</text>
+            <text x="229" y="144" class="ts" text-anchor="middle" font-size="10">…</text>
+            <text x="333" y="144" class="ts" text-anchor="middle" font-size="10">-100</text>
+            <text x="55" y="188" class="ts" font-size="11">
+              输入取前 512，标签错位取后 512（右移一位的规矩不变）
+            </text>
+            <!-- 为什么不接长河 -->
+            <rect x="30" y="235" width="400" height="110" rx="14" class="st" />
+            <text x="55" y="265" class="tt" font-size="12.5">
+              为什么不学预训练接成"长河"
+            </text>
+            <text x="55" y="293" class="ts" font-size="11">
+              对话有边界：两条对话首尾相接，模型会学到"答完别人的题"
+            </text>
+            <text x="55" y="317" class="ts" font-size="11">
+              定长样本 + memmap：内存与数据量脱钩（沿用 05 站思路）
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">02</div>
+          <h2>数据工程：定长样本，不接长河</h2>
+          <span class="whyl">对话的边界必须保住</span>
+          <p class="lead">
+            预训练把语料接成一条长河随机切窗；SFT 不行——
+            两条对话首尾相接，模型会学到"答完题继续出下一道题"。
+            所以每条对话独立编码、pad 到定长。
+          </p>
+          <p class="detail">
+            每条样本落盘为<b>两个等长数组</b>：ids（输入 token）和
+            labels（只有回答段有真值，其余 -100）。 两个二进制文件用 memmap
+            打开，90 万条样本也只占几十 MB 常驻内存—— 与 05 站"内存与数据量脱钩"的纪律一脉相承。
+            编码完成会打印<b>算分 token 占比</b>，肉眼判断 mask 是否合理。
+          </p>
+          <p class="note">
+            pad 位置 ids 补 0、labels 补 -100：反正不算分，补什么都不影响学习。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 训练配置 ============ -->
+    <section class="stage dark flip" id="p3">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 380"
+            role="img"
+            aria-label="训练配置：从存档读 config，学习率降到五分之一"
+          >
+            <!-- 存档读取 -->
+            <rect x="30" y="35" width="400" height="120" rx="14" class="sw" />
+            <rect x="55" y="60" width="150" height="40" rx="9" class="ac" />
+            <text x="130" y="85" fill="#fff" font-size="11.5" text-anchor="middle" font-family="'JetBrains Mono',monospace">
+              pretrain_best.pt
+            </text>
+            <g class="acs" marker-end="url(#arw3)">
+              <line x1="215" y1="80" x2="255" y2="80" />
+            </g>
+            <rect x="263" y="60" width="130" height="40" rx="9" class="st" />
+            <text x="328" y="85" class="tm" text-anchor="middle">XiaozhiGPT</text>
+            <text x="55" y="132" class="ts" font-size="11">
+              权重 + config 一起读：词表/维度/层数不靠人肉对齐
+            </text>
+            <!-- 学习率对比 -->
+            <rect x="30" y="180" width="194" height="80" rx="14" class="st" />
+            <text x="127" y="208" class="ts" text-anchor="middle" font-size="11.5">
+              预训练学习率
+            </text>
+            <text x="127" y="240" class="tt" text-anchor="middle" font-size="20">
+              1e-3
+            </text>
+            <rect x="236" y="180" width="194" height="80" rx="14" class="sw" />
+            <text x="333" y="208" class="ta" text-anchor="middle" font-size="11.5">
+              SFT 学习率（1/5）
+            </text>
+            <text x="333" y="240" class="tt" text-anchor="middle" font-size="20">
+              2e-4
+            </text>
+            <!-- 步数 -->
+            <rect x="30" y="285" width="400" height="70" rx="14" class="st" />
+            <text x="230" y="313" class="ts" text-anchor="middle" font-size="11.5">
+              12000 步 ≈ 0.4 epoch：微调宜少不宜多
+            </text>
+            <text x="230" y="338" class="ta" text-anchor="middle" font-size="11">
+              过训 = 背答案 + 洗掉预训练能力
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">03</div>
+          <h2>训练配置：精修的三条纪律</h2>
+          <span class="whyl">小步快走，见好就收</span>
+          <p class="lead">
+            <b>存档即配置</b>：模型怎么建，从
+            <span class="mono">pretrain_best.pt</span> 里的 config 读，
+            词表与分词器天然一致，杜绝"训练一个尺寸、加载另一个尺寸"。
+          </p>
+          <p class="detail">
+            <b>学习率 2e-4</b>（预训练的 1/5）：微调是精修，大刀阔斧会把
+            预训练学到的语言能力洗掉（灾难性遗忘）。 <b>步数 12000</b>（约 0.4
+            epoch）：对话数据答案模式高度重复，刷多了是背答案；
+            <b>早停耐心降到 4</b>，微调比预训练更容易过拟合。
+          </p>
+          <p class="note">
+            半精度自适应（新卡 bf16 / T4 等老卡 fp16 + GradScaler）与
+            梯度检查点原样沿用 05 站，一处都不用动。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04 跑起来 ============ -->
+    <section class="stage" id="p4">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 400"
+            role="img"
+            aria-label="运行方式与训练日志示例"
+          >
+            <!-- 命令 -->
+            <rect
+              x="30"
+              y="30"
+              width="400"
+              height="58"
+              rx="12"
+              fill="#0e0c08"
+              stroke="#3b372c"
+              stroke-width="1.5"
+            />
+            <text x="50" y="55" fill="#7a7261" font-size="11" font-family="'JetBrains Mono',monospace">
+              $ conda activate f10
+            </text>
+            <text x="50" y="76" fill="#a8c686" font-size="11" font-family="'JetBrains Mono',monospace">
+              $ python sft.py
+            </text>
+            <!-- 报告 -->
+            <rect
+              x="30"
+              y="110"
+              width="400"
+              height="240"
+              rx="12"
+              fill="#0e0c08"
+              stroke="#3b372c"
+              stroke-width="1.5"
+            />
+            <g font-family="'JetBrains Mono',monospace" font-size="10" fill="#e8e2d2">
+              <text x="48" y="134">[bin] sft_train.jsonl → 890,000 条样本</text>
+              <text x="48" y="154">[bin] 算分 token 占比 41.2%</text>
+              <text x="48" y="174">[init] 已加载预训练存档（step 15000）</text>
+              <text x="48" y="194">[model] 参数 97.54M · 混合精度 fp16 + GradScaler</text>
+              <text x="48" y="214">[train] step 0 | loss 2.31 | lr 2.0e-06</text>
+              <text x="48" y="234" fill="#a8c686">[val] step 500 | val_loss 1.82 ← 新纪录，已存档</text>
+              <text x="48" y="254">[train] step 4000 | loss 1.45 | lr 1.7e-04</text>
+              <text x="48" y="276">…</text>
+              <text x="48" y="298" fill="#a8c686">
+                [done] 最佳验证 loss 1.31 | 存档 → sft_best.pt
+              </text>
+            </g>
+            <text x="230" y="378" text-anchor="middle" class="ts" font-size="11">
+              ↑ 数字为示意；注意开局 loss 远低于预训练的 9.7（热启动 + 只算回答段）
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">04</div>
+          <h2>跑起来：五件套齐备再点火</h2>
+          <span class="whyl">前置条件与使用说明</span>
+          <p class="lead">
+            从下一节复制完整脚本，保存为 <span class="mono">sft.py</span>，
+            与五件套放同一目录：
+            <span class="mono">sft_train.jsonl / sft_val.jsonl</span>（02 站）、
+            <span class="mono">tokenizer/</span>（03 站）、
+            <span class="mono">model_config.py</span>（04 站）、
+            <span class="mono">checkpoints/pretrain_best.pt</span>（05 站）。然后
+            <span class="mono">python sft.py</span>。
+          </p>
+          <p class="detail">
+            <b>看日志抓重点：</b>开局 loss 应远低于 9.7（热启动 + 只算回答段，
+            2~4 都正常）；算分 token 占比一般在 30%~70%， 为 0
+            说明模板标记对不上（回去查 02/03 站）； 编码过一遍后重跑会跳过编码直接开训。
+          </p>
+          <p class="note">
+            毕业时问它"你是谁"，它应规规矩矩回答并以
+            <span class="mono">&lt;|end|&gt;</span> 收尾—— 这就是 M6 的验收直觉，
+            正式考试在下一站。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 完整代码 ============ -->
+    <section class="codesec" id="code">
+      <h2 class="reveal">完整可运行脚本 · sft.py</h2>
+      <p class="cap reveal">
+        复制 → 与五件套同目录保存 → conda activate f10 &amp;&amp; python sft.py
+      </p>
+      <div class="codewrap reveal">
+        <button id="copybtn">复制代码</button>
+        <pre id="codeblock">
+<span class="c-cm"># -*- coding: utf-8 -*-</span>
+<span class="c-cm">"""
+sft.py —— 小智三代 · SFT 微调脚本（loss mask + 加载预训练存档 + 半精度自适应）
+作用：在 pretrain_best.pt 的基础上，用模板化对话数据教模型"问→答→主动停下"，
+      产出 checkpoints/sft_best.pt（只存验证 loss 最佳的那一刻）
+用法：python sft.py
+前置：同目录需有 model_config.py（04 站）、tokenizer/（03 站）、
+      sft_train.jsonl + sft_val.jsonl（02 站产出）、checkpoints/pretrain_best.pt（05 站产出）
+
+与预训练脚本的关键差异：
+  ① loss mask——user 段是"题目"不是"作业"，labels 里只保留 assistant 段（含 &lt;|end|&gt;），
+     其余位置填 -100，cross_entropy 的 ignore_index 会跳过它们
+  ② 定长样本而不是 token 长河——对话样本有边界，不能首尾相接；每条 pad 到 SEQ_LEN+1，
+     ids/labs 双数组落盘，训练时 memmap 组批，内存与数据量脱钩（同 05 站思路）
+  ③ 起点是预训练权重而不是随机初始化；学习率降到 1/5（2e-4），防"灾难性遗忘"
+  ④ 半精度自适应与梯度检查点原样沿用 05 站（T4 等老卡自动 fp16 + GradScaler）
+"""</span>
+
+<span class="c-kw">import</span> json  <span class="c-cm"># 读取 jsonl 教材</span>
+<span class="c-kw">import</span> math  <span class="c-cm"># 余弦退火要算 cos</span>
+<span class="c-kw">import</span> time  <span class="c-cm"># 统计训练耗时</span>
+<span class="c-kw">from</span> pathlib <span class="c-kw">import</span> Path  <span class="c-cm"># 跨平台路径处理（macOS / Linux 通用）</span>
+
+<span class="c-kw">import</span> numpy <span class="c-kw">as</span> np  <span class="c-cm"># memmap 按需读定长样本（numpy 随 torch 一起装好）</span>
+<span class="c-kw">import</span> torch
+<span class="c-kw">import</span> torch.nn.functional <span class="c-kw">as</span> F
+<span class="c-kw">from</span> tokenizers <span class="c-kw">import</span> Tokenizer
+
+<span class="c-kw">from</span> model_config <span class="c-kw">import</span> ModelConfig, XiaozhiGPT  <span class="c-cm"># 04 站的配置与模型本体（口径唯一来源）</span>
+
+<span class="c-cm"># ==================== 可调参数区（只改这里） ====================</span>
+TRAIN_FILE = Path(<span class="c-str">"sft_train.jsonl"</span>)  <span class="c-cm"># 训练集（02 站产出，已套聊天模板）</span>
+VAL_FILE = Path(<span class="c-str">"sft_val.jsonl"</span>)  <span class="c-cm"># 验证集（监考卷，02 站产出）</span>
+TOKENIZER_FILE = Path(<span class="c-str">"tokenizer/tokenizer.json"</span>)  <span class="c-cm"># 分词器（03 站产出）</span>
+PRETRAIN_CKPT = Path(<span class="c-str">"checkpoints/pretrain_best.pt"</span>)  <span class="c-cm"># 起点：预训练最佳存档（05 站产出）</span>
+BIN_DIR = Path(<span class="c-str">"sft_bin"</span>)  <span class="c-cm"># 定长样本落盘处：train_ids/labs.bin、val_ids/labs.bin</span>
+CKPT_FILE = Path(<span class="c-str">"checkpoints/sft_best.pt"</span>)  <span class="c-cm"># 存档：只存验证 loss 最佳那一刻</span>
+
+SEQ_LEN = 512  <span class="c-cm"># 窗口长度：与模型 max_seq_len 一致；超长的样本截断（断尾回答不算分）</span>
+BATCH_SIZE = 32  <span class="c-cm"># 与预训练同档；显存有检查点兜底</span>
+TOTAL_STEPS = 12000  <span class="c-cm"># SFT 步数宜少不宜多：约 0.4 epoch，过训会洗掉预训练的语言能力</span>
+LR = 2e-4  <span class="c-cm"># 峰值学习率：预训练的 1/5（规划口径），微调要"精修"不是"重练"</span>
+WARMUP_STEPS = 200  <span class="c-cm"># 预热步数：微调开局更短</span>
+MIN_LR_RATIO = 0.1  <span class="c-cm"># 余弦退火地板：最低降到峰值的 1/10</span>
+VAL_EVERY = 500  <span class="c-cm"># 每 500 步用验证集监考一次</span>
+VAL_BATCHES = 16  <span class="c-cm"># 每次监考抽 16 批取平均</span>
+PATIENCE = 4  <span class="c-cm"># 连续 4 次监考没进步 → 早停（微调比预训练更容易过拟合）</span>
+GRAD_CLIP = 1.0  <span class="c-cm"># 梯度裁剪阈值</span>
+SEED = 42  <span class="c-cm"># 随机种子</span>
+GRAD_CKPT = <span class="c-kw">True</span>  <span class="c-cm"># 梯度检查点：与预训练相同的显存兜底</span>
+
+IGNORE_ID = -100  <span class="c-cm"># 不算分位置的标签值：cross_entropy 的 ignore_index 约定</span>
+ENCODE_FLUSH_LINES = 10_000  <span class="c-cm"># 编码攒批行数：内存占用恒定</span>
+
+
+<span class="c-cm"># ==================== 五个类，一个类只做一件事 ====================</span>
+<span class="c-kw">class</span> SftBinBuilder:
+    <span class="c-cm">"""职责：只负责编码与打 mask——模板化文本 → 定长 (ids, labels) 样本落盘"""</span>
+
+    <span class="c-kw">def</span> __init__(self, tok_path):
+        <span class="c-cm">"""加载分词器，并取出两个特殊标记的 id（它们各自只占一个 token，03 站已体检）"""</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> tok_path.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {tok_path}（请先运行 train_tokenizer.py）"</span>)
+        self.tok = Tokenizer.from_file(str(tok_path))
+        self.a_id = self.tok.token_to_id(<span class="c-str">"&lt;|assistant|&gt;"</span>)
+        self.e_id = self.tok.token_to_id(<span class="c-str">"&lt;|end|&gt;"</span>)
+        <span class="c-kw">assert</span> self.a_id <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">None</span> <span class="c-kw">and</span> self.e_id <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">None</span>, <span class="c-str">"分词器缺特殊标记"</span>
+        self.width = SEQ_LEN + 1  <span class="c-cm"># 每条样本定长：输入取前 512，标签错位取后 512</span>
+
+    <span class="c-kw">def</span> encode_one(self, text):
+        <span class="c-cm">"""一条模板化文本 → (ids, labs) 两个定长数组；labs 只在 assistant 段有真值"""</span>
+        ids = self.tok.encode(text).ids[: self.width]  <span class="c-cm"># 超长截断：断尾回答自然不完整</span>
+        labs = [IGNORE_ID] * len(ids)
+        <span class="c-cm"># 扫描 assistant 段：从 &lt;|assistant|&gt; 的下一个 token 到 &lt;|end|&gt;（含）才算分</span>
+        <span class="c-cm"># 类似 Python 的双指针扫描；截断导致 &lt;|end|&gt; 丢失的段自动整段不算分</span>
+        i, supervised = 0, 0
+        <span class="c-kw">while</span> i &lt; len(ids):
+            <span class="c-kw">if</span> ids[i] == self.a_id:
+                j = i + 1
+                <span class="c-kw">while</span> j &lt; len(ids) <span class="c-kw">and</span> ids[j] != self.e_id:
+                    j += 1
+                <span class="c-kw">if</span> j &lt; len(ids):  <span class="c-cm"># 找到配对的 &lt;|end|&gt;，这一段是完整回答</span>
+                    <span class="c-kw">for</span> k <span class="c-kw">in</span> range(i + 1, j + 1):
+                        labs[k] = ids[k]
+                        supervised += 1
+                i = j + 1
+            <span class="c-kw">else</span>:
+                i += 1
+        <span class="c-cm"># pad 到定长：ids 补 0（反正不算分），labs 补 IGNORE_ID</span>
+        pad = self.width - len(ids)
+        ids = ids + [0] * pad
+        labs = labs + [IGNORE_ID] * pad
+        <span class="c-kw">return</span> ids, labs, supervised
+
+    <span class="c-kw">def</span> build(self, jsonl_path, ids_bin, labs_bin):
+        <span class="c-cm">"""流式编码整份 jsonl 落盘；已存在则跳过（断点友好）。返回样本数"""</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> jsonl_path.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {jsonl_path}（请先运行 normalize_data.py）"</span>)
+        <span class="c-kw">if</span> ids_bin.exists() <span class="c-kw">and</span> ids_bin.stat().st_size &gt; 0:
+            n = ids_bin.stat().st_size // (self.width * 4)  <span class="c-cm"># uint32 每样本 width×4 字节</span>
+            print(<span class="c-str">f"[bin] {ids_bin} 已存在（{n:,} 条样本），跳过编码"</span>)
+            <span class="c-kw">return</span> n
+
+        n, bad, total_tok, sup_tok = 0, 0, 0, 0
+        ids_buf, labs_buf = [], []
+        <span class="c-kw">with</span> open(jsonl_path, encoding=<span class="c-str">"utf-8"</span>) <span class="c-kw">as</span> fin, \
+                open(ids_bin, <span class="c-str">"wb"</span>) <span class="c-kw">as</span> f_ids, open(labs_bin, <span class="c-str">"wb"</span>) <span class="c-kw">as</span> f_labs:
+            <span class="c-kw">for</span> line <span class="c-kw">in</span> fin:
+                <span class="c-kw">try</span>:
+                    text = json.loads(line)[<span class="c-str">"text"</span>]
+                <span class="c-kw">except</span> (json.JSONDecodeError, KeyError):
+                    bad += 1
+                    <span class="c-kw">continue</span>  <span class="c-cm"># 坏行跳过</span>
+                ids, labs, sup = self.encode_one(text)
+                <span class="c-kw">if</span> sup == 0:
+                    bad += 1
+                    <span class="c-kw">continue</span>  <span class="c-cm"># 没有完整回答的样本不算教材</span>
+                ids_buf.extend(ids)
+                labs_buf.extend(labs)
+                total_tok += len(ids)  <span class="c-cm"># 含 pad 前的有效长度另算无妨，比值仅供肉眼参考</span>
+                sup_tok += sup
+                n += 1
+                <span class="c-kw">if</span> n % ENCODE_FLUSH_LINES == 0:
+                    np.asarray(ids_buf, dtype=np.uint32).tofile(f_ids)
+                    np.asarray(labs_buf, dtype=np.int32).tofile(f_labs)
+                    ids_buf.clear()
+                    labs_buf.clear()
+                    print(<span class="c-str">f"[encode] 已处理 {n:,} 条"</span>)
+            <span class="c-kw">if</span> ids_buf:  <span class="c-cm"># 尾批</span>
+                np.asarray(ids_buf, dtype=np.uint32).tofile(f_ids)
+                np.asarray(labs_buf, dtype=np.int32).tofile(f_labs)
+        ratio = sup_tok / max(total_tok, 1)
+        print(
+            <span class="c-str">f"[bin] {jsonl_path.name} → {n:,} 条样本（跳过 {bad} 条）· "</span>
+            <span class="c-str">f"算分 token 占比 {ratio:.1%}"</span>
+        )
+        <span class="c-kw">return</span> n
+
+
+<span class="c-kw">class</span> PaddedSampler:
+    <span class="c-cm">"""职责：只负责组批——memmap 打开定长样本，随机抽条数（OS 按需调页，不占 RAM）"""</span>
+
+    <span class="c-kw">def</span> __init__(self, ids_bin, labs_bin, width):
+        <span class="c-cm"># reshape 成 (样本数, width)：类似 Python 的等长二维列表，但数据在磁盘上</span>
+        self.ids = np.memmap(ids_bin, dtype=np.uint32, mode=<span class="c-str">"r"</span>).reshape(-1, width)
+        self.labs = np.memmap(labs_bin, dtype=np.int32, mode=<span class="c-str">"r"</span>).reshape(-1, width)
+        <span class="c-kw">if</span> len(self.ids) &lt; 1:
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] {ids_bin} 为空（先补数据）"</span>)
+
+    <span class="c-kw">def</span> sample(self, batch_size, device):
+        <span class="c-cm">"""随机抽 batch_size 条；x 取前 512，y 取错一位的后 512（含 mask）"""</span>
+        idx = np.random.randint(0, len(self.ids), size=batch_size)
+        <span class="c-cm"># memmap 切片转 int64 才能进 Embedding / cross_entropy</span>
+        x = torch.from_numpy(self.ids[idx].astype(np.int64)[:, :-1])
+        y = torch.from_numpy(self.labs[idx].astype(np.int64)[:, 1:])
+        <span class="c-kw">return</span> x.to(device), y.to(device)
+
+
+<span class="c-kw">class</span> LrScheduler:
+    <span class="c-cm">"""职责：只负责学习率——预热线性爬升，随后余弦退火到峰值的 1/10"""</span>
+
+    <span class="c-kw">def</span> at(self, step):
+        <span class="c-cm">"""返回第 step 步应使用的学习率"""</span>
+        <span class="c-kw">if</span> step &lt; WARMUP_STEPS:
+            <span class="c-kw">return</span> LR * (step + 1) / WARMUP_STEPS  <span class="c-cm"># 预热：防开局大步翻车</span>
+        t = (step - WARMUP_STEPS) / max(TOTAL_STEPS - WARMUP_STEPS, 1)
+        <span class="c-kw">return</span> LR * (MIN_LR_RATIO + (1 - MIN_LR_RATIO) * (1 + math.cos(math.pi * t)) / 2)
+
+
+<span class="c-kw">class</span> SftTrainer:
+    <span class="c-cm">"""职责：只负责训练循环——加载预训练权重、半精度训练、监考、早停、存档"""</span>
+
+    <span class="c-kw">def</span> __init__(self, train_bins, val_bins):
+        self.device = self._pick_device()
+        self.model = self._load_pretrained().to(self.device)
+        self.model.grad_ckpt = GRAD_CKPT  <span class="c-cm"># 打开梯度检查点：重算换显存（OOM 的解药）</span>
+        self.opt = torch.optim.AdamW(self.model.parameters(), lr=LR)
+        w = SEQ_LEN + 1
+        self.train_batch = PaddedSampler(train_bins[0], train_bins[1], w)
+        self.val_batch = PaddedSampler(val_bins[0], val_bins[1], w)
+        self.sched = LrScheduler()
+        <span class="c-cm"># 混合精度只在 cuda 上开启（mps/cpu 冒烟用 fp32 更稳）。</span>
+        <span class="c-cm"># 半精度自动二选一：算力 8.0（Ampere）起有 bf16 张量核 → bf16；</span>
+        <span class="c-cm"># T4 等老卡（算力 7.5）只有 fp16 张量核 → fp16（靠 GradScaler 防梯度下溢）</span>
+        self.amp = self.device == <span class="c-str">"cuda"</span>
+        self.bf16 = self.amp <span class="c-kw">and</span> torch.cuda.get_device_capability() &gt;= (8, 0)
+        self.dtype = torch.bfloat16 <span class="c-kw">if</span> self.bf16 <span class="c-kw">else</span> torch.float16
+        <span class="c-cm"># GradScaler 只有 fp16 需要；bf16 / 不开混合精度时它是关闭态，各方法自动退化为透传</span>
+        <span class="c-kw">try</span>:
+            <span class="c-cm"># torch≥2.3 的新接口（旧接口已弃用告警）</span>
+            self.scaler = torch.amp.GradScaler(<span class="c-str">"cuda"</span>, enabled=self.amp <span class="c-kw">and</span> <span class="c-kw">not</span> self.bf16)
+        <span class="c-kw">except</span> (TypeError, AttributeError):
+            <span class="c-cm"># torch&lt;2.3 的旧接口兜底</span>
+            self.scaler = torch.cuda.amp.GradScaler(enabled=self.amp <span class="c-kw">and</span> <span class="c-kw">not</span> self.bf16)
+
+    @staticmethod
+    <span class="c-kw">def</span> _pick_device():
+        <span class="c-cm">"""设备优先级：英伟达 GPU &gt; 苹果 MPS &gt; CPU（有什么用什么）"""</span>
+        <span class="c-kw">if</span> torch.cuda.is_available():
+            <span class="c-kw">return</span> <span class="c-str">"cuda"</span>
+        <span class="c-kw">if</span> torch.backends.mps.is_available():
+            <span class="c-kw">return</span> <span class="c-str">"mps"</span>
+        <span class="c-kw">return</span> <span class="c-str">"cpu"</span>
+
+    @staticmethod
+    <span class="c-kw">def</span> _load_pretrained():
+        <span class="c-cm">"""从 05 站存档恢复模型：超参从存档里的 config 读，不靠人肉对齐"""</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> PRETRAIN_CKPT.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {PRETRAIN_CKPT}（请先跑完预训练一站）"</span>)
+        ckpt = torch.load(PRETRAIN_CKPT, map_location=<span class="c-str">"cpu"</span>, weights_only=<span class="c-kw">False</span>)
+        cfg = ModelConfig(**ckpt[<span class="c-str">"config"</span>])  <span class="c-cm"># 词表/维度/层数全部沿用存档口径</span>
+        model = XiaozhiGPT(cfg)
+        model.load_state_dict(ckpt[<span class="c-str">"model"</span>])
+        print(
+            <span class="c-str">f"[init] 已加载预训练存档（step {ckpt.get('step')}，"</span>
+            <span class="c-str">f"val_loss {ckpt.get('val_loss'):.4f}）"</span>
+        )
+        <span class="c-kw">return</span> model
+
+    <span class="c-kw">def</span> _forward_loss(self, x, y):
+        <span class="c-cm">"""混合精度前向并算交叉熵；ignore_index=-100 让 user 段/pad 不参与打分"""</span>
+        <span class="c-kw">with</span> torch.autocast(device_type=self.device, dtype=self.dtype, enabled=self.amp):
+            logits = self.model(x)
+            <span class="c-kw">return</span> F.cross_entropy(
+                logits.view(-1, logits.size(-1)), y.view(-1), ignore_index=IGNORE_ID
+            )
+
+    @torch.no_grad()
+    <span class="c-kw">def</span> eval_loss(self):
+        <span class="c-cm">"""验证集监考：抽固定批数算平均 loss，全程不更新参数"""</span>
+        self.model.eval()
+        losses = []
+        <span class="c-kw">for</span> _ <span class="c-kw">in</span> range(VAL_BATCHES):
+            x, y = self.val_batch.sample(BATCH_SIZE, self.device)
+            losses.append(self._forward_loss(x, y).item())
+        self.model.train()
+        <span class="c-kw">return</span> sum(losses) / len(losses)
+
+    <span class="c-kw">def</span> _save(self, step, val_loss):
+        <span class="c-cm">"""存档：与预训练同款格式（model/config/step/val_loss），评估站直接加载"""</span>
+        CKPT_FILE.parent.mkdir(exist_ok=<span class="c-kw">True</span>)
+        model = getattr(self.model, <span class="c-str">"_orig_mod"</span>, self.model)
+        torch.save(
+            {
+                <span class="c-str">"model"</span>: model.state_dict(),
+                <span class="c-str">"config"</span>: vars(model.cfg),  <span class="c-cm"># 超参跟着权重走，加载时不靠猜</span>
+                <span class="c-str">"step"</span>: step,
+                <span class="c-str">"val_loss"</span>: val_loss,
+            },
+            CKPT_FILE,
+        )
+
+    <span class="c-kw">def</span> run(self):
+        <span class="c-cm">"""主循环：训练 TOTAL_STEPS 步，期间定期监考，不行就早停"""</span>
+        best_val, bad_rounds = float(<span class="c-str">"inf"</span>), 0
+        t0 = time.time()
+        <span class="c-kw">for</span> step <span class="c-kw">in</span> range(TOTAL_STEPS):
+            <span class="c-cm"># 学习率每步重算并写回优化器（调度器的正确接法）</span>
+            lr = self.sched.at(step)
+            <span class="c-kw">for</span> g <span class="c-kw">in</span> self.opt.param_groups:
+                g[<span class="c-str">"lr"</span>] = lr
+
+            <span class="c-cm"># ---- 标准五步走：取批 → 前向 → 清零 → 反向 → 更新 ----</span>
+            x, y = self.train_batch.sample(BATCH_SIZE, self.device)
+            loss = self._forward_loss(x, y)
+            self.opt.zero_grad(set_to_none=<span class="c-kw">True</span>)
+            <span class="c-cm"># GradScaler 三件套：放大 loss 防 fp16 梯度下溢 → 还原梯度后裁剪 → 无异常才更新</span>
+            <span class="c-cm"># bf16 或不开混合精度时 scaler 是关闭态，下面五行自动退化为普通 backward/clip/step</span>
+            self.scaler.scale(loss).backward()
+            self.scaler.unscale_(self.opt)
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), GRAD_CLIP)
+            self.scaler.step(self.opt)
+            self.scaler.update()
+
+            <span class="c-kw">if</span> step % 100 == 0:
+                print(
+                    <span class="c-str">f"[train] step {step:&gt;6} | loss {loss.item():.4f} | "</span>
+                    <span class="c-str">f"lr {lr:.2e} | 用时 {time.time()-t0:.0f}s"</span>
+                )
+
+            <span class="c-cm"># ---- 定期监考：刷新纪录才存档，连续不进步就早停 ----</span>
+            <span class="c-kw">if</span> step % VAL_EVERY == 0 <span class="c-kw">or</span> step == TOTAL_STEPS - 1:
+                val = self.eval_loss()
+                <span class="c-kw">if</span> val &lt; best_val:
+                    best_val, bad_rounds = val, 0
+                    self._save(step, val)
+                    print(
+                        <span class="c-str">f"[val] step {step:&gt;6} | val_loss {val:.4f} | "</span>
+                        <span class="c-str">f"best {best_val:.4f} ← 新纪录，已存档"</span>
+                    )
+                <span class="c-kw">else</span>:
+                    bad_rounds += 1
+                    print(
+                        <span class="c-str">f"[val] step {step:&gt;6} | val_loss {val:.4f} | "</span>
+                        <span class="c-str">f"best {best_val:.4f}（{bad_rounds}/{PATIENCE}）"</span>
+                    )
+                    <span class="c-kw">if</span> bad_rounds &gt;= PATIENCE:
+                        print(<span class="c-str">f"[early-stop] 验证集连续 {PATIENCE} 次没进步，提前收工"</span>)
+                        <span class="c-kw">break</span>
+        print(
+            <span class="c-str">f"[done] 训练结束 | 最佳验证 loss {best_val:.4f} | "</span>
+            <span class="c-str">f"存档 → {CKPT_FILE} | 用时 {time.time()-t0:.0f}s"</span>
+        )
+
+
+<span class="c-kw">class</span> SftPipeline:
+    <span class="c-cm">"""职责：只负责编排——编码落盘 → 加载预训练模型 → 开训"""</span>
+
+    <span class="c-kw">def</span> run(self):
+        torch.manual_seed(SEED)  <span class="c-cm"># 固定随机性</span>
+        np.random.seed(SEED)  <span class="c-cm"># 组批用 numpy 随机，一并固定</span>
+        BIN_DIR.mkdir(exist_ok=<span class="c-kw">True</span>)
+
+        <span class="c-cm"># ① 供料：模板化 jsonl → 定长 (ids, labs) 样本（已编码过会自动跳过）</span>
+        builder = SftBinBuilder(TOKENIZER_FILE)
+        train_bins = (BIN_DIR / <span class="c-str">"train_ids.bin"</span>, BIN_DIR / <span class="c-str">"train_labs.bin"</span>)
+        val_bins = (BIN_DIR / <span class="c-str">"val_ids.bin"</span>, BIN_DIR / <span class="c-str">"val_labs.bin"</span>)
+        n_train = builder.build(TRAIN_FILE, *train_bins)
+        n_val = builder.build(VAL_FILE, *val_bins)
+        print(<span class="c-str">f"[data] 训练样本 {n_train:,} 条 · 监考样本 {n_val:,} 条"</span>)
+
+        <span class="c-cm"># ② 组建：加载预训练存档（config 从存档读，词表与分词器天然一致）</span>
+        trainer = SftTrainer(train_bins, val_bins)
+        n_params = sum(p.numel() <span class="c-kw">for</span> p <span class="c-kw">in</span> trainer.model.parameters())
+        <span class="c-kw">if</span> <span class="c-kw">not</span> trainer.amp:
+            prec = <span class="c-str">"关"</span>
+        <span class="c-kw">elif</span> trainer.bf16:
+            prec = <span class="c-str">"bf16"</span>
+        <span class="c-kw">else</span>:
+            prec = <span class="c-str">"fp16 + GradScaler"</span>
+        print(
+            <span class="c-str">f"[model] 参数 {n_params/1e6:.2f}M · 设备 {trainer.device} · "</span>
+            <span class="c-str">f"混合精度 {prec}"</span>
+        )
+
+        <span class="c-cm"># ③ 开训</span>
+        trainer.run()
+
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    SftPipeline().run()
+
+        </pre>
+      </div>
+    </section>
+
+    <!-- ============ 验收清单 ============ -->
+    <section class="tsec" id="check">
+      <h2 class="reveal">验收清单</h2>
+      <p class="cap reveal">M6 毕业线：存档在手，会回答、会停下</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th style="width: 24%">检查项</th>
+            <th style="width: 40%">它在说什么</th>
+            <th style="width: 36%">怎样算通过</th>
+          </tr>
+          <tr class="hl">
+            <td class="mono">算分 token 占比</td>
+            <td>mask 后参与 loss 的比例</td>
+            <td>30%~70% 属正常；<b>为 0 说明模板标记对不上</b>，回查 02/03 站</td>
+          </tr>
+          <tr>
+            <td class="mono">开局 loss</td>
+            <td>第 0 步的分数</td>
+            <td>远低于 9.7（热启动 + 只算回答段），2~4 都正常</td>
+          </tr>
+          <tr>
+            <td class="mono">监考趋势</td>
+            <td>val_loss 是否下行</td>
+            <td>整体下行；早停触发属正常（微调宁缺毋滥）</td>
+          </tr>
+          <tr>
+            <td class="mono">存档完整</td>
+            <td>checkpoints/sft_best.pt 的内容</td>
+            <td>含 model / config / step / val_loss 四个键</td>
+          </tr>
+          <tr class="hl">
+            <td class="mono">行为验收</td>
+            <td>问"你是谁"看回答</td>
+            <td>规规矩矩回答 + 主动停止；反问/接龙 = 没训到位</td>
+          </tr>
+        </table>
+      </div>
+
+      <h2 class="reveal" style="margin-top: 4.5rem">与预训练的差异一表清</h2>
+      <p class="cap reveal">骨架完全复用，四处关键差异全是"对话"带来的</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th style="width: 22%">维度</th>
+            <th style="width: 36%">预训练（05 站）</th>
+            <th style="width: 42%">SFT 微调（本站）</th>
+          </tr>
+          <tr class="hl">
+            <td><b>loss 范围</b></td>
+            <td class="mono">整个窗口全部算分</td>
+            <td class="mono">只算 assistant 段（含 &lt;|end|&gt;），user 段 -100</td>
+          </tr>
+          <tr class="hl">
+            <td><b>数据形态</b></td>
+            <td class="mono">token 长河，随机切窗</td>
+            <td class="mono">定长样本双数组（ids + labels），对话边界不串</td>
+          </tr>
+          <tr>
+            <td class="mono">起点 / 学习率</td>
+            <td class="mono">随机初始化 / 1e-3</td>
+            <td class="mono">pretrain_best.pt 热启动 / 2e-4（1/5）</td>
+          </tr>
+          <tr>
+            <td class="mono">步数 / 早停耐心</td>
+            <td class="mono">15000（≈1 epoch）/ 5</td>
+            <td class="mono">12000（≈0.4 epoch）/ 4</td>
+          </tr>
+          <tr>
+            <td>不变的部分</td>
+            <td colspan="2" class="mono">
+              半精度自适应 · 梯度检查点 · warmup+余弦 · 监考只存最佳 · 种子 42 · memmap 供料
+            </td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">能力和规矩都齐了，该上考场了</h2>
+        <p class="fin-sum reveal">
+          到这里，小智读完了 120 万行书，又刷了 90 万轮题。 它到底学会了多少？
+          下一站评估：同一份考卷，分别发给预训练版和 SFT 版，
+          肉眼可见的"会接龙 → 会回答"，就是这一代最好的毕业照。
+        </p>
+        <footer class="reveal">
+          <span>小智三代 · SFT 微调实操手册</span>
+          <span>loss mask × 热启动 × 2e-4 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "p4", "code", "check"].forEach((id) =>
+        io2.observe(document.getElementById(id)),
+      );
+
+      /* ========== 一键复制代码（取 innerText，自动去掉高亮标签） ========== */
+      document
+        .getElementById("copybtn")
+        .addEventListener("click", async (e) => {
+          const btn = e.target;
+          const text = document.getElementById("codeblock").innerText;
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = "已复制 ✓";
+          } catch {
+            btn.textContent = "复制失败，请手动全选";
+          }
+          setTimeout(() => (btn.textContent = "复制代码"), 1800);
+        });
+    </script>
+  </body>
+</html>
