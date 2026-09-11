@@ -1,0 +1,1313 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小智三代 · 评估对比实操手册</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ========== 配色与全局（与 v3 前几站手册同一套纸面风格） ========== */
+      :root {
+        --paper: #f6f1e7;
+        --ink: #191611;
+        --verm: #e8432c;
+        --soft: #cfc5ae;
+        --muted: #8a8271;
+        --line2: #dcd3bf;
+        --term: #15130e;
+        --termtxt: #e8e2d2;
+        --termmut: #7a7261;
+      }
+      .dark {
+        --paper: #17140f;
+        --ink: #f4efe3;
+        --soft: #4e4839;
+        --muted: #9a927e;
+        --line2: #3b372c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        line-height: 1.85;
+        overflow-x: hidden;
+      }
+      ::selection {
+        background: var(--verm);
+        color: #fff;
+      }
+      #bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        width: 0;
+        background: var(--verm);
+        z-index: 99;
+      }
+
+      /* ========== 右侧圆点导航 ========== */
+      .dotnav {
+        position: fixed;
+        right: 1.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .dotnav a {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+      }
+      .dotnav a::after {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1.5px solid var(--muted);
+        transition: 0.25s;
+      }
+      .dotnav a.on {
+        color: var(--verm);
+        font-weight: 700;
+      }
+      .dotnav a.on::after {
+        background: var(--verm);
+        border-color: var(--verm);
+        transform: scale(1.35);
+      }
+      .dotnav span {
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .dotnav a:hover span,
+      .dotnav a.on span {
+        opacity: 1;
+      }
+
+      /* ========== 首屏 ========== */
+      .hero {
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem 6vw 4rem;
+        position: relative;
+      }
+      .kicker {
+        font-size: 0.8rem;
+        letter-spacing: 0.35em;
+        color: var(--muted);
+        border-top: 1px solid var(--ink);
+        display: inline-block;
+        padding-top: 0.7rem;
+        margin-bottom: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      h1 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+        line-height: 1.25;
+        position: relative;
+        z-index: 1;
+      }
+      h1 .red {
+        color: var(--verm);
+      }
+      .sub {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        max-width: 40em;
+        position: relative;
+        z-index: 1;
+      }
+      .hero-deco {
+        position: absolute;
+        right: -6vw;
+        top: 8vh;
+        width: min(38vw, 460px);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-deco .ring {
+        animation: spin 70s linear infinite;
+        transform-origin: center;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 2.6rem;
+        position: relative;
+        z-index: 1;
+      }
+      .hb {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        border: 1.5px solid var(--ink);
+        border-radius: 99px;
+        padding: 0.35rem 1.1rem;
+      }
+      .hb.red {
+        background: var(--verm);
+        border-color: var(--verm);
+        color: #fff;
+      }
+
+      /* ========== 章节骨架 ========== */
+      .stage {
+        padding: 5.5rem 6vw 4.5rem;
+        border-top: 1px solid var(--line2);
+      }
+      .stage-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: start;
+      }
+      .flip .art {
+        order: 2;
+      }
+      .art svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .num {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        line-height: 1;
+        color: transparent;
+        -webkit-text-stroke: 2.5px var(--verm);
+        font-size: clamp(2.2rem, 3.6vw, 3.4rem);
+      }
+      @supports not (-webkit-text-stroke: 1px red) {
+        .num {
+          color: var(--verm);
+        }
+      }
+      h2 {
+        font-family: "Noto Serif SC", serif;
+        font-weight: 900;
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        margin: 0.6rem 0 0.4rem;
+        line-height: 1.4;
+      }
+      .whyl {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        font-weight: 700;
+        color: var(--verm);
+        border: 1.5px solid var(--verm);
+        border-radius: 99px;
+        padding: 0.15rem 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .lead {
+        font-size: 1.02rem;
+        max-width: 31em;
+      }
+      .detail {
+        margin-top: 1.2rem;
+        font-size: 0.95rem;
+        max-width: 31em;
+      }
+      .detail b {
+        color: var(--verm);
+      }
+      .note {
+        margin-top: 1.2rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid var(--line2);
+        color: var(--muted);
+        font-size: 0.85rem;
+        max-width: 31em;
+      }
+      .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9em;
+      }
+
+      /* ========== 手绘 SVG 插图通用类 ========== */
+      .s {
+        stroke: var(--ink);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sw {
+        fill: var(--paper);
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linejoin: round;
+      }
+      .ac {
+        fill: var(--verm);
+      }
+      .acs {
+        stroke: var(--verm);
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .st {
+        stroke: var(--soft);
+        fill: none;
+        stroke-width: 1.5;
+        stroke-dasharray: 4 5;
+        stroke-linecap: round;
+      }
+      .tt {
+        fill: var(--ink);
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+      }
+      .ts {
+        fill: var(--muted);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+      }
+      .ta {
+        fill: var(--verm);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .tm {
+        fill: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 10.5px;
+      }
+      .fl {
+        animation: bob 4.5s ease-in-out infinite;
+      }
+      @keyframes bob {
+        50% {
+          transform: translateY(-6px);
+        }
+      }
+
+      /* ========== 全景流程图区 ========== */
+      .flow {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        text-align: center;
+      }
+      .flow h2 {
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .flow .cap {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 3rem;
+      }
+      .flow svg {
+        width: 100%;
+        height: auto;
+        max-width: 1150px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ========== 代码区（深色终端风） ========== */
+      .codesec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+        background: var(--term);
+        color: var(--termtxt);
+      }
+      .codesec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+        color: var(--termtxt);
+      }
+      .codesec .cap {
+        text-align: center;
+        color: var(--termmut);
+        font-size: 0.9rem;
+        margin-bottom: 2.2rem;
+      }
+      .codewrap {
+        max-width: 980px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .codewrap pre {
+        background: #0e0c08;
+        border: 1px solid #3b372c;
+        border-radius: 14px;
+        padding: 1.6rem 1.4rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.78rem;
+        line-height: 1.75;
+        color: var(--termtxt);
+        max-height: 640px;
+        overflow-y: auto;
+      }
+      .codewrap .c-cm {
+        color: #7a7261;
+      }
+      .codewrap .c-kw {
+        color: #e8432c;
+      }
+      .codewrap .c-str {
+        color: #a8c686;
+      }
+      #copybtn {
+        position: sticky;
+        top: 0.8rem;
+        float: right;
+        margin: 0.8rem 0.8rem 0 0;
+        z-index: 5;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        background: var(--verm);
+        color: #fff;
+        border: none;
+        border-radius: 99px;
+        padding: 0.4rem 1.1rem;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      #copybtn:hover {
+        transform: scale(1.06);
+      }
+
+      /* ========== 表格区 ========== */
+      .tsec {
+        padding: 5.5rem 6vw;
+        border-top: 1px solid var(--line2);
+      }
+      .tsec h2 {
+        text-align: center;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+      .tsec .cap {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2.6rem;
+      }
+      .tbwrap {
+        max-width: 1040px;
+        margin: 0 auto 2.2rem;
+        overflow-x: auto;
+      }
+      .tb {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .tb th,
+      .tb td {
+        border: 1px solid var(--line2);
+        padding: 0.6rem 0.85rem;
+        text-align: left;
+        font-size: 0.86rem;
+        line-height: 1.7;
+        vertical-align: top;
+      }
+      .tb th {
+        font-family: "Noto Serif SC", serif;
+        background: rgba(232, 67, 44, 0.07);
+      }
+      .tb td b {
+        color: var(--verm);
+      }
+      .tb tr.hl td {
+        background: rgba(232, 67, 44, 0.05);
+      }
+      .tb .mono {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      /* ========== 结尾 ========== */
+      .fin {
+        padding: 6.5rem 6vw 4rem;
+        border-top: 1px solid var(--line2);
+      }
+      .fin-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .fin h2 {
+        font-size: clamp(1.7rem, 3vw, 2.5rem);
+      }
+      .fin-sum {
+        margin-top: 2rem;
+        font-family: "Noto Serif SC", serif;
+        font-weight: 700;
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        max-width: 27em;
+        line-height: 2;
+      }
+      .fin-sum::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 4px;
+        background: var(--verm);
+        margin-bottom: 1.4rem;
+      }
+      footer {
+        margin-top: 4.5rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--line2);
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      /* ========== 滚动淡入 ========== */
+      .reveal {
+        opacity: 0;
+        transform: translateY(34px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (max-width: 900px) {
+        .dotnav {
+          display: none;
+        }
+        .stage-inner {
+          grid-template-columns: 1fr;
+          gap: 2.2rem;
+        }
+        .flip .art {
+          order: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bar"></div>
+
+    <nav class="dotnav" aria-label="章节导航">
+      <a href="#p0"><span>0 评什么</span></a>
+      <a href="#p1"><span>1 公平性</span></a>
+      <a href="#p2"><span>2 看什么信号</span></a>
+      <a href="#p3"><span>3 跑起来</span></a>
+      <a href="#code"><span>完整代码</span></a>
+      <a href="#check"><span>验收清单</span></a>
+    </nav>
+
+    <!-- ============ 首屏 ============ -->
+    <header class="hero">
+      <svg class="hero-deco" viewBox="0 0 400 400" aria-hidden="true">
+        <circle cx="200" cy="200" r="150" fill="var(--verm)" />
+        <circle
+          class="ring"
+          cx="200"
+          cy="200"
+          r="188"
+          fill="none"
+          stroke="var(--ink)"
+          stroke-width="1.5"
+          stroke-dasharray="3 9"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="105"
+          fill="none"
+          stroke="var(--paper)"
+          stroke-width="1.5"
+        />
+      </svg>
+      <p class="kicker">v3 第 07 站 · 对应规划 M7 里程碑（收官）</p>
+      <h1>评估对比<br /><span class="red">实操手册</span></h1>
+      <p class="sub">
+        收官站。同一份四科考卷，分别发给预训练版和 SFT
+        版小智，并排展示两份答卷： 前者大概率续写接龙，后者规规矩矩回答——
+        "会接龙 → 会回答"的差异一眼看清。 采样参数与 v2
+        一字不差，保证三代成绩纵向可比；报告自动落盘留档。
+      </p>
+      <div class="hero-badges">
+        <span class="hb red">预训练 vs SFT 同题对比</span>
+        <span class="hb red">四科考卷</span>
+        <span class="hb">采样参数与 v2 一致</span>
+        <span class="hb">报告落盘 eval_report.md</span>
+      </div>
+    </header>
+
+    <!-- ============ 全景流水线 ============ -->
+    <section class="flow">
+      <h2 class="reveal">全景 · 五步出成绩</h2>
+      <p class="cap reveal">同一道题两种问法：预训练裸续写，SFT 套模板</p>
+      <svg
+        viewBox="0 0 1150 210"
+        class="reveal"
+        role="img"
+        aria-label="评估对比五步流程"
+      >
+        <defs>
+          <marker
+            id="arw"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6.5"
+            markerHeight="6.5"
+            orient="auto"
+          >
+            <path d="M0 0 L10 5 L0 10 z" fill="#191611" />
+          </marker>
+        </defs>
+        <g stroke="#191611" stroke-width="2" marker-end="url(#arw)">
+          <line x1="218" y1="90" x2="266" y2="90" />
+          <line x1="438" y1="90" x2="486" y2="90" />
+          <line x1="658" y1="90" x2="706" y2="90" />
+          <line x1="878" y1="90" x2="926" y2="90" />
+        </g>
+        <g
+          font-family="'Noto Sans SC',sans-serif"
+          font-size="12.5"
+          text-anchor="middle"
+        >
+          <rect
+            x="40"
+            y="62"
+            width="178"
+            height="56"
+            rx="12"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="129" y="86" fill="#191611">加载双存档</text>
+          <text x="129" y="104" fill="#8a8271" font-size="10.5">
+            config 从存档读
+          </text>
+          <rect x="266" y="62" width="172" height="56" rx="12" fill="#E8432C" />
+          <text x="352" y="86" fill="#fff">同题双答</text>
+          <text x="352" y="104" fill="#fff" font-size="10.5">
+            续写 vs 模板问答
+          </text>
+          <rect
+            x="486"
+            y="62"
+            width="172"
+            height="56"
+            rx="12"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="572" y="86" fill="#191611">并排打印</text>
+          <text x="572" y="104" fill="#8a8271" font-size="10.5">
+            逐题两份答卷
+          </text>
+          <rect x="706" y="62" width="172" height="56" rx="12" fill="#E8432C" />
+          <text x="792" y="86" fill="#fff">报告落盘</text>
+          <text x="792" y="104" fill="#fff" font-size="10.5">
+            eval_report.md 留档
+          </text>
+          <rect
+            x="926"
+            y="62"
+            width="172"
+            height="56"
+            rx="12"
+            fill="none"
+            stroke="#191611"
+            stroke-width="2"
+          />
+          <text x="1012" y="86" fill="#191611">人工打分</text>
+          <text x="1012" y="104" fill="#8a8271" font-size="10.5">
+            肉眼验收代际差异
+          </text>
+        </g>
+        <g class="ts" text-anchor="middle" font-size="11.5">
+          <text x="129" y="155">pretrain_best + sft_best</text>
+          <text x="352" y="155">温度/top-k 与 v2 一致</text>
+          <text x="572" y="155">认怂科给启发式提示</text>
+          <text x="792" y="155">三代纵向可比</text>
+          <text x="1012" y="155">四科逐题过</text>
+        </g>
+        <text x="575" y="195" text-anchor="middle" class="ts" font-size="12">
+          铁律：评估只用验证集没见过的固定题目，采样参数三代不变
+        </text>
+      </svg>
+    </section>
+
+    <!-- ============ 00 评什么 ============ -->
+    <section class="stage" id="p0">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 370"
+            role="img"
+            aria-label="四科考卷"
+          >
+            <rect x="30" y="30" width="250" height="300" rx="14" class="sw" />
+            <rect x="30" y="30" width="250" height="36" rx="14" class="ac" />
+            <text
+              x="155"
+              y="54"
+              fill="#fff"
+              font-size="13"
+              font-weight="700"
+              text-anchor="middle"
+              font-family="'Noto Sans SC',sans-serif"
+            >
+              固定考卷 · 四科
+            </text>
+            <g class="ts" font-size="12">
+              <text x="55" y="98">① 自我介绍（人设稳不稳）</text>
+              <text x="55" y="130">② 闲聊（接不接得住话）</text>
+              <text x="55" y="162">③ 超纲认怂（会不会硬编）</text>
+              <text x="55" y="194" class="ta">④ 知识问答（预训练学到啥）</text>
+            </g>
+            <text x="55" y="240" class="ts" font-size="11">
+              前三科与 v2 一字不差
+            </text>
+            <text x="55" y="264" class="ts" font-size="11">
+              第四科是 v3 新设：考预训练的常识储备
+            </text>
+            <!-- 双答卷 -->
+            <g class="fl">
+              <rect x="310" y="90" width="120" height="60" rx="10" class="st" />
+              <text x="370" y="115" class="ts" text-anchor="middle" font-size="11">
+                预训练版
+              </text>
+              <text x="370" y="136" class="ts" text-anchor="middle" font-size="10.5">
+                大概率接龙
+              </text>
+              <rect x="310" y="170" width="120" height="60" rx="10" class="acs" />
+              <text x="370" y="195" class="ta" text-anchor="middle" font-size="11">
+                SFT 版
+              </text>
+              <text x="370" y="216" class="ts" text-anchor="middle" font-size="10.5">
+                规矩回答+停下
+              </text>
+            </g>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">00</div>
+          <h2>评什么：四科考卷 + 一场对比实验</h2>
+          <span class="whyl">v3 的毕业考</span>
+          <p class="lead">
+            v2 的三科考卷原样保留：自我介绍、日常闲聊、超纲认怂。 新添第四科
+            <b>知识问答</b>——预训练从 120 万行文本里吸收了多少常识， 这一科直接见分晓。
+          </p>
+          <p class="detail">
+            最有说服力的是<b>对比实验</b>：同一道题，预训练模型裸文本续写
+            （它没学过模板），SFT 模型套聊天模板、 遇
+            <span class="mono">&lt;|end|&gt;</span> 停。 前者大概率接着你的话往下编，
+            后者规规矩矩回答——两阶段各自的价值，一张对照表就看懂。
+          </p>
+          <p class="note">
+            自动评分不做——0.1B 模型的答卷适合人工肉眼判，
+            脚本只负责并排展示和留档。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 公平性 ============ -->
+    <section class="stage dark flip" id="p1">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 340"
+            role="img"
+            aria-label="公平性：同一道题，同一套采样参数，各自合理的问法"
+          >
+            <!-- 题目 -->
+            <rect x="130" y="30" width="200" height="46" rx="12" class="sw" />
+            <text x="230" y="58" class="tt" text-anchor="middle" font-size="13">
+              同一道题
+            </text>
+            <!-- 分两路 -->
+            <g class="acs" marker-end="url(#arw1)">
+              <line x1="180" y1="82" x2="120" y2="120" />
+              <line x1="280" y1="82" x2="340" y2="120" />
+            </g>
+            <rect x="40" y="126" width="170" height="90" rx="12" class="st" />
+            <text x="125" y="152" class="ts" text-anchor="middle" font-size="11.5">
+              预训练模型
+            </text>
+            <text x="125" y="176" class="ts" text-anchor="middle" font-size="11">
+              裸文本续写
+            </text>
+            <text x="125" y="198" class="ts" text-anchor="middle" font-size="10.5">
+              （它没学过模板）
+            </text>
+            <rect x="255" y="126" width="170" height="90" rx="12" class="acs" />
+            <text x="340" y="152" class="ta" text-anchor="middle" font-size="11.5">
+              SFT 模型
+            </text>
+            <text x="340" y="176" class="ts" text-anchor="middle" font-size="11">
+              模板 + 遇 &lt;|end|&gt; 停
+            </text>
+            <text x="340" y="198" class="ts" text-anchor="middle" font-size="10.5">
+              （它的训练姿势）
+            </text>
+            <!-- 底部参数带 -->
+            <rect x="30" y="250" width="400" height="62" rx="12" class="sw" />
+            <text x="230" y="276" class="ts" text-anchor="middle" font-size="11.5">
+              采样参数三代不变：temperature 0.8 · top_k 50 · max_new 80
+            </text>
+            <text x="230" y="298" class="ta" text-anchor="middle" font-size="11">
+              参数不动，成绩差异才来自模型本身
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">01</div>
+          <h2>怎么保证对比是公平的</h2>
+          <span class="whyl">控制变量</span>
+          <p class="lead">
+            对比实验最怕"变量没控住"。这里锁住三个：
+            <b>同一份题目</b>、<b>同一套采样参数</b>（沿用 v2，三代纵向可比）、
+            <b>同一个随机种子</b>（结果可复现）。
+          </p>
+          <p class="detail">
+            唯一"不同"的是问法，而且必须不同： 预训练模型没学过聊天模板，套模板反而为难它，
+            裸文本续写才是它的主场； SFT
+            模型则用它训练时的模板姿势。 这不是不公平，是<b>让各自以最擅长的方式应考</b>。
+          </p>
+          <p class="note">
+            超纲科沿用 v2 的启发式提示：SFT 答案里出现认怂关键词会标
+            ✅，没有则标 ⚠️ 请人工核对——提示不是评分。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 看什么信号 ============ -->
+    <section class="stage" id="p2">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 360"
+            role="img"
+            aria-label="三个验收信号：接龙变回答、主动停下、敢认怂"
+          >
+            <rect x="30" y="30" width="400" height="88" rx="14" class="sw" />
+            <circle cx="72" cy="74" r="22" class="ac" />
+            <text x="72" y="82" fill="#fff" font-size="17" font-weight="900" text-anchor="middle" font-family="'Noto Serif SC',serif">
+              1
+            </text>
+            <text x="110" y="66" class="tt" font-size="13.5">接龙 → 回答</text>
+            <text x="110" y="92" class="ts" font-size="11">
+              预训练版续写问题，SFT 版给出答案——最直观的代际差
+            </text>
+            <rect x="30" y="136" width="400" height="88" rx="14" class="sw" />
+            <circle cx="72" cy="180" r="22" class="ac" />
+            <text x="72" y="188" fill="#fff" font-size="17" font-weight="900" text-anchor="middle" font-family="'Noto Serif SC',serif">
+              2
+            </text>
+            <text x="110" y="172" class="tt" font-size="13.5">主动停下</text>
+            <text x="110" y="198" class="ts" font-size="11">
+              SFT 版答完就收（&lt;|end|&gt; 生效），不啰嗦不续貂
+            </text>
+            <rect x="30" y="242" width="400" height="88" rx="14" class="sw" />
+            <circle cx="72" cy="286" r="22" class="ac" />
+            <text x="72" y="294" fill="#fff" font-size="17" font-weight="900" text-anchor="middle" font-family="'Noto Serif SC',serif">
+              3
+            </text>
+            <text x="110" y="278" class="tt" font-size="13.5">敢认怂</text>
+            <text x="110" y="304" class="ts" font-size="11">
+              超纲题不硬编事实，会说"不知道/不清楚"
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">02</div>
+          <h2>看报告时盯三个信号</h2>
+          <span class="whyl">肉眼验收指南</span>
+          <p class="lead">
+            报告出来不用逐字读，盯三个信号就够：
+            <b>接龙变回答</b>（SFT 版是不是真的在答）、 <b>主动停下</b>（答完有没有及时刹车）、
+            <b>敢认怂</b>（超纲题有没有硬编）。
+          </p>
+          <p class="detail">
+            前两个信号健康是 M6 训练到位的直接证据； 第三个信号弱一些不意外——
+            认怂取决于数据里此类样本的浓度，0.1B 模型能"经常认怂"就算合格。
+            知识问答科答错具体事实不奇怪（0.1B 容量有限）， 看的是它"像不像在回答一个问题"。
+          </p>
+          <p class="note">
+            如果 SFT 版也满嘴接龙：多半是两阶段存档拿反了， 或 SFT
+            没训够（回 06 站看监考 loss）。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 跑起来 ============ -->
+    <section class="stage dark flip" id="p3">
+      <div class="stage-inner">
+        <figure class="art reveal">
+          <svg
+            viewBox="0 0 460 400"
+            role="img"
+            aria-label="运行方式与对比报告示例"
+          >
+            <!-- 命令 -->
+            <rect
+              x="30"
+              y="30"
+              width="400"
+              height="58"
+              rx="12"
+              fill="#0e0c08"
+              stroke="#3b372c"
+              stroke-width="1.5"
+            />
+            <text x="50" y="55" fill="#7a7261" font-size="11" font-family="'JetBrains Mono',monospace">
+              $ conda activate f10
+            </text>
+            <text x="50" y="76" fill="#a8c686" font-size="11" font-family="'JetBrains Mono',monospace">
+              $ python eval_compare.py
+            </text>
+            <!-- 报告 -->
+            <rect
+              x="30"
+              y="110"
+              width="400"
+              height="240"
+              rx="12"
+              fill="#0e0c08"
+              stroke="#3b372c"
+              stroke-width="1.5"
+            />
+            <g font-family="'JetBrains Mono',monospace" font-size="10" fill="#e8e2d2">
+              <text x="48" y="136">[load] 双模型就绪 · 设备 cuda</text>
+              <text x="48" y="158">===== 自我介绍（人设稳不稳） =====</text>
+              <text x="48" y="180">[1] 问：你是谁？</text>
+              <text x="48" y="200" fill="#7a7261">
+                　 预训练（接龙）：你是谁？你从哪里来？要到哪里去？
+              </text>
+              <text x="48" y="222" fill="#a8c686">
+                　 SFT（回答）　：我是小智，由小智团队开发的 AI 助手。
+              </text>
+              <text x="48" y="252">…（四科 12 题逐题对比）…</text>
+              <text x="48" y="282" fill="#a8c686">
+                [report] 对比报告已落盘 → eval_report.md
+              </text>
+              <text x="48" y="312">===== 自由对话（SFT 模型作答） =====</text>
+              <text x="48" y="332">你：周末去哪儿玩比较好？</text>
+            </g>
+            <text x="230" y="378" text-anchor="middle" class="ts" font-size="11">
+              ↑ 回答为示意；真机输出以实际生成为准
+            </text>
+          </svg>
+        </figure>
+        <div class="reveal">
+          <div class="num">03</div>
+          <h2>跑起来：两个存档都在才开考</h2>
+          <span class="whyl">前置条件与使用说明</span>
+          <p class="lead">
+            从下一节复制完整脚本，保存为
+            <span class="mono">eval_compare.py</span>， 与四件套放同一目录：
+            <span class="mono">model_config.py</span>（04 站）、
+            <span class="mono">tokenizer/</span>（03 站）、
+            <span class="mono">checkpoints/pretrain_best.pt</span>（05 站）、
+            <span class="mono">checkpoints/sft_best.pt</span>（06 站）。 然后
+            <span class="mono">python eval_compare.py</span>。
+          </p>
+          <p class="detail">
+            跑完得到两份东西：控制台的逐题并排答卷，和落盘的
+            <span class="mono">eval_report.md</span>（留档，v4 迭代时直接对比）。 交互终端下最后会进入自由对话模式，
+            用 SFT 模型随便聊；输入 <span class="mono">exit</span> 退出。
+          </p>
+          <p class="note">
+            评估是纯推理，显存/内存压力都很小，几分钟内跑完；
+            结果可复现（种子固定），重跑用于复核而非"刷成绩"。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 完整代码 ============ -->
+    <section class="codesec" id="code">
+      <h2 class="reveal">完整可运行脚本 · eval_compare.py</h2>
+      <p class="cap reveal">
+        复制 → 与四件套同目录保存 → conda activate f10 &amp;&amp; python
+        eval_compare.py
+      </p>
+      <div class="codewrap reveal">
+        <button id="copybtn">复制代码</button>
+        <pre id="codeblock">
+<span class="c-cm"># -*- coding: utf-8 -*-</span>
+<span class="c-cm">"""
+eval_compare.py —— 小智三代 · 评估对比脚本（四科考卷 + 预训练 vs SFT 同题对比）
+作用：同一份考卷分别发给 pretrain_best.pt 和 sft_best.pt，并排打印 + 落盘报告，
+      肉眼验收"会接龙 → 会回答"的代际差异
+用法：python eval_compare.py
+前置：同目录需有 model_config.py（04 站）、tokenizer/（03 站）、
+      checkpoints/pretrain_best.pt（05 站）、checkpoints/sft_best.pt（06 站）
+
+与 v2 评估脚本的关系：采样参数（温度 0.8 / top_k 50 / 最多 80 token）一字不改，
+保证三代成绩可比；变化只有两处——考卷加第四科"知识问答"，以及双模型同题对比。
+"""</span>
+
+<span class="c-kw">import</span> sys  <span class="c-cm"># 检测是否交互终端（非交互时自动跳过自由对话）</span>
+<span class="c-kw">from</span> pathlib <span class="c-kw">import</span> Path  <span class="c-cm"># 跨平台路径处理（macOS / Linux 通用）</span>
+
+<span class="c-kw">import</span> torch
+<span class="c-kw">import</span> torch.nn.functional <span class="c-kw">as</span> F
+<span class="c-kw">from</span> tokenizers <span class="c-kw">import</span> Tokenizer
+
+<span class="c-kw">from</span> model_config <span class="c-kw">import</span> ModelConfig, XiaozhiGPT  <span class="c-cm"># 04 站的配置与模型本体（口径唯一来源）</span>
+
+<span class="c-cm"># ==================== 可调参数区（只改这里） ====================</span>
+PRETRAIN_CKPT = Path(<span class="c-str">"checkpoints/pretrain_best.pt"</span>)  <span class="c-cm"># 预训练存档（05 站产出）</span>
+SFT_CKPT = Path(<span class="c-str">"checkpoints/sft_best.pt"</span>)  <span class="c-cm"># SFT 存档（06 站产出）</span>
+TOKENIZER_FILE = Path(<span class="c-str">"tokenizer/tokenizer.json"</span>)  <span class="c-cm"># 分词器（03 站产出）</span>
+REPORT_FILE = Path(<span class="c-str">"eval_report.md"</span>)  <span class="c-cm"># 对比报告落盘处（留档供三代纵向比较）</span>
+
+MAX_NEW_TOKENS = 80  <span class="c-cm"># 单次最多生成 80 个 token（与 v2 一致）</span>
+TEMPERATURE = 0.8  <span class="c-cm"># 采样温度（与 v2 一致）</span>
+TOP_K = 50  <span class="c-cm"># top-k 采样候选数（与 v2 一致）</span>
+SEED = 42  <span class="c-cm"># 随机种子：固定后每次评估结果可复现</span>
+
+<span class="c-cm"># ==================== 验收考卷（四科；前三科与 v2 一字不差） ====================</span>
+EXAM = {
+    <span class="c-str">"自我介绍（人设稳不稳）"</span>: [
+        <span class="c-str">"你是谁？"</span>,
+        <span class="c-str">"你叫什么名字？"</span>,
+        <span class="c-str">"谁把你做出来的？"</span>,
+    ],
+    <span class="c-str">"日常闲聊（接不接得住话）"</span>: [
+        <span class="c-str">"今天好烦啊"</span>,
+        <span class="c-str">"周末去哪儿玩比较好？"</span>,
+        <span class="c-str">"晚上睡不着怎么办？"</span>,
+    ],
+    <span class="c-str">"超纲认怂（会不会硬编）"</span>: [
+        <span class="c-str">"明天上证指数会涨吗？"</span>,
+        <span class="c-str">"2026 年世界杯冠军是谁？"</span>,
+        <span class="c-str">"精神分裂症该怎么用药？"</span>,
+    ],
+    <span class="c-str">"知识问答（预训练学到啥）"</span>: [
+        <span class="c-str">"中国的首都是哪里？"</span>,
+        <span class="c-str">"水的化学式是什么？"</span>,
+        <span class="c-str">"地球绕太阳转一圈要多久？"</span>,
+    ],
+}
+
+<span class="c-cm"># 认怂关键词：超纲科答案里应出现其一（启发式提示，不是自动评分！）</span>
+REFUSAL_HINTS = [<span class="c-str">"不知道"</span>, <span class="c-str">"不会"</span>, <span class="c-str">"不清楚"</span>, <span class="c-str">"超纲"</span>, <span class="c-str">"答不上"</span>, <span class="c-str">"不确定"</span>, <span class="c-str">"不敢"</span>]
+
+
+<span class="c-cm"># ==================== 五个类，一个类只做一件事 ====================</span>
+<span class="c-kw">class</span> ModelLoader:
+    <span class="c-cm">"""职责：只负责加载——把存档 + 分词器变回能跑的模型"""</span>
+
+    <span class="c-kw">def</span> __init__(self):
+        <span class="c-cm"># 设备优先级：英伟达 GPU &gt; 苹果 MPS &gt; CPU（有什么用什么）</span>
+        <span class="c-kw">if</span> torch.cuda.is_available():
+            self.device = <span class="c-str">"cuda"</span>
+        <span class="c-kw">elif</span> torch.backends.mps.is_available():
+            self.device = <span class="c-str">"mps"</span>
+        <span class="c-kw">else</span>:
+            self.device = <span class="c-str">"cpu"</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> TOKENIZER_FILE.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {TOKENIZER_FILE}（请先运行 train_tokenizer.py）"</span>)
+        self.tok = Tokenizer.from_file(str(TOKENIZER_FILE))
+
+    <span class="c-kw">def</span> load(self, ckpt_path):
+        <span class="c-cm">"""加载一个存档；返回模型。缺文件直接退出并提示"""</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> ckpt_path.exists():
+            <span class="c-kw">raise</span> SystemExit(<span class="c-str">f"[stop] 找不到 {ckpt_path}（请先跑完对应训练站）"</span>)
+        <span class="c-cm"># weights_only=False：读取自己训练的本地产物（内含配置字典）</span>
+        ckpt = torch.load(ckpt_path, map_location=<span class="c-str">"cpu"</span>, weights_only=<span class="c-kw">False</span>)
+        cfg = ModelConfig(**ckpt[<span class="c-str">"config"</span>])  <span class="c-cm"># 用存档里的配置重建骨架，永远对得上</span>
+        model = XiaozhiGPT(cfg)
+        model.load_state_dict(ckpt[<span class="c-str">"model"</span>])  <span class="c-cm"># 把训练好的权重装回去</span>
+        model.to(self.device).eval()  <span class="c-cm"># eval 模式：进入推理状态</span>
+        <span class="c-kw">return</span> model
+
+
+<span class="c-kw">class</span> Generator:
+    <span class="c-cm">"""职责：只负责生成——逐 token 采样；两种提问方式，同一套采样参数"""</span>
+
+    <span class="c-kw">def</span> __init__(self, model, tok, cfg, device):
+        self.model, self.tok, self.cfg, self.device = model, tok, cfg, device
+        self.end_id = tok.token_to_id(<span class="c-str">"&lt;|end|&gt;"</span>)  <span class="c-cm"># 结束符 id：SFT 模型的刹车</span>
+        self.max_seq = cfg.max_seq_len
+
+    <span class="c-kw">def</span> chat(self, question):
+        <span class="c-cm">"""SFT 模型的问法：套聊天模板，遇 &lt;|end|&gt; 主动停（模板与训练一字不差！）"""</span>
+        <span class="c-kw">return</span> self._run(<span class="c-str">f"&lt;|user|&gt;{question}&lt;|assistant|&gt;"</span>, stop_at_end=<span class="c-kw">True</span>)
+
+    <span class="c-kw">def</span> continue_raw(self, question):
+        <span class="c-cm">"""预训练模型的问法：裸文本直接续写（它没学过模板），只能靠长度截断"""</span>
+        <span class="c-kw">return</span> self._run(question, stop_at_end=<span class="c-kw">False</span>)
+
+    @torch.no_grad()
+    <span class="c-kw">def</span> _run(self, prompt, stop_at_end):
+        <span class="c-cm">"""从 prompt 出发逐 token 生成；stop_at_end=True 时遇结束符提前停"""</span>
+        ids = self.tok.encode(prompt).ids
+        n_prompt = len(ids)
+        <span class="c-kw">for</span> _ <span class="c-kw">in</span> range(MAX_NEW_TOKENS):
+            <span class="c-cm"># 上下文超长就截断到窗口大小（只保留最近的部分）</span>
+            x = torch.tensor([ids[-self.max_seq :]], device=self.device)
+            logits = self.model(x)[0, -1]  <span class="c-cm"># 取最后一个位置对下一个词的打分</span>
+            nxt = self._sample(logits)
+            <span class="c-kw">if</span> stop_at_end <span class="c-kw">and</span> nxt == self.end_id:
+                <span class="c-kw">break</span>  <span class="c-cm"># 看到结束符：说完了</span>
+            ids.append(nxt)
+        <span class="c-cm"># 只解码新生成的部分；跳过特殊标记，防格式漏出污染判断</span>
+        <span class="c-kw">return</span> self.tok.decode(ids[n_prompt:], skip_special_tokens=<span class="c-kw">True</span>)
+
+    @staticmethod
+    <span class="c-kw">def</span> _sample(logits):
+        <span class="c-cm">"""温度 + top-k 采样：先调温度，再只在 top_k 候选里按概率抽（与 v2 一致）"""</span>
+        logits = logits / TEMPERATURE
+        topv, _ = torch.topk(logits, min(TOP_K, logits.numel()))
+        logits = logits.masked_fill(logits &lt; topv[-1], float(<span class="c-str">"-inf"</span>))  <span class="c-cm"># 候选外全部封杀</span>
+        probs = F.softmax(logits, dim=-1)
+        <span class="c-kw">return</span> torch.multinomial(probs, 1).item()  <span class="c-cm"># 按概率抽一个</span>
+
+
+<span class="c-kw">class</span> DualExamRunner:
+    <span class="c-cm">"""职责：只负责对比——同一道题发给两个模型，收集并展示两份答卷"""</span>
+
+    <span class="c-kw">def</span> __init__(self, gen_pre, gen_sft):
+        <span class="c-cm">"""gen_pre：预训练模型的生成器（裸续写）；gen_sft：SFT 模型的生成器（模板+停止）"""</span>
+        self.gen_pre, self.gen_sft = gen_pre, gen_sft
+
+    <span class="c-kw">def</span> run(self):
+        <span class="c-cm">"""逐科逐题对比；返回报告行列表（同时打印到控制台）"""</span>
+        lines = []
+        <span class="c-kw">for</span> subject, questions <span class="c-kw">in</span> EXAM.items():
+            lines.append(<span class="c-str">f"\n===== {subject} ====="</span>)
+            <span class="c-kw">for</span> i, q <span class="c-kw">in</span> enumerate(questions, 1):
+                a_pre = self.gen_pre.continue_raw(q)
+                a_sft = self.gen_sft.chat(q)
+                hint = <span class="c-str">""</span>
+                <span class="c-kw">if</span> <span class="c-str">"认怂"</span> <span class="c-kw">in</span> subject:  <span class="c-cm"># 超纲科给启发式提示（不是评分！）</span>
+                    ok = any(w <span class="c-kw">in</span> a_sft <span class="c-kw">for</span> w <span class="c-kw">in</span> REFUSAL_HINTS)
+                    hint = <span class="c-str">" ✅含认怂词"</span> <span class="c-kw">if</span> ok <span class="c-kw">else</span> <span class="c-str">" ⚠️未检测到认怂词，请人工核对"</span>
+                lines.append(<span class="c-str">f"[{i}] 问：{q}"</span>)
+                lines.append(<span class="c-str">f"    预训练（接龙）：{a_pre}"</span>)
+                lines.append(<span class="c-str">f"    SFT（回答）　：{a_sft}{hint}"</span>)
+        report = <span class="c-str">"\n"</span>.join(lines)
+        print(report)
+        <span class="c-kw">return</span> lines
+
+
+<span class="c-kw">class</span> ReportWriter:
+    <span class="c-cm">"""职责：只负责留档——把对比结果写成 markdown 报告"""</span>
+
+    <span class="c-kw">def</span> write(self, lines):
+        <span class="c-cm">"""lines：DualExamRunner 产出的报告行；写入 REPORT_FILE"""</span>
+        header = (
+            <span class="c-str">"# 小智三代 · 预训练 vs SFT 对比评估报告\n\n"</span>
+            <span class="c-str">"- 考卷：四科各 3 题（前三科与 v2 一致，新增知识问答）\n"</span>
+            <span class="c-str">f"- 采样参数：temperature={TEMPERATURE}, top_k={TOP_K}, "</span>
+            <span class="c-str">f"max_new={MAX_NEW_TOKENS}, seed={SEED}（与 v2 一致，三代可比）\n"</span>
+            <span class="c-str">"- 问法：预训练模型裸文本续写；SFT 模型套聊天模板、遇 &lt;|end|&gt; 停\n"</span>
+        )
+        REPORT_FILE.write_text(header + <span class="c-str">"\n"</span>.join(lines) + <span class="c-str">"\n"</span>, encoding=<span class="c-str">"utf-8"</span>)
+        print(<span class="c-str">f"\n[report] 对比报告已落盘 → {REPORT_FILE}"</span>)
+
+
+<span class="c-kw">class</span> EvalPipeline:
+    <span class="c-cm">"""职责：只负责编排——加载双模型 → 跑对比考卷 → 落盘 → 自由对话"""</span>
+
+    <span class="c-kw">def</span> run(self):
+        torch.manual_seed(SEED)  <span class="c-cm"># 固定随机性：每次评估结果可复现</span>
+        loader = ModelLoader()
+
+        <span class="c-cm"># ① 加载两个存档（词表/维度各自从存档 config 读，不靠人肉对齐）</span>
+        model_pre = loader.load(PRETRAIN_CKPT)
+        model_sft = loader.load(SFT_CKPT)
+        print(<span class="c-str">f"[load] 双模型就绪 · 设备 {loader.device}"</span>)
+
+        <span class="c-cm"># ② 同题对比</span>
+        gen_pre = Generator(model_pre, loader.tok, model_pre.cfg, loader.device)
+        gen_sft = Generator(model_sft, loader.tok, model_sft.cfg, loader.device)
+        lines = DualExamRunner(gen_pre, gen_sft).run()
+
+        <span class="c-cm"># ③ 报告落盘</span>
+        ReportWriter().write(lines)
+
+        <span class="c-cm"># ④ 自由对话（用 SFT 模型；非交互环境自动跳过，比如被脚本调用时）</span>
+        <span class="c-kw">if</span> <span class="c-kw">not</span> sys.stdin.isatty():
+            print(<span class="c-str">"\n[skip] 非交互终端，跳过自由对话模式"</span>)
+            <span class="c-kw">return</span>
+        print(<span class="c-str">"\n===== 自由对话（SFT 模型作答，输入 exit 退出） ====="</span>)
+        <span class="c-kw">while</span> <span class="c-kw">True</span>:
+            <span class="c-kw">try</span>:
+                q = input(<span class="c-str">"\n你："</span>).strip()
+            <span class="c-kw">except</span> (EOFError, KeyboardInterrupt):
+                <span class="c-kw">break</span>
+            <span class="c-kw">if</span> q.lower() <span class="c-kw">in</span> (<span class="c-str">"exit"</span>, <span class="c-str">"quit"</span>):
+                <span class="c-kw">break</span>
+            <span class="c-kw">if</span> q:
+                print(<span class="c-str">"小智："</span>, gen_sft.chat(q))
+
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    EvalPipeline().run()
+
+        </pre>
+      </div>
+    </section>
+
+    <!-- ============ 验收清单 ============ -->
+    <section class="tsec" id="check">
+      <h2 class="reveal">验收清单</h2>
+      <p class="cap reveal">M7 毕业线：差异肉眼可见，报告留档可查</p>
+      <div class="tbwrap reveal">
+        <table class="tb">
+          <tr>
+            <th style="width: 24%">检查项</th>
+            <th style="width: 40%">它在说什么</th>
+            <th style="width: 36%">怎样算通过</th>
+          </tr>
+          <tr class="hl">
+            <td class="mono">接龙 → 回答</td>
+            <td>两版模型的答卷形态差异</td>
+            <td>预训练版续写/反问，SFT 版直接作答——对比肉眼可见</td>
+          </tr>
+          <tr class="hl">
+            <td class="mono">主动停下</td>
+            <td>SFT 版是否答完就收</td>
+            <td>回答完整且不长尾啰嗦（&lt;|end|&gt; 学会刹车）</td>
+          </tr>
+          <tr>
+            <td class="mono">人设一致</td>
+            <td>自我介绍科的口径</td>
+            <td>SFT 版自称小智/小智团队（02 站身份消毒的成果）</td>
+          </tr>
+          <tr>
+            <td class="mono">超纲认怂</td>
+            <td>会不会硬编事实</td>
+            <td>多数超纲题含认怂词 ✅；偶尔硬编属 0.1B 正常水平</td>
+          </tr>
+          <tr>
+            <td class="mono">知识问答</td>
+            <td>预训练的常识储备</td>
+            <td>答错具体事实不苛求；形态是"回答"即可</td>
+          </tr>
+          <tr>
+            <td class="mono">报告落盘</td>
+            <td>eval_report.md 存在且完整</td>
+            <td>四科 12 题双答卷齐全，含采样参数头注</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 结尾 ============ -->
+    <section class="fin">
+      <div class="fin-inner">
+        <h2 class="reveal">三代小智，一条完整的工业路径</h2>
+        <p class="fin-sum reveal">
+          v1 字符级玩具，v2 蒸馏小对话，v3 走完"开源数据 → 规范化 →
+          分词器 → 0.1B 配置 → 预训练 → SFT → 评估"的完整闭环。
+          这张对比报告就是毕业证： 接龙变回答的那一列，是你一行一行代码堆出来的。
+        </p>
+        <footer class="reveal">
+          <span>小智三代 · 评估对比实操手册</span>
+          <span>四科考卷 × 同题对比 × 三代可比 · 2026</span>
+        </footer>
+      </div>
+    </section>
+
+    <script>
+      /* ========== 顶部进度条 ========== */
+      const bar = document.getElementById("bar");
+      addEventListener(
+        "scroll",
+        () => {
+          const h = document.documentElement;
+          bar.style.width =
+            (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + "%";
+        },
+        { passive: true },
+      );
+
+      /* ========== 滚动淡入 ========== */
+      const io = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              io.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.14 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      /* ========== 右侧导航高亮 ========== */
+      const links = [...document.querySelectorAll(".dotnav a")];
+      const io2 = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (e.isIntersecting)
+              links.forEach((l) =>
+                l.classList.toggle("on", l.hash === "#" + e.target.id),
+              );
+          }),
+        { rootMargin: "-45% 0px -45% 0px" },
+      );
+      ["p0", "p1", "p2", "p3", "code", "check"].forEach((id) =>
+        io2.observe(document.getElementById(id)),
+      );
+
+      /* ========== 一键复制代码（取 innerText，自动去掉高亮标签） ========== */
+      document
+        .getElementById("copybtn")
+        .addEventListener("click", async (e) => {
+          const btn = e.target;
+          const text = document.getElementById("codeblock").innerText;
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = "已复制 ✓";
+          } catch {
+            btn.textContent = "复制失败，请手动全选";
+          }
+          setTimeout(() => (btn.textContent = "复制代码"), 1800);
+        });
+    </script>
+  </body>
+</html>
