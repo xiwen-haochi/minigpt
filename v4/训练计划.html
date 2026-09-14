@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图解笔记 · 从零训练你的 AI</title>
+<style>
+  :root{
+    --paper:#f5f2e9;
+    --card:#fdfcf8;
+    --ink:#1a1a1a;
+    --red:#d94f2b;
+    --gray:#5f5c52;
+    --line:#d9d5c9;
+    --green:#3d6b52;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+    background-color:var(--paper);
+    background-image:radial-gradient(circle, #d8d3c4 1px, transparent 1px);
+    background-size:28px 28px;
+    color:var(--ink);
+    line-height:1.9;
+  }
+  .serif{font-family:Georgia,"Noto Serif SC","Songti SC",SimSun,serif;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px;}
+
+  /* ═══════════ 顶栏 ═══════════ */
+  header{
+    border-bottom:2px solid var(--ink);
+    background:var(--paper);
+    position:sticky;top:0;z-index:10;
+  }
+  .topbar{
+    max-width:1080px;margin:0 auto;padding:16px 28px;
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:13px;letter-spacing:2px;font-weight:bold;
+  }
+  .topbar .mid{color:var(--gray);font-weight:normal;letter-spacing:1px;}
+  .topbar .mid b{color:var(--red);letter-spacing:3px;margin-right:8px;}
+
+  /* ═══════════ Hero ═══════════ */
+  .hero{padding:80px 0 60px;}
+  .badge{
+    display:inline-block;border:2px solid var(--ink);border-radius:999px;
+    padding:8px 22px;font-size:14px;font-weight:bold;
+    background:var(--card);box-shadow:5px 5px 0 var(--ink);
+    margin-bottom:36px;letter-spacing:1px;
+  }
+  h1{
+    font-size:clamp(40px,7vw,76px);line-height:1.25;font-weight:900;
+    margin-bottom:32px;letter-spacing:2px;
+  }
+  h1 .red{color:var(--red);}
+  .hero-sub{
+    font-size:19px;color:var(--gray);max-width:760px;
+  }
+  .hero-sub b{color:var(--ink);}
+
+  /* ═══════════ 硬阴影卡片 ═══════════ */
+  .card{
+    background:var(--card);
+    border:2px solid var(--ink);
+    border-radius:16px;
+    box-shadow:8px 8px 0 var(--ink);
+    padding:36px;
+    margin:34px 0;
+  }
+  .card-label{
+    font-size:12px;letter-spacing:4px;color:var(--gray);
+    font-weight:bold;margin-bottom:14px;
+  }
+  h2{font-size:clamp(26px,4vw,38px);font-weight:900;line-height:1.35;letter-spacing:1px;}
+  h2 .red{color:var(--red);}
+  .sec-num{
+    font-family:Georgia,serif;font-size:56px;font-weight:900;
+    color:var(--red);line-height:1;margin-right:14px;
+  }
+  .sec-head{display:flex;align-items:baseline;margin-bottom:18px;}
+
+  /* ═══════════ 双卡对比 ═══════════ */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin:36px 0;}
+  @media(max-width:760px){.duo{grid-template-columns:1fr;}}
+  .duo-card{
+    background:var(--card);border:2px solid var(--ink);border-radius:14px;
+    box-shadow:7px 7px 0 var(--ink);padding:28px;
+  }
+  .duo-card h4{font-size:15px;letter-spacing:4px;margin-bottom:20px;}
+  .track{
+    background:var(--paper);border:1.5px solid var(--line);border-radius:10px;
+    padding:30px 20px;margin-bottom:18px;
+  }
+  .track .line{position:relative;height:3px;background:var(--line);border-radius:2px;margin:24px 0;}
+  .dot{
+    position:absolute;top:50%;transform:translate(-50%,-50%);
+    width:15px;height:15px;border-radius:50%;background:#4a6b8a;
+  }
+  .sq{
+    position:absolute;top:50%;transform:translate(-50%,-50%);
+    width:13px;height:13px;border-radius:3px;background:var(--green);
+  }
+  .duo-card p{font-size:15px;color:var(--gray);}
+
+  /* ═══════════ 步骤 ═══════════ */
+  .step{
+    display:flex;gap:26px;margin:40px 0;align-items:flex-start;
+  }
+  .step-icon{
+    flex-shrink:0;width:74px;height:74px;border-radius:18px;
+    border:2px solid var(--ink);box-shadow:5px 5px 0 var(--ink);
+    background:var(--card);display:flex;align-items:center;justify-content:center;
+    font-size:34px;
+  }
+  .step-body{flex:1;min-width:0;}
+  .step-body h3{font-size:24px;font-weight:900;margin-bottom:6px;letter-spacing:1px;}
+  .step-body h3 .path{font-family:Consolas,monospace;font-size:14px;color:var(--red);font-weight:normal;margin-left:10px;}
+  .step-body>p{color:var(--gray);font-size:15.5px;margin-bottom:10px;}
+
+  /* ═══════════ 折叠代码 ═══════════ */
+  details{margin-top:14px;}
+  summary{
+    cursor:pointer;display:inline-block;
+    border:2px solid var(--ink);border-radius:999px;
+    background:var(--card);box-shadow:4px 4px 0 var(--ink);
+    padding:9px 24px;font-size:14px;font-weight:bold;user-select:none;
+  }
+  summary:hover{background:var(--ink);color:var(--paper);}
+  pre{
+    background:#23211c;color:#e8e4d8;
+    border:2px solid var(--ink);border-radius:12px;
+    box-shadow:6px 6px 0 rgba(26,26,26,.35);
+    padding:24px;margin-top:16px;overflow-x:auto;
+    font-family:Consolas,Monaco,monospace;font-size:13px;line-height:1.6;
+    white-space:pre;
+  }
+  code.inline{
+    font-family:Consolas,monospace;font-size:.9em;
+    background:#eae6d8;border:1px solid var(--line);
+    padding:1px 7px;border-radius:6px;color:var(--red);
+  }
+
+  /* ═══════════ 复制按钮 ═══════════ */
+  .code-wrap{position:relative;}
+  .copy-btn{
+    position:absolute;top:12px;right:12px;z-index:5;
+    border:2px solid var(--ink);border-radius:999px;
+    background:var(--card);color:var(--ink);
+    padding:6px 16px;font-size:13px;font-weight:bold;
+    cursor:pointer;box-shadow:3px 3px 0 var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+    transition:transform .1s;
+  }
+  .copy-btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink);}
+  .copy-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink);}
+  .copy-btn.copied{background:var(--green);color:#fff;}
+
+  /* ═══════════ 提示条 ═══════════ */
+  .tip,.warn,.win{
+    border-radius:0 12px 12px 0;padding:14px 20px;margin:18px 0;font-size:15px;
+  }
+  .tip{border-left:5px solid #4a6b8a;background:#eef1ea;}
+  .warn{border-left:5px solid var(--red);background:#f7ebe5;}
+  .win{border-left:5px solid var(--green);background:#e9f0ea;}
+
+  /* ═══════════ 小格子 ═══════════ */
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:24px 0;}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin:24px 0;}
+  @media(max-width:760px){.grid3,.grid4{grid-template-columns:1fr;}}
+  .mini{
+    border:2px solid var(--ink);border-radius:12px;background:var(--card);
+    box-shadow:5px 5px 0 var(--ink);padding:22px;text-align:center;
+  }
+  .mini .big{font-size:40px;}
+  .mini h5{font-size:16px;margin:8px 0 4px;}
+  .mini p{font-size:13px;color:var(--gray);}
+
+  /* ═══════════ 大数字演示 ═══════════ */
+  .tokdemo{
+    background:var(--paper);border:2px solid var(--line);border-radius:12px;
+    padding:24px;text-align:center;margin:16px 0;
+  }
+  .tok{display:inline-block;padding:3px 12px;margin:4px;border-radius:8px;color:#fff;font-family:Consolas,monospace;}
+  .arrowdown{text-align:center;font-size:22px;color:var(--red);margin:4px 0;}
+
+  footer{
+    border-top:2px solid var(--ink);margin-top:70px;
+    padding:34px 0 60px;text-align:center;color:var(--gray);font-size:14px;letter-spacing:2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ 顶栏 ═══════════ -->
+<header>
+  <div class="topbar">
+    <span>图 解 笔 记</span>
+    <span class="mid"><b>CPT × SFT</b>先读书 vs 学聊天</span>
+    <span>N O . 0 1</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ═══════════ Hero ═══════════ -->
+  <div class="hero">
+    <div class="badge">给完全没接触过的你 · 读 8 分钟 · 代码可直接抄</div>
+    <h1 class="serif">CPT 是<span class="red">读书</span>，<br>SFT 是<span class="red">学说话</span></h1>
+    <p class="hero-sub">
+      从零造一个会聊天的 AI，本质就两步：<b>先喂一本《神雕侠侣》让它学会中文</b>（CPT 预训练），
+      <b>再喂 2000 条对话让它学会接话</b>（SFT 微调）。顺序不能反——不识字，怎么聊天？
+    </p>
+  </div>
+
+  <!-- ═══════════ 01 全貌 ═══════════ -->
+  <div class="card">
+    <div class="sec-head">
+      <span class="sec-num serif">01</span>
+      <h2 class="serif">同一个模型，<span class="red">两段完全不同的路</span></h2>
+    </div>
+    <div class="duo">
+      <div class="duo-card">
+        <h4>C P T · 预 训 练</h4>
+        <div class="track">
+          <div class="line">
+            <span class="dot" style="left:15%"></span>
+            <span class="dot" style="left:50%"></span>
+            <span class="dot" style="left:85%"></span>
+          </div>
+        </div>
+        <p>像学生默写课文：每次只猜「下一个字」。读得越多，越懂中文。此时它<b style="color:var(--ink)">不会聊天</b>，只会续写。</p>
+      </div>
+      <div class="duo-card">
+        <h4>S F T · 微 调</h4>
+        <div class="track">
+          <div class="line">
+            <span class="sq" style="left:15%"></span>
+            <span class="sq" style="left:50%"></span>
+            <span class="sq" style="left:85%"></span>
+          </div>
+        </div>
+        <p>像请了家教：看 2000 条「问 → 答」范例，学会<b style="color:var(--ink)">等别人说完再开口</b>。中文能力不变，行为变了。</p>
+      </div>
+    </div>
+    <div class="tip">💡 判断训练是否成功的土办法：CPT 后让它续写「杨过手持」，它应能接出武侠味句子；SFT 后问「今天好累」，它应会安慰你。</div>
+  </div>
+
+  <!-- ═══════════ 02 分词器 ═══════════ -->
+  <div class="card">
+    <div class="sec-head">
+      <span class="sec-num serif">02</span>
+      <h2 class="serif">分词器：AI 的<span class="red">识字课本</span></h2>
+    </div>
+    <p style="color:var(--gray);max-width:760px;">
+      AI 不认识汉字，只认识数字。分词器负责把文字切成小块、编上号。
+      我们<b style="color:var(--ink)">直接使用 Qwen（通义千问）的现成分词器</b>——它对中文极其友好，emoji、生僻字、网络热梗全能处理，不用自己训练。
+    </p>
+
+    <div class="tokdemo">
+      <span class="tok" style="background:#d94f2b;">今天</span><span class="tok" style="background:#3d6b52;">加班</span><span class="tok" style="background:#4a6b8a;">到</span><span class="tok" style="background:#8a6d3b;">十点</span><span class="tok" style="background:#6b4a8a;">🤣</span>
+      <div class="arrowdown">⬇ 变成数字</div>
+      <div style="font-family:Consolas,monospace;color:var(--ink);font-size:17px;">[108786, 104329, 35907, 99562, 76321]</div>
+    </div>
+
+    <div class="grid3">
+      <div class="mini"><div class="big">🈶</div><h5>中文优化</h5><p>常见中文词一至两个 token，效率高</p></div>
+      <div class="mini"><div class="big">🤣</div><h5>零报错</h5><p>emoji、生僻字都能兜底，永不出现「未知字符」</p></div>
+      <div class="mini"><div class="big">📦</div><h5>开箱即用</h5><p>首次联网下载一次，之后离线可用</p></div>
+    </div>
+
+    <div class="warn">⚠️ 唯一注意：Qwen 词表约 15 万（比自训的 2 万大得多），模型里「查字典的部分」会占更多显存。下面代码已帮你把模型调小来平衡。</div>
+  </div>
+
+  <!-- ═══════════ 03 动手 ═══════════ -->
+  <div class="card">
+    <div class="sec-head">
+      <span class="sec-num serif">03</span>
+      <h2 class="serif">动手：<span class="red">四个脚本</span>跑完全程</h2>
+    </div>
+
+<pre style="margin-top:6px;">my_llm_project/
+├── data/
+│   ├── novel.txt          ← 放《神雕侠侣》全文
+│   └── dialogues.jsonl    ← 放 2000 条对话
+├── scripts/               ← 下面 4 个脚本放这里
+└── output/                ← 结果自动出现在这里</pre>
+
+    <!-- 步骤 1 -->
+    <div class="step">
+      <div class="step-icon">📦</div>
+      <div class="step-body">
+        <h3>步骤 1 · 准备 Qwen 分词器<span class="path">1_prepare_data.py</span></h3>
+        <p>下载 Qwen 分词器存到本地，并清洗小说、校验对话数据。全程几分钟。</p>
+        <details>
+          <summary>📄 展开完整代码</summary>
+<pre>#!/usr/bin/env python3
+"""步骤1：下载 Qwen 分词器 + 清洗数据"""
+import json, re
+from pathlib import Path
+from transformers import AutoTokenizer
+
+DATA_DIR = Path("./data")
+OUT_DIR  = Path("./output")
+(OUT_DIR / "processed").mkdir(parents=True, exist_ok=True)
+(OUT_DIR / "tokenizer").mkdir(parents=True, exist_ok=True)
+
+# ---------- 1. 加载 Qwen 分词器（首次需联网，之后离线可用）----------
+print("📦 加载 Qwen 分词器...")
+tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B")
+if tokenizer.pad_token is None:          # 保险起见
+    tokenizer.pad_token = tokenizer.eos_token
+tokenizer.save_pretrained(str(OUT_DIR / "tokenizer"))
+print(f"   ✅ 词表大小: {len(tokenizer):,}")
+
+# ---------- 2. 校验分词器（编码→解码必须还原）----------
+test = "今天加班到十点，累死了🤣"
+ids = tokenizer.encode(test)
+assert tokenizer.decode(ids) == test, "分词器往返校验失败！"
+print(f"   🔎 '{test}' -> {ids} -> 还原成功 ✅")
+
+# ---------- 3. 清洗小说 ----------
+print("🧹 清洗《神雕侠侣》...")
+text = (DATA_DIR / "novel.txt").read_text(encoding="utf-8")
+text = re.sub(r'\n+', '\n', text)
+text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+text = text.replace('\u3000', ' ')
+(OUT_DIR / "processed" / "novel_cleaned.txt").write_text(text, encoding="utf-8")
+print(f"   ✅ 共 {len(text):,} 字")
+
+# ---------- 4. 校验对话数据 ----------
+n = 0
+with open(DATA_DIR / "dialogues.jsonl", encoding="utf-8") as fin, \
+     open(OUT_DIR / "processed" / "dialogues_processed.jsonl", "w", encoding="utf-8") as fout:
+    for line in fin:
+        line = line.strip()
+        if not line: continue
+        try:
+            d = json.loads(line)
+            if "conversations" in d and len(d["conversations"]) >= 2:
+                fout.write(json.dumps(d, ensure_ascii=False) + "\n")
+                n += 1
+        except json.JSONDecodeError:
+            pass
+print(f"   ✅ 有效对话: {n} 条")
+print("\n🎉 步骤1完成！下一步: python scripts/2_train_cpt.py")</pre>
+        </details>
+      </div>
+    </div>
+
+    <!-- 步骤 2 -->
+    <div class="step">
+      <div class="step-icon">📖</div>
+      <div class="step-body">
+        <h3>步骤 2 · CPT 预训练（读书）<span class="path">2_train_cpt.py</span></h3>
+        <p>造一个<b style="color:var(--red)">全新的空白模型</b>（权重随机初始化），反复读《神雕侠侣》学中文。loss 降到 3~4 左右即算「识字」。</p>
+        <details>
+          <summary>📄 展开完整代码</summary>
+<pre>#!/usr/bin/env python3
+"""步骤2：CPT 预训练 —— 空白模型读《神雕侠侣》"""
+import torch
+from pathlib import Path
+from tqdm import tqdm
+from torch.utils.data import Dataset
+from transformers import (AutoTokenizer, GPT2Config, GPT2LMHeadModel,
+                          TrainingArguments, Trainer)
+
+TOKENIZER_DIR = "./output/tokenizer"
+NOVEL_PATH    = "./output/processed/novel_cleaned.txt"
+OUTPUT_DIR    = "./output/cpt_checkpoint"
+BLOCK, BATCH, ACCUM, LR, EPOCHS = 512, 8, 4, 5e-4, 3
+
+# ---------- 1. 分词器 ----------
+tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_DIR)
+
+# ---------- 2. 整本小说编码成 token 流 ----------
+print("📚 编码小说...")
+text = Path(NOVEL_PATH).read_text(encoding="utf-8")
+all_ids = []
+for i in tqdm(range(0, len(text), 500000)):
+    all_ids.extend(tokenizer.encode(text[i:i+500000], add_special_tokens=False))
+print(f"   ✅ 共 {len(all_ids):,} 个 token")
+
+# ---------- 3. 切成 512 一段 ----------
+class NovelDataset(Dataset):
+    def __len__(self): return (len(all_ids) - 1) // BLOCK
+    def __getitem__(self, idx):
+        ids = torch.tensor(all_ids[idx*BLOCK:(idx+1)*BLOCK], dtype=torch.long)
+        return {"input_ids": ids, "labels": ids.clone()}   # CPT：全文都算分
+
+dataset = NovelDataset()
+print(f"   ✅ 训练样本: {len(dataset)} 段")
+
+# ---------- 4. 全新空白 GPT（Qwen 词表 + 精简主干）----------
+config = GPT2Config(
+    vocab_size=len(tokenizer),   # Qwen 词表约 15 万
+    n_positions=512,
+    n_embd=512, n_layer=6, n_head=8,   # 调小主干，抵消大词表的显存开销
+)
+model = GPT2LMHeadModel(config)
+print(f"   🧠 参数量: {sum(p.numel() for p in model.parameters()):,}")
+
+# ---------- 5. 训练 ----------
+args = TrainingArguments(
+    output_dir=OUTPUT_DIR,
+    num_train_epochs=EPOCHS,
+    per_device_train_batch_size=BATCH,
+    gradient_accumulation_steps=ACCUM,
+    learning_rate=LR,
+    warmup_steps=200,
+    logging_steps=10,
+    save_steps=500,
+    save_total_limit=2,
+    fp16=torch.cuda.is_available(),
+    report_to="none",
+)
+trainer = Trainer(model=model, args=args, train_dataset=dataset)
+trainer.train()
+
+# ---------- 6. 保存 ----------
+final = Path(OUTPUT_DIR) / "final_model"
+trainer.save_model(final)
+tokenizer.save_pretrained(final)
+print(f"\n🎉 CPT 完成！模型在 {final}")
+print("下一步: python scripts/3_train_sft.py")</pre>
+        </details>
+      </div>
+    </div>
+
+    <!-- 步骤 3 -->
+    <div class="step">
+      <div class="step-icon">💬</div>
+      <div class="step-body">
+        <h3>步骤 3 · SFT 微调（学聊天）<span class="path">3_train_sft.py</span></h3>
+        <p>核心技巧：<b style="color:var(--red)">只对 AI 的回答算分</b>（问题部分标记 -100），逼它学会「接话」而不是「复述」。</p>
+        <details>
+          <summary>📄 展开完整代码</summary>
+<pre>#!/usr/bin/env python3
+"""步骤3：SFT 微调 —— 只对回答部分计算 loss"""
+import json, torch
+from pathlib import Path
+from tqdm import tqdm
+from torch.utils.data import Dataset
+from transformers import (AutoTokenizer, GPT2LMHeadModel,
+                          TrainingArguments, Trainer)
+
+BASE_MODEL = "./output/cpt_checkpoint/final_model"
+DATA_PATH  = "./output/processed/dialogues_processed.jsonl"
+OUTPUT_DIR = "./output/sft_model"
+BLOCK, BATCH, ACCUM, LR, EPOCHS = 512, 4, 8, 2e-5, 5   # 学习率调小 = 温柔地教
+
+tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
+EOS = tokenizer.eos_token
+
+def make_samples(conversations):
+    """System/Human/Assistant 格式；多轮对话逐轮展开成多条样本"""
+    sys_text = next((c["value"] for c in conversations if c["from"] == "system"), "")
+    prompt, samples = (f"System: {sys_text}\n" if sys_text else ""), []
+    for c in conversations:
+        if c["from"] == "human":
+            prompt += f"Human: {c['value']}\n"
+        elif c["from"] == "gpt":
+            samples.append((prompt, f"Assistant: {c['value']}{EOS}"))
+            prompt += f"Assistant: {c['value']}\n"
+    return samples
+
+examples = []
+with open(DATA_PATH, encoding="utf-8") as f:
+    dialogues = [json.loads(l) for l in f if l.strip()]
+
+for d in tqdm(dialogues, desc="处理对话"):
+    for prompt, response in make_samples(d["conversations"]):
+        p_ids = tokenizer.encode(prompt, add_special_tokens=False)
+        r_ids = tokenizer.encode(response, add_special_tokens=False)
+        ids = (p_ids + r_ids)[:BLOCK]
+        r_len = min(len(r_ids), len(ids))
+        labels = [-100] * (len(ids) - r_len) + ids[len(ids)-r_len:]  # 问题不算分
+        pad = BLOCK - len(ids)
+        examples.append((
+            ids + [tokenizer.pad_token_id] * pad,
+            [1] * len(ids) + [0] * pad,
+            labels + [-100] * pad,
+        ))
+
+class SFTDataset(Dataset):
+    def __len__(self): return len(examples)
+    def __getitem__(self, i):
+        ii, aa, ll = examples[i]
+        return {"input_ids": torch.tensor(ii),
+                "attention_mask": torch.tensor(aa),
+                "labels": torch.tensor(ll)}
+
+dataset = SFTDataset()
+print(f"✅ 训练样本: {len(dataset)} 条")
+
+model = GPT2LMHeadModel.from_pretrained(BASE_MODEL)
+
+args = TrainingArguments(
+    output_dir=OUTPUT_DIR,
+    num_train_epochs=EPOCHS,
+    per_device_train_batch_size=BATCH,
+    gradient_accumulation_steps=ACCUM,
+    learning_rate=LR,
+    warmup_steps=50,
+    logging_steps=5,
+    save_steps=200,
+    save_total_limit=2,
+    fp16=torch.cuda.is_available(),
+    report_to="none",
+)
+trainer = Trainer(model=model, args=args, train_dataset=dataset)
+trainer.train()
+
+final = Path(OUTPUT_DIR) / "final_model"
+trainer.save_model(final)
+tokenizer.save_pretrained(final)
+print(f"\n🎉 SFT 完成！会聊天的模型在 {final}")
+print("下一步: python scripts/4_inference.py")</pre>
+        </details>
+      </div>
+    </div>
+
+    <!-- 步骤 4 -->
+    <div class="step">
+      <div class="step-icon">🎮</div>
+      <div class="step-body">
+        <h3>步骤 4 · 开聊！<span class="path">4_inference.py</span></h3>
+        <p>见证奇迹。输入 <code class="inline">reset</code> 清空记忆，<code class="inline">quit</code> 退出。</p>
+        <details>
+          <summary>📄 展开完整代码</summary>
+<pre>#!/usr/bin/env python3
+"""步骤4：推理 —— 和你亲手训练的 AI 聊天"""
+import torch
+from transformers import AutoTokenizer, GPT2LMHeadModel
+
+MODEL_PATH = "./output/sft_model/final_model"
+
+SYSTEM_PROMPT = """System: 你是颜柳，一个欢乐幽默的聊天伙伴。你24小时电量满格的乐天派，喜欢用网络热梗、谐音梗和表情包表达情绪。即使吐槽也充满幽默感，绝不传递负能量。
+禁忌：不评价政治，不人身攻击，幽默但保持尊重。
+"""
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"📥 加载模型（设备: {device}）...")
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+model = GPT2LMHeadModel.from_pretrained(MODEL_PATH).to(device).eval()
+
+history = SYSTEM_PROMPT
+print("🤖 开始聊天！（quit 退出 / reset 清空记忆）\n")
+
+while True:
+    user = input("你: ").strip()
+    if user.lower() == "quit":
+        break
+    if user.lower() == "reset":
+        history = SYSTEM_PROMPT
+        print("🔄 已清空记忆\n")
+        continue
+    if not user:
+        continue
+
+    prompt = history + f"Human: {user}\nAssistant:"
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True,
+                       max_length=400).to(device)
+    in_len = inputs["input_ids"].shape[1]
+
+    with torch.no_grad():
+        out = model.generate(
+            **inputs,
+            max_new_tokens=150,
+            do_sample=True,
+            temperature=0.8,        # 越高越放飞
+            top_p=0.9,              # 只从最可能的前 90% 里挑词
+            repetition_penalty=1.15,# 惩罚复读
+            pad_token_id=tokenizer.pad_token_id,
+            eos_token_id=tokenizer.eos_token_id,
+        )
+    reply = tokenizer.decode(out[0][in_len:], skip_special_tokens=True)
+    reply = reply.split("Human:")[0].strip()   # 防止它自问自答
+    print(f"颜柳: {reply}\n")
+
+    history += f"Human: {user}\nAssistant: {reply}\n"</pre>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 04 命令 ═══════════ -->
+  <div class="card">
+    <div class="sec-head">
+      <span class="sec-num serif">04</span>
+      <h2 class="serif">一条龙<span class="red">命令</span></h2>
+    </div>
+<pre>cd my_llm_project
+# 把 novel.txt 和 dialogues.jsonl 放进 data/ 后依次运行：
+python scripts/1_prepare_data.py   # 📦 Qwen 分词器 + 清洗（几分钟）
+python scripts/2_train_cpt.py      # 📖 读书（数小时，看显卡）
+python scripts/3_train_sft.py      # 💬 学聊天（约 1 小时）
+python scripts/4_inference.py      # 🎮 开聊！</pre>
+  </div>
+
+  <!-- ═══════════ 05 排错 ═══════════ -->
+  <div class="card">
+    <div class="sec-head">
+      <span class="sec-num serif">05</span>
+      <h2 class="serif">出问题了？<span class="red">对号入座</span></h2>
+    </div>
+    <div class="grid4">
+      <div class="mini"><div class="big">💥</div><h5>显存爆了</h5><p>batch_size 改 2 或 1<br>grad_accum 改 16</p></div>
+      <div class="mini"><div class="big">🌀</div><h5>loss 不降</h5><p>lr 改 1e-4<br>检查数据乱码</p></div>
+      <div class="mini"><div class="big">🔁</div><h5>复读机</h5><p>SFT 减到 2~3 轮<br>repetition_penalty 调 1.2</p></div>
+      <div class="mini"><div class="big">🥋</div><h5>夹带武侠腔</h5><p>正常现象<br>接受这个萌点 😄</p></div>
+    </div>
+    <div class="warn">⚠️ 如果步骤 1 下载 Qwen 分词器失败（网络问题），可到 HuggingFace 镜像站手动下载 <code class="inline">Qwen/Qwen2.5-0.5B</code> 的 tokenizer 文件（tokenizer.json、tokenizer_config.json、vocab.json、merges.txt），放到本地目录后把代码里的模型名改成本地路径即可。</div>
+  </div>
+
+  <!-- ═══════════ 总结 ═══════════ -->
+  <div class="card">
+    <div class="sec-head">
+      <span class="sec-num serif">06</span>
+      <h2 class="serif">你刚刚学会了<span class="red">什么</span></h2>
+    </div>
+    <div class="grid4">
+      <div class="mini"><div class="big">📦</div><h5>Qwen 分词器</h5><p>文字 → 数字<br>中文零报错</p></div>
+      <div class="mini"><div class="big">📖</div><h5>CPT</h5><p>空白模型读小说<br>从零学语言</p></div>
+      <div class="mini"><div class="big">💬</div><h5>SFT</h5><p>loss masking<br>只学怎么回答</p></div>
+      <div class="mini"><div class="big">🎮</div><h5>推理</h5><p>temperature / top_p<br>控制说话风格</p></div>
+    </div>
+    <p style="text-align:center;color:var(--gray);margin-top:16px;">
+      这套流程和训练 GPT-4 的原理一模一样，只是规模小了一百万倍。<br>
+      搞懂了它，你就搞懂了大模型的一半。🚀
+    </p>
+  </div>
+
+  <footer>图解笔记 · NO.01 · Python 3.11 × Transformers × Qwen Tokenizer</footer>
+</div>
+
+<script>
+// ═══════════ 自动给每个代码块加复制按钮 ═══════════
+document.querySelectorAll('pre').forEach(pre => {
+  // 包一层容器，方便定位按钮
+  const wrap = document.createElement('div');
+  wrap.className = 'code-wrap';
+  pre.parentNode.insertBefore(wrap, pre);
+  wrap.appendChild(pre);
+
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = '📋 复制代码';
+  btn.addEventListener('click', () => {
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = '✅ 已复制';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = '📋 复制代码';
+        btn.classList.remove('copied');
+      }, 1500);
+    }).catch(() => {
+      // 兼容旧浏览器的降级方案
+      const ta = document.createElement('textarea');
+      ta.value = pre.innerText;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = '✅ 已复制';
+      setTimeout(() => btn.textContent = '📋 复制代码', 1500);
+    });
+  });
+  wrap.appendChild(btn);
+});
+</script>
+</body>
+</html>
