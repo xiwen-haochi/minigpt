@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>v4 大模型训练实操手册 —— 预训练 + SFT 单轮对话</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1f2329; --sub: #5a6070;
+    --accent: #2563eb; --code-bg: #1e2430; --code-ink: #e6e9ef; --line: #e3e6eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.75;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+  header.hero {
+    background: linear-gradient(135deg, #1d4ed8, #0ea5e9);
+    color: #fff; border-radius: 16px; padding: 36px 32px; margin-bottom: 32px;
+  }
+  header.hero h1 { margin: 0 0 8px; font-size: 28px; }
+  header.hero p { margin: 4px 0; opacity: .92; }
+  section.card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 28px 30px; margin-bottom: 26px;
+  }
+  h2 { font-size: 21px; margin: 0 0 14px; padding-left: 12px; border-left: 4px solid var(--accent); }
+  h3 { font-size: 16px; margin: 22px 0 8px; color: var(--accent); }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+  code.inline {
+    background: #eef2ff; color: #1d4ed8; border-radius: 5px;
+    padding: 1px 6px; font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 13px;
+  }
+  .codebox {
+    position: relative; background: var(--code-bg); border-radius: 10px; margin: 14px 0;
+  }
+  .codebox .bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 14px; border-bottom: 1px solid #2c3444;
+    color: #8b93a5; font-size: 12.5px; font-family: Menlo, monospace;
+  }
+  .codebox pre {
+    margin: 0; padding: 16px 18px; overflow-x: auto;
+    color: var(--code-ink); font-size: 13px; line-height: 1.65;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+  .copybtn {
+    background: #2c3444; color: #cfd6e4; border: none; border-radius: 6px;
+    padding: 3px 12px; cursor: pointer; font-size: 12px;
+  }
+  .copybtn:hover { background: #3a4356; }
+  .note {
+    background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
+    padding: 12px 16px; margin: 12px 0; font-size: 14px;
+  }
+  .tip {
+    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+    padding: 12px 16px; margin: 12px 0; font-size: 14px;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; }
+  th { background: #f1f5f9; }
+  .mermaid { display: flex; justify-content: center; margin: 16px 0; }
+  .step-tag {
+    display: inline-block; background: var(--accent); color: #fff; border-radius: 6px;
+    font-size: 12.5px; padding: 1px 10px; margin-right: 8px; vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>v4 大模型训练实操手册</h1>
+  <p>从零实现当前主流大模型训练流程：Byte-Level BPE 分词 → 小说预训练 → 单轮对话 SFT → 命令行聊天</p>
+  <p>架构：Llama 风格（RMSNorm + RoPE + SwiGLU）· 精度：CUDA 老卡 fp16 / 新卡 bf16 / MPS / CPU 自动适配</p>
+</header>
+
+<!-- ============================== 总览 ============================== -->
+<section class="card">
+  <h2>0. 整体流程与学习地图</h2>
+  <pre class="mermaid">
+flowchart LR
+    A["📕 小说 txt<br/>data/novels/*.txt"] --> B["01 训练分词器<br/>Byte-Level BPE"]
+    C["💬 对话 jsonl<br/>data/sft_raw.jsonl"] --> B
+    B --> D["02 数据加工<br/>token 长河 + SFT 定长样本"]
+    D --> E["03 预训练<br/>小说上学语言"]
+    E --> F["04 SFT 微调<br/>对话上学接话"]
+    F --> G["05 命令行聊天"]
+  </pre>
+
+  <h3>本版和 v3 的区别（全部按当前工业界主流重写）</h3>
+  <table>
+    <tr><th>模块</th><th>v4 采用的方案</th><th>谁在用</th></tr>
+    <tr><td>分词</td><td>Byte-Level BPE（字节级，中文无需 jieba 预分词）</td><td>GPT-4 / Qwen / Llama</td></tr>
+    <tr><td>归一化</td><td>RMSNorm（Pre-Norm）</td><td>Llama / Qwen / Mistral</td></tr>
+    <tr><td>位置编码</td><td>RoPE 旋转位置编码</td><td>几乎所有 2023 年后的模型</td></tr>
+    <tr><td>前馈网络</td><td>SwiGLU 门控 MLP</td><td>Llama / Qwen</td></tr>
+    <tr><td>注意力</td><td>SDPA 融合算子（自动选 flash/高效内核）</td><td>PyTorch ≥ 2.0 标准做法</td></tr>
+    <tr><td>混合精度</td><td>CUDA 新卡 bf16 · 老卡 fp16+GradScaler · MPS/CPU fp32</td><td>三平台自动判断</td></tr>
+    <tr><td>对话模板</td><td>ChatML（&lt;|im_start|&gt; / &lt;|im_end|&gt;）+ loss 掩码</td><td>Qwen 同款</td></tr>
+    <tr><td>学习率</td><td>线性预热 + 余弦退火</td><td>工业界标配</td></tr>
+  </table>
+
+  <h3>目录约定（在 v4/ 下新建 code/ 目录，所有代码放里面）</h3>
+  <div class="codebox"><div class="bar"><span>目录结构</span><button class="copybtn">复制</button></div><pre><code data-src="dir-tree"></code></pre></div>
+
+  <h3>环境与依赖</h3>
+  <p>只需 3 个第三方库。开发机（macOS）写代码，训练机（Linux + 老 CUDA）跑训练，代码完全一致。</p>
+  <div class="codebox"><div class="bar"><span>bash —— 环境准备（本项目默认 conda 环境 f10）</span><button class="copybtn">复制</button></div><pre><code data-src="install"></code></pre></div>
+  <div class="note">
+    <b>你需要自己准备的数据</b>：
+    <ul>
+      <li><code class="inline">data/novels/*.txt</code> —— 若干本中文小说（UTF-8），越多越好，几十 MB 起步。</li>
+      <li><code class="inline">data/sft_raw.jsonl</code> —— 单轮对话，每行一个 JSON。四种格式自动识别：
+        <b>ShareGPT 格式</b> <code class="inline">{"conversations": [{"from": "system/human/gpt", "value": "..."}]}</code>（本项目自带语料就是这种，每条带"颜柳"人设）、
+        Alpaca 格式 <code class="inline">{"instruction": "...", "input": "...", "output": "..."}</code>、
+        <code class="inline">{"question": "...", "answer": "..."}</code>、
+        <code class="inline">{"prompt": "...", "response": "..."}</code>。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================== 01 分词器 ============================== -->
+<section class="card">
+  <h2><span class="step-tag">第 1 步</span>训练 Byte-Level BPE 分词器</h2>
+  <p><b>为什么中文不需要 jieba？</b>现代大模型统一使用 Byte-Level BPE：先把文本转成 UTF-8 字节序列（任何语言都变成 0-255 的字节），再在字节上反复合并最高频的相邻片段。中文字符会被自动学成「子词」，既不需要预分词，也永远不会遇到未登录词（OOV）——任何生僻字最坏情况就是退化成 3 个字节。</p>
+  <ul>
+    <li>词表 32000：小模型够用，且能用 <code class="inline">uint16</code> 存储 token 流（省 4 倍磁盘）。</li>
+    <li>3 个特殊 token：<code class="inline">&lt;|endoftext|&gt;</code>（文档边界）、<code class="inline">&lt;|im_start|&gt;</code> / <code class="inline">&lt;|im_end|&gt;</code>（对话标记），固定占词表最前。</li>
+    <li>分词器要在「小说 + 对话」混合语料上训练，覆盖面才够。</li>
+  </ul>
+  <div class="codebox"><div class="bar"><span>01_train_tokenizer.py</span><button class="copybtn">复制</button></div><pre><code data-src="code-01"></code></pre></div>
+</section>
+
+<!-- ============================== 02 数据加工 ============================== -->
+<section class="card">
+  <h2><span class="step-tag">第 2 步</span>数据加工：文本 → 二进制 token 文件</h2>
+  <p><b>预训练数据</b>：小说按段落攒成约 1000 字的块，打乱后 99% 训练 / 1% 验证，编码成一条超长 token 流（文档间插 <code class="inline">&lt;|endoftext|&gt;</code>），用 <code class="inline">uint16</code> 落盘。训练时随机切片，磁盘上几个 G 的语料也能用 memmap 零拷贝读取。</p>
+  <p><b>SFT 数据</b>：每条对话套上 ChatML 模板，编码后填充到定长 768。关键点：<b>system 人设 + 问题部分的 label 置为 -100</b>，loss 只计算回答部分——这样模型只学「怎么答」，不学「怎么问」。结尾强制带 <code class="inline">&lt;|im_end|&gt;</code>，模型才学会停下来。</p>
+  <div class="note"><b>关于本项目的语料</b>：<code class="inline">data/sft_raw.jsonl</code> 是 ShareGPT 格式，每条对话都带一段约 300 字的 system 人设（欢乐幽默的聊天伙伴「颜柳」）。人设也会被编进模板参与训练（但不产生 loss），所以 <code class="inline">MAX_SFT_LEN</code> 设为 768——如果用 512，回答末尾的 <code class="inline">&lt;|im_end|&gt;</code> 会被截掉，模型将永远学不会停止。</div>
+  <div class="codebox"><div class="bar"><span>02_prepare_data.py</span><button class="copybtn">复制</button></div><pre><code data-src="code-02"></code></pre></div>
+</section>
+
+<!-- ============================== 03 模型 ============================== -->
+<section class="card">
+  <h2><span class="step-tag">第 3 步</span>模型定义（被训练/聊天脚本共用）</h2>
+  <p>这是 v4 的核心文件，Llama 风格 Decoder-only Transformer，三个训练脚本都会 import 它：</p>
+  <ul>
+    <li><b>RMSNorm</b>：LayerNorm 的简化版，省掉减均值，更快更稳；在 fp32 下算均方根防止半精度下溢。</li>
+    <li><b>RoPE</b>：不给 token 加位置向量，而是按位置「旋转」q/k 的每对维度，相对位置信息天然编码进注意力，长度外推性好。</li>
+    <li><b>SwiGLU</b>：两路投影相乘（门控）再投影回来，比普通 GELU-MLP 表达力强。</li>
+    <li><b>SDPA</b>：<code class="inline">F.scaled_dot_product_attention</code> 自动选择最优注意力内核，三平台通用。</li>
+    <li><b>pick_device()</b>：一处判断 cuda(bf16/fp16)/mps/cpu，所有脚本复用。</li>
+  </ul>
+  <div class="codebox"><div class="bar"><span>model.py</span><button class="copybtn">复制</button></div><pre><code data-src="code-model"></code></pre></div>
+</section>
+
+<!-- ============================== 04 预训练 ============================== -->
+<section class="card">
+  <h2><span class="step-tag">第 4 步</span>预训练：在小说上学语言</h2>
+  <p>预训练任务就一个：<b>给前 t 个 token，预测第 t+1 个</b>。海量重复这个「接龙」游戏，模型就学会了语法、常识和叙事。工程要点：</p>
+  <ul>
+    <li><b>混合精度</b>：老 CUDA 卡不支持 bf16，自动用 fp16 + GradScaler（先放大 loss 防梯度下溢，更新前再缩回来）。</li>
+    <li><b>梯度累积</b>：显存放不下大 batch，就分 4 次小 batch 累计梯度再更新一次，等效 batch 64。</li>
+    <li><b>学习率</b>：前 200 步线性升到 3e-4，再余弦退火到 3e-5，避免初期炸、后期细调。</li>
+    <li><b>断点续训</b>：检测到 <code class="inline">checkpoints/pretrain_last.pt</code> 就自动接着练，想从头练就删掉它。</li>
+    <li>验证集 loss 创新低才更新 <code class="inline">pretrain_best.pt</code>。</li>
+  </ul>
+  <div class="codebox"><div class="bar"><span>03_pretrain.py</span><button class="copybtn">复制</button></div><pre><code data-src="code-03"></code></pre></div>
+  <div class="tip"><b>显存不够？</b>把 <code class="inline">BATCH_SIZE</code> 调成 8 或 4，同时把 <code class="inline">GRAD_ACCUM</code> 调成 8 或 16，等效 batch 不变。12 层 768 维约 1.1 亿参数，fp16 训练大约占 4-6GB 显存。</div>
+</section>
+
+<!-- ============================== 05 SFT ============================== -->
+<section class="card">
+  <h2><span class="step-tag">第 5 步</span>SFT：在单轮对话上学接话</h2>
+  <p>预训练模型只会「续写」，不会「对话」。SFT 用套好模板的问答数据继续训练，两个关键改动：</p>
+  <ul>
+    <li><b>loss 掩码</b>：<code class="inline">ignore_index=-100</code>，问题部分不产生梯度，模型只学回答。</li>
+    <li><b>更小学习率</b>：1e-4（预训练的 1/3），在已有能力上微调，避免「学新忘旧」（灾难性遗忘）。</li>
+  </ul>
+  <div class="codebox"><div class="bar"><span>04_sft.py</span><button class="copybtn">复制</button></div><pre><code data-src="code-04"></code></pre></div>
+</section>
+
+<!-- ============================== 06 聊天 ============================== -->
+<section class="card">
+  <h2><span class="step-tag">第 6 步</span>命令行单轮对话</h2>
+  <p>加载 SFT 权重，自动从 <code class="inline">data/sft_raw.jsonl</code> 第一条取出 system 人设（和训练时完全一致），把你的问题套进 ChatML 模板，用 <b>温度 + top-p 核采样</b>逐 token 生成，遇到 <code class="inline">&lt;|im_end|&gt;</code> 自动停止。</p>
+  <div class="codebox"><div class="bar"><span>05_chat.py</span><button class="copybtn">复制</button></div><pre><code data-src="code-05"></code></pre></div>
+</section>
+
+<!-- ============================== 运行顺序 ============================== -->
+<section class="card">
+  <h2>7. 完整运行顺序</h2>
+  <div class="codebox"><div class="bar"><span>bash —— 在 v4/code/ 目录下按顺序执行</span><button class="copybtn">复制</button></div><pre><code data-src="run-order"></code></pre></div>
+
+  <h3>常见问题</h3>
+  <ul>
+    <li><b>CUDA out of memory</b> → 调小 <code class="inline">BATCH_SIZE</code>，同比例调大 <code class="inline">GRAD_ACCUM</code>。</li>
+    <li><b>loss 不降</b> → 检查 token_stream/*.bin 是否生成成功；学习率降到 1e-4 试试。</li>
+    <li><b>SFT 后不会停</b> → 说明对话数据里 <code class="inline">&lt;|im_end|&gt;</code> 的监督被截断了，检查 <code class="inline">MAX_SFT_LEN</code> 是否太小。</li>
+    <li><b>回答像小说不像对话</b> → SFT 轮数不够或对话数据太少；也可以把 SFT 的 <code class="inline">EPOCHS</code> 加大到 5。</li>
+    <li><b>MPS 上比 CPU 还慢</b> → 小模型在 MPS 上收益有限，属正常现象；认真训练请用 CUDA 机器。</li>
+  </ul>
+
+  <h3>继续进阶的方向</h3>
+  <ul>
+    <li>GQA（分组查询注意力）：KV 头数少于 Q 头数，推理省显存。</li>
+    <li>更多数据 + 更大模型 + 更长训练，是提升效果最确定的路径（Scaling Law）。</li>
+    <li>SFT 之后还可以接 DPO/RLHF 做偏好对齐。</li>
+  </ul>
+</section>
+
+</div>
+
+<!-- ==================== 代码仓库（text/plain，避免 HTML 转义问题） ==================== -->
+
+<script type="text/plain" id="dir-tree">v4/
+├── data/
+│   ├── novels/            # 放中文小说 .txt（自己准备）
+│   └── sft_raw.jsonl      # 单轮对话语料（自己准备）
+└── code/
+    ├── 01_train_tokenizer.py   # 训练 BPE 分词器
+    ├── 02_prepare_data.py      # 数据加工
+    ├── model.py                # 模型定义（共用）
+    ├── 03_pretrain.py          # 预训练
+    ├── 04_sft.py               # SFT 微调
+    └── 05_chat.py              # 命令行对话</script>
+
+<script type="text/plain" id="install">conda activate f10    # minigpt 项目默认环境（训练机上按实际环境调整）
+pip install torch numpy tokenizers</script>
+
+<script type="text/plain" id="code-01"># -*- coding: utf-8 -*-
+"""
+01_train_tokenizer.py —— 训练 Byte-Level BPE 分词器（GPT-4 / Qwen 同款方案）
+
+为什么中文不用 jieba：
+  现代大模型统一使用 Byte-Level BPE —— 先把文本按 UTF-8 拆成字节，
+  再在字节序列上反复合并最高频的相邻片段。中文字符会被自动学成"子词"，
+  不需要任何预分词，也永远不会有未登录词（OOV）。
+
+产出：tokenizer/tokenizer.json
+"""
+import json
+from pathlib import Path
+
+from tokenizers import Tokenizer, decoders, models, pre_tokenizers, trainers
+
+VOCAB_SIZE = 32000  # 词表大小：小模型 32k 足够，且能用 uint16 存 token 流
+SAVE_PATH = Path("tokenizer/tokenizer.json")
+
+# 三个特殊 token：文档结束符 / 对话开始 / 对话结束（固定占词表最前）
+SPECIAL_TOKENS = ["<|endoftext|>", "<|im_start|>", "<|im_end|>"]
+
+
+def extract_strings(obj):
+    """递归提取 JSON 里的所有字符串。
+
+    兼容嵌套结构：ShareGPT 格式的 conversations 是"列表套字典"，
+    直接用 obj.values() 取不到里面的文本，所以要递归。
+    """
+    if isinstance(obj, str):
+        yield obj
+    elif isinstance(obj, dict):  # 类似 Python 的字典遍历
+        for v in obj.values():
+            yield from extract_strings(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from extract_strings(v)
+
+
+def iter_corpus():
+    """产出训练分词器用的全部文本（小说 + 对话混合，覆盖面才够）。
+
+    类似 Python 生成器的常规用法：逐文件 yield，避免一次性读入内存。
+    """
+    novel_dir = Path("data/novels")
+    files = sorted(novel_dir.glob("*.txt"))
+    if not files:
+        raise SystemExit("[stop] 没有找到小说，请把 .txt 小说放进 data/novels/ 目录")
+    for p in files:
+        print(f"[corpus] 小说: {p}")
+        yield p.read_text(encoding="utf-8", errors="ignore")
+
+    sft_file = Path("data/sft_raw.jsonl")
+    if sft_file.exists():
+        print(f"[corpus] 对话: {sft_file}")
+        with sft_file.open(encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                # 对话里的所有字符串（含嵌套的 conversations）都喂给分词器
+                yield from extract_strings(obj)
+
+
+def main():
+    tokenizer = Tokenizer(models.BPE())  # 空 BPE 模型，等语料来训练
+    # ByteLevel 预处理：把文本转成 UTF-8 字节视角，中文无需预分词
+    tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+    tokenizer.decoder = decoders.ByteLevel()  # 解码器必须配套，否则中文会变乱码
+
+    trainer = trainers.BpeTrainer(
+        vocab_size=VOCAB_SIZE,
+        special_tokens=SPECIAL_TOKENS,
+        show_progress=True,
+        min_frequency=2,  # 出现少于 2 次的合并不收编，防噪声
+    )
+    tokenizer.train_from_iterator(iter_corpus(), trainer=trainer)
+
+    SAVE_PATH.parent.mkdir(exist_ok=True)
+    tokenizer.save(str(SAVE_PATH))
+
+    print(f"[done] 分词器已保存到 {SAVE_PATH}，实际词表大小 {tokenizer.get_vocab_size()}")
+    # 试跑：看看中文被切成什么样子
+    demo = "你好，今天我们来训练一个中文大模型。"
+    print(f"[demo] {demo}")
+    print(f"  -> {tokenizer.encode(demo).tokens}")
+
+
+if __name__ == "__main__":
+    main()</script>
+
+<script type="text/plain" id="code-02"># -*- coding: utf-8 -*-
+"""
+02_prepare_data.py —— 数据加工：原始文本 -> 训练用二进制文件
+
+产出：
+  token_stream/train.bin, val.bin           预训练 token 长河（uint16，小说）
+  sft_bin/train_ids.npy, train_labels.npy   SFT 定长样本（int32）
+  sft_bin/val_ids.npy,   val_labels.npy
+
+对话模板（ChatML 风格，Qwen 同款）：
+  <|im_start|>system\n{人设}<|im_end|>\n
+  <|im_start|>user\n{问题}<|im_end|>\n<|im_start|>assistant\n{回答}<|im_end|>
+SFT 只对"回答"部分计算 loss，"人设+问题"部分 label 置为 -100。
+
+语料说明：本项目 data/sft_raw.jsonl 是 ShareGPT 格式（conversations 列表），
+每条带一段很长的 system 人设（"颜柳"），人设也会被编进模板一起训练。
+"""
+import json
+import random
+from pathlib import Path
+
+import numpy as np
+from tokenizers import Tokenizer
+
+TOKENIZER_PATH = Path("tokenizer/tokenizer.json")
+# SFT 样本定长（超过截断、不足填充）。
+# 注意：本语料每条带 ~300 字的 system 人设，512 装不下会把回答截断，
+# 导致模型学不到结尾的 <|im_end|>（不会停止），所以给到 768。
+MAX_SFT_LEN = 768
+VAL_RATIO = 0.01     # 预训练 1% 做验证集
+SFT_VAL_RATIO = 0.02  # SFT 2% 做验证集
+random.seed(42)
+
+
+def load_tokenizer():
+    """加载第 1 步训练好的分词器。"""
+    if not TOKENIZER_PATH.exists():
+        raise SystemExit("[stop] 找不到分词器，请先运行 01_train_tokenizer.py")
+    return Tokenizer.from_file(str(TOKENIZER_PATH))
+
+
+def parse_sft_obj(obj):
+    """兼容四种常见对话格式，统一返回 (system, 问题, 回答)；失败返回 None。
+
+    支持:
+      {"conversations": [{"from": "system/human/gpt", "value": ...}]}  ShareGPT 格式
+      {"instruction": ..., "input": ..., "output": ...}                Alpaca 格式
+      {"question": ..., "answer": ...}
+      {"prompt": ..., "response": ...}
+    """
+    if "conversations" in obj:  # ShareGPT 格式（本项目语料就是这种）
+        system, q, a = "", "", ""
+        for turn in obj["conversations"]:
+            role, value = turn.get("from", ""), turn.get("value", "").strip()
+            if role == "system":
+                system = value
+            elif role in ("human", "user") and not q:  # 只取第一轮问答（单轮对话）
+                q = value
+            elif role in ("gpt", "assistant") and not a:
+                a = value
+        return system, q, a
+    if "output" in obj:  # Alpaca 格式
+        q = obj.get("instruction", "")
+        if obj.get("input"):  # Alpaca 的 input 是补充材料，拼在指令后面
+            q = q + "\n" + obj["input"]
+        return "", q.strip(), obj["output"].strip()
+    if "answer" in obj:
+        return "", obj.get("question", "").strip(), obj["answer"].strip()
+    if "response" in obj:
+        return "", obj.get("prompt", "").strip(), obj["response"].strip()
+    return None
+
+
+def encode_sft(tok, system, q, a):
+    """把一条单轮对话编码成 (input_ids, labels)。
+
+    labels 中 prompt（人设+问题）部分为 -100（不算 loss），
+    "回答"部分为真实 token id。结尾强制带 <|im_end|>，教模型学会停止。
+    """
+    im_start = tok.token_to_id("<|im_start|>")
+    im_end = tok.token_to_id("<|im_end|>")
+    # prompt 部分：system 人设 + 人类问题（都不算 loss）
+    prompt_ids = []
+    if system:  # 有人设就加 system 段（没有则跳过，兼容无 system 的语料）
+        prompt_ids += [im_start] + tok.encode("system\n" + system).ids + [im_end]
+        prompt_ids += tok.encode("\n").ids
+    prompt_ids += ([im_start] + tok.encode("user\n" + q).ids
+                   + [im_end] + tok.encode("\nassistant\n").ids)
+    # answer 部分：模型回答（算 loss）
+    answer_ids = tok.encode(a).ids + [im_end]
+    ids = prompt_ids + answer_ids
+    labels = [-100] * len(prompt_ids) + answer_ids
+    return ids[:MAX_SFT_LEN], labels[:MAX_SFT_LEN]
+
+
+def build_pretrain(tok):
+    """小说 -> token 长河（uint16 二进制）。
+
+    按段落攒成约 1000 字的块 -> 打乱 -> 99% 训练 / 1% 验证 ->
+    编码后首尾相接存成一条长河，文档之间用 <|endoftext|> 隔开。
+    """
+    novel_dir = Path("data/novels")
+    files = sorted(novel_dir.glob("*.txt"))
+    if not files:
+        raise SystemExit("[stop] 请把 .txt 小说放进 data/novels/ 目录")
+
+    eos = tok.token_to_id("<|endoftext|>")
+    chunks = []
+    for p in files:
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        buf = ""
+        for para in text.split("\n"):
+            para = para.strip()
+            if not para:
+                continue
+            buf += para + "\n"
+            if len(buf) >= 1000:  # 块太大浪费显存，太小缺上下文
+                chunks.append(buf)
+                buf = ""
+        if buf:
+            chunks.append(buf)
+        print(f"[pretrain] {p.name}: 累计 {len(chunks)} 块")
+
+    random.shuffle(chunks)
+    n_val = max(1, int(len(chunks) * VAL_RATIO))
+    groups = {"train": chunks[n_val:], "val": chunks[:n_val]}
+
+    out_dir = Path("token_stream")
+    out_dir.mkdir(exist_ok=True)
+    for name, group in groups.items():
+        ids = []
+        for c in group:
+            ids.extend(tok.encode(c).ids)
+            ids.append(eos)  # 文档边界：教模型识别"一篇文本结束了"
+        # uint16 能装下 32000 词表（上限 65535），比 int64 省 4 倍空间
+        arr = np.array(ids, dtype=np.uint16)
+        arr.tofile(out_dir / f"{name}.bin")
+        print(f"[pretrain] {name}.bin: {len(arr):,} tokens")
+
+
+def build_sft(tok):
+    """对话 jsonl -> 定长 (ids, labels) 的 .npy 文件。"""
+    sft_file = Path("data/sft_raw.jsonl")
+    if not sft_file.exists():
+        raise SystemExit("[stop] 请准备对话语料 data/sft_raw.jsonl（每行一个 JSON）")
+
+    pad_id = tok.token_to_id("<|endoftext|>")  # 用 eos 做 padding（label 会屏蔽掉）
+    samples = []
+    with sft_file.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parsed = parse_sft_obj(json.loads(line))
+            # parsed = (system, 问题, 回答)；system 可以为空，问答必须有
+            if not parsed or not parsed[1] or not parsed[2]:
+                continue
+            ids, labels = encode_sft(tok, *parsed)
+            pad_n = MAX_SFT_LEN - len(ids)
+            ids += [pad_id] * pad_n      # ids 补 pad
+            labels += [-100] * pad_n     # labels 补 -100（不参与 loss）
+            samples.append((ids, labels))
+
+    if len(samples) < 10:
+        raise SystemExit("[stop] 有效对话样本太少，请检查 data/sft_raw.jsonl 格式")
+
+    random.shuffle(samples)
+    n_val = max(1, int(len(samples) * SFT_VAL_RATIO))
+    groups = {"train": samples[n_val:], "val": samples[:n_val]}
+
+    out_dir = Path("sft_bin")
+    out_dir.mkdir(exist_ok=True)
+    for name, group in groups.items():
+        ids = np.array([s[0] for s in group], dtype=np.int32)
+        labs = np.array([s[1] for s in group], dtype=np.int32)
+        np.save(out_dir / f"{name}_ids.npy", ids)
+        np.save(out_dir / f"{name}_labels.npy", labs)
+        print(f"[sft] {name}: {len(group)} 条样本")
+
+
+def main():
+    tok = load_tokenizer()
+    build_pretrain(tok)
+    build_sft(tok)
+    print("[done] 数据加工完成")
+
+
+if __name__ == "__main__":
+    main()</script>
+
+<script type="text/plain" id="code-model"># -*- coding: utf-8 -*-
+"""
+model.py —— v4 共享模型定义（Llama 风格 Decoder-only Transformer）
+
+现代主流架构三件套：
+  1. RMSNorm            比 LayerNorm 更快更稳（Llama / Qwen 同款）
+  2. RoPE 旋转位置编码   比绝对位置编码外推性更好
+  3. SwiGLU 前馈网络     比 GELU-MLP 表达能力更强
+
+本文件被 03_pretrain.py / 04_sft.py / 05_chat.py 共同 import。
+"""
+from contextlib import nullcontext
+from dataclasses import dataclass
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+@dataclass
+class GPTConfig:
+    """模型超参数集合。
+
+    @dataclass 是 Python 标准库装饰器，自动生成 __init__，
+    用法类似"带类型的字典"：GPTConfig(n_layer=12, ...)
+    """
+    vocab_size: int = 32000   # 词表大小（必须和分词器一致）
+    max_seq_len: int = 512    # 最大上下文长度（tokens）
+    n_layer: int = 12         # Transformer 层数
+    n_head: int = 12          # 多头注意力头数
+    n_embd: int = 768         # 隐藏层维度
+    dropout: float = 0.0      # 预训练一般不开 dropout
+
+
+class RMSNorm(nn.Module):
+    """RMSNorm：LayerNorm 简化版，只做缩放不做平移。
+
+    公式: x / sqrt(mean(x^2) + eps) * weight
+    """
+
+    def __init__(self, dim, eps=1e-6):
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim))  # 可学习的缩放系数
+
+    def forward(self, x):
+        # 在 float32 下算均方根，防止半精度下溢，再转回原精度
+        out = x.float() * torch.rsqrt(x.float().pow(2).mean(-1, keepdim=True) + self.eps)
+        return (self.weight * out).type_as(x)
+
+
+def build_rope_cache(head_dim, max_seq_len, theta=10000.0):
+    """预计算 RoPE 的 cos/sin 缓存表，形状均为 [max_seq_len, head_dim // 2]。
+
+    类似 Python 里先把查表数据算好存起来，前向时直接查表。
+    """
+    # 每一对维度对应一个频率：维度序号越大频率越低
+    inv_freq = 1.0 / (theta ** (torch.arange(0, head_dim, 2).float() / head_dim))
+    t = torch.arange(max_seq_len).float()      # 位置序号 0,1,2,...
+    freqs = torch.outer(t, inv_freq)           # 外积 -> [max_seq_len, head_dim/2]
+    return freqs.cos(), freqs.sin()
+
+
+def apply_rope(x, cos, sin):
+    """把 RoPE 旋转应用到 q/k 上。
+
+    x: [B, T, H, D]，cos/sin: [T, D/2]
+    把最后一维劈成两半 (x1, x2)，按复数乘法旋转：
+      (x1 + i*x2) * (cos + i*sin) = (x1*cos - x2*sin) + i*(x2*cos + x1*sin)
+    """
+    half = x.shape[-1] // 2
+    x1, x2 = x[..., :half], x[..., half:]
+    # cos/sin 升维到 [1, T, 1, D/2] 以便广播，并跟随 x 的精度（fp16/fp32）
+    cos = cos[None, :, None, :].to(x.dtype)
+    sin = sin[None, :, None, :].to(x.dtype)
+    return torch.cat([x1 * cos - x2 * sin, x2 * cos + x1 * sin], dim=-1)
+
+
+class CausalSelfAttention(nn.Module):
+    """因果多头自注意力（RoPE + SDPA 融合算子）。"""
+
+    def __init__(self, cfg):
+        super().__init__()
+        assert cfg.n_embd % cfg.n_head == 0
+        self.n_head = cfg.n_head
+        self.head_dim = cfg.n_embd // cfg.n_head
+        # qkv 合并成一次线性变换（相当于 Python 一次返回三元组）
+        self.qkv = nn.Linear(cfg.n_embd, 3 * cfg.n_embd, bias=False)
+        self.proj = nn.Linear(cfg.n_embd, cfg.n_embd, bias=False)
+        cos, sin = build_rope_cache(self.head_dim, cfg.max_seq_len)
+        # register_buffer：跟随 model.to(device) 搬移，但不是可学习参数
+        self.register_buffer("rope_cos", cos, persistent=False)
+        self.register_buffer("rope_sin", sin, persistent=False)
+
+    def forward(self, x):
+        B, T, C = x.shape
+        q, k, v = self.qkv(x).split(C, dim=2)         # 各 [B, T, C]
+        q = q.view(B, T, self.n_head, self.head_dim)  # 拆成多头
+        k = k.view(B, T, self.n_head, self.head_dim)
+        v = v.view(B, T, self.n_head, self.head_dim)
+        q = apply_rope(q, self.rope_cos[:T], self.rope_sin[:T])  # 注入位置信息
+        k = apply_rope(k, self.rope_cos[:T], self.rope_sin[:T])
+        # scaled_dot_product_attention：PyTorch 官方融合算子，
+        # 自动选择 flash / mem-efficient / 数学回退，cuda/mps/cpu 通用
+        y = F.scaled_dot_product_attention(
+            q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2),
+            is_causal=True,  # 因果掩码：不许偷看未来 token
+        )
+        y = y.transpose(1, 2).contiguous().view(B, T, C)  # 合并多头
+        return self.proj(y)
+
+
+class SwiGLU(nn.Module):
+    """SwiGLU 前馈网络（Llama 同款）。
+
+    相当于把普通 MLP 的 GELU(x@W1)@W2 换成：
+      (SiLU(x@W_gate) * (x@W_up)) @ W_down
+    多一路门控，表达能力更强。
+    """
+
+    def __init__(self, cfg):
+        super().__init__()
+        hidden = int(4 * cfg.n_embd * 2 / 3)   # Llama 惯例：扩 4 倍再打 2/3 折
+        hidden = (hidden + 63) // 64 * 64      # 对齐到 64 的倍数，利于 GPU 吞吐
+        self.gate = nn.Linear(cfg.n_embd, hidden, bias=False)
+        self.up = nn.Linear(cfg.n_embd, hidden, bias=False)
+        self.down = nn.Linear(hidden, cfg.n_embd, bias=False)
+
+    def forward(self, x):
+        return self.down(F.silu(self.gate(x)) * self.up(x))
+
+
+class Block(nn.Module):
+    """一层 Transformer：Pre-Norm 结构（先归一化再进子层，残差直连）。"""
+
+    def __init__(self, cfg):
+        super().__init__()
+        self.norm1 = RMSNorm(cfg.n_embd)
+        self.attn = CausalSelfAttention(cfg)
+        self.norm2 = RMSNorm(cfg.n_embd)
+        self.mlp = SwiGLU(cfg)
+
+    def forward(self, x):
+        x = x + self.attn(self.norm1(x))  # 残差连接，类似 Python 的 x += f(x)
+        x = x + self.mlp(self.norm2(x))
+        return x
+
+
+class GPT(nn.Module):
+    """完整的 GPT：词嵌入 -> N 层 Block -> RMSNorm -> 输出头。"""
+
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+        self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.n_embd)
+        self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg.n_layer)])
+        self.norm_f = RMSNorm(cfg.n_embd)
+        self.lm_head = nn.Linear(cfg.n_embd, cfg.vocab_size, bias=False)
+        # 权重共享（weight tying）：输入嵌入和输出头共用一张表，省参数且更稳
+        self.lm_head.weight = self.tok_emb.weight
+        self.apply(self._init_weights)
+
+    @staticmethod
+    def _init_weights(m):
+        if isinstance(m, (nn.Linear, nn.Embedding)):
+            nn.init.normal_(m.weight, mean=0.0, std=0.02)
+
+    def forward(self, idx):
+        """idx: [B, T] 的 token id -> 返回 [B, T, vocab_size] 的 logits。"""
+        x = self.tok_emb(idx)
+        for blk in self.blocks:
+            x = blk(x)
+        return self.lm_head(self.norm_f(x))
+
+
+# ----------------------------------------------------------------------
+# 设备 / 精度工具：cuda（新卡 bf16、老卡 fp16）/ mps / cpu 三平台自动适配
+# ----------------------------------------------------------------------
+
+def pick_device():
+    """自动选择设备和混合精度策略。
+
+    返回 (device, amp_dtype)：
+      CUDA 且支持 bf16 -> (cuda, torch.bfloat16)   新卡（A100 / 30 系+）
+      CUDA 不支持 bf16 -> (cuda, torch.float16)    老卡（V100 / 1080Ti 等），配 GradScaler
+      Apple Silicon    -> (mps, None)              MPS 上半精度不稳，直接 fp32
+      其他             -> (cpu, None)              fp32
+    """
+    if torch.cuda.is_available():
+        if torch.cuda.is_bf16_supported():
+            return torch.device("cuda"), torch.bfloat16
+        return torch.device("cuda"), torch.float16
+    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+        return torch.device("mps"), None
+    return torch.device("cpu"), None
+
+
+def amp_context(device, amp_dtype):
+    """生成 autocast 上下文；amp_dtype 为 None 时是空上下文（全程 fp32）。"""
+    if amp_dtype is None:
+        return nullcontext()
+    return torch.autocast(device_type=device.type, dtype=amp_dtype)
+
+
+@torch.no_grad()
+def generate(model, idx, max_new_tokens, temperature=0.8, top_p=0.9, eos_id=None):
+    """自回归生成：温度采样 + top-p（核采样）。
+
+    参数:
+        model: GPT 模型
+        idx: [1, T] 起始 token（torch.long）
+        max_new_tokens: 最多新生成多少个 token
+        temperature: 温度，越小越保守；<=0 时退化为贪心（argmax）
+        top_p: 核采样阈值，只从累计概率前 p 的词里挑
+        eos_id: 遇到该 token 提前停止（None 表示不提前停）
+    返回:
+        [1, T + n] 的完整 token 序列
+    """
+    model.eval()
+    for _ in range(max_new_tokens):
+        idx_cond = idx[:, -model.cfg.max_seq_len:]  # 超出上下文就截掉最左边
+        logits = model(idx_cond)[:, -1, :]          # 只取最后一个位置的分布
+        if temperature <= 0:
+            next_id = logits.argmax(dim=-1, keepdim=True)  # 贪心
+        else:
+            probs = F.softmax(logits / temperature, dim=-1)
+            # top-p：排序后砍掉累计概率超过 p 的长尾
+            sorted_probs, sorted_idx = torch.sort(probs, descending=True)
+            cumsum = torch.cumsum(sorted_probs, dim=-1)
+            sorted_probs[cumsum - sorted_probs > top_p] = 0.0
+            sorted_probs /= sorted_probs.sum(dim=-1, keepdim=True).clamp_min(1e-9)
+            next_id = sorted_idx.gather(-1, torch.multinomial(sorted_probs, 1))
+        idx = torch.cat([idx, next_id], dim=1)
+        if eos_id is not None and next_id.item() == eos_id:
+            break
+    return idx</script>
+
+<script type="text/plain" id="code-03"># -*- coding: utf-8 -*-
+"""
+03_pretrain.py —— 用小说做预训练（学语言能力）
+
+任务：给前 t 个 token，预测第 t+1 个。海量重复"接龙"，模型就学会了语言。
+工程要点：
+  混合精度（老 CUDA 自动 fp16 + GradScaler）/ 梯度累积 / 预热+余弦退火 /
+  梯度裁剪 / 断点续训 / 验证集最优保存
+
+运行：python 03_pretrain.py
+"""
+import math
+import time
+from dataclasses import asdict
+from pathlib import Path
+
+import numpy as np
+import torch
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, Dataset
+
+from model import GPT, GPTConfig, amp_context, pick_device
+
+# ---------------- 超参数 ----------------
+CFG = GPTConfig(vocab_size=32000, max_seq_len=512,
+                n_layer=12, n_head=12, n_embd=768)
+BATCH_SIZE = 16        # 显存不够就调小，并同比例调大 GRAD_ACCUM
+GRAD_ACCUM = 4         # 梯度累积：等效 batch = 16 * 4 = 64
+MAX_ITERS = 5000       # 总训练步数（语料多就加大）
+LR = 3e-4              # 峰值学习率
+MIN_LR = 3e-5          # 余弦退火的最低点
+WARMUP_ITERS = 200     # 线性预热步数
+WEIGHT_DECAY = 0.1     # AdamW 权重衰减
+GRAD_CLIP = 1.0        # 梯度裁剪阈值
+EVAL_INTERVAL = 250    # 每多少步验证一次 + 存断点
+EVAL_ITERS = 20        # 每次验证取多少个 batch 估 loss
+CKPT_DIR = Path("checkpoints")
+
+
+class TokenStream(Dataset):
+    """从 uint16 token 长河里随机切窗口，每次 __getitem__ 随机取一段。
+
+    返回 (x, y)：x 是前 seq_len 个 token，y 是错开一位的预测目标。
+    np.memmap 类似 Python 的文件视图：不真正读入内存，按需从磁盘映射。
+    """
+
+    def __init__(self, bin_path, seq_len):
+        if not Path(bin_path).exists():
+            raise SystemExit(f"[stop] 找不到 {bin_path}，请先运行 02_prepare_data.py")
+        self.data = np.memmap(bin_path, dtype=np.uint16, mode="r")
+        self.seq_len = seq_len
+
+    def __len__(self):
+        return max(1, (len(self.data) - 1) // self.seq_len)
+
+    def __getitem__(self, _):
+        s = np.random.randint(0, len(self.data) - self.seq_len - 1)
+        x = torch.from_numpy(self.data[s:s + self.seq_len].astype(np.int64))
+        y = torch.from_numpy(self.data[s + 1:s + self.seq_len + 1].astype(np.int64))
+        return x, y
+
+
+def infinite(loader):
+    """把 DataLoader 变成无限迭代器（类似 Python 的 itertools.cycle）。"""
+    while True:
+        yield from loader
+
+
+def get_lr(step):
+    """线性预热 + 余弦退火：先慢慢升到峰值，再平滑降到 MIN_LR。"""
+    if step < WARMUP_ITERS:
+        return LR * (step + 1) / WARMUP_ITERS
+    if step >= MAX_ITERS:
+        return MIN_LR
+    ratio = (step - WARMUP_ITERS) / (MAX_ITERS - WARMUP_ITERS)
+    return MIN_LR + 0.5 * (1 + math.cos(math.pi * ratio)) * (LR - MIN_LR)
+
+
+@torch.no_grad()
+def estimate_loss(model, loader, device, amp_dtype):
+    """在验证集上估 loss（取前 EVAL_ITERS 个 batch 平均）。"""
+    model.eval()
+    losses = []
+    for i, (x, y) in enumerate(loader):
+        if i >= EVAL_ITERS:
+            break
+        x, y = x.to(device), y.to(device)
+        with amp_context(device, amp_dtype):
+            logits = model(x)
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), y.view(-1))
+        losses.append(loss.item())
+    model.train()
+    return sum(losses) / max(1, len(losses))
+
+
+def save_ckpt(path, model, cfg, it, best_val, optimizer=None):
+    """保存 checkpoint；optimizer 为 None 时是"最优权重"（不含优化器状态）。"""
+    ckpt = {"model": model.state_dict(), "cfg": asdict(cfg),
+            "iter": it, "best_val": best_val}
+    if optimizer is not None:
+        ckpt["optimizer"] = optimizer.state_dict()
+    torch.save(ckpt, path)
+
+
+def main():
+    device, amp_dtype = pick_device()
+    print(f"[env] device={device} amp_dtype={amp_dtype}")
+    CKPT_DIR.mkdir(exist_ok=True)
+
+    model = GPT(CFG).to(device)
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"[model] 参数量 {n_params / 1e6:.1f}M")
+
+    # AdamW 是现代大模型标配优化器，betas=(0.9, 0.95) 是 GPT 惯例
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LR, betas=(0.9, 0.95),
+                                  weight_decay=WEIGHT_DECAY)
+    # 只有 fp16 需要 GradScaler（bf16 动态范围大，不需要）
+    scaler = torch.cuda.amp.GradScaler(enabled=(amp_dtype == torch.float16))
+
+    # ---- 断点续训：有 pretrain_last.pt 就接着练，想从头练就删掉它 ----
+    start_iter, best_val = 0, float("inf")
+    last_ckpt = CKPT_DIR / "pretrain_last.pt"
+    if last_ckpt.exists():
+        ckpt = torch.load(last_ckpt, map_location=device, weights_only=True)
+        model.load_state_dict(ckpt["model"])
+        optimizer.load_state_dict(ckpt["optimizer"])
+        start_iter, best_val = ckpt["iter"] + 1, ckpt["best_val"]
+        print(f"[resume] 从第 {start_iter} 步继续，当前最优 val_loss={best_val:.4f}")
+
+    train_loader = DataLoader(
+        TokenStream("token_stream/train.bin", CFG.max_seq_len),
+        batch_size=BATCH_SIZE, drop_last=True,
+        num_workers=2, pin_memory=(device.type == "cuda"))
+    val_loader = DataLoader(
+        TokenStream("token_stream/val.bin", CFG.max_seq_len),
+        batch_size=BATCH_SIZE, drop_last=True,
+        num_workers=2, pin_memory=(device.type == "cuda"))
+    train_iter = infinite(train_loader)
+
+    print(f"[train] 开始预训练：{start_iter} -> {MAX_ITERS} 步")
+    model.train()
+    t0 = time.time()
+    running = 0.0
+    for it in range(start_iter, MAX_ITERS):
+        # ---- 前向 + 反向（梯度累积：攒够 GRAD_ACCUM 次才更新） ----
+        x, y = next(train_iter)
+        x, y = x.to(device), y.to(device)
+        with amp_context(device, amp_dtype):
+            logits = model(x)
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), y.view(-1))
+            loss = loss / GRAD_ACCUM  # 累积时要平均，不然梯度放大 GRAD_ACCUM 倍
+        scaler.scale(loss).backward()
+        running += loss.item()
+
+        if (it + 1) % GRAD_ACCUM == 0:
+            lr = get_lr(it)
+            for g in optimizer.param_groups:
+                g["lr"] = lr
+            scaler.unscale_(optimizer)  # fp16 时先把梯度缩回来再裁剪
+            torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad(set_to_none=True)
+
+        # ---- 定期验证 + 存断点 ----
+        if (it + 1) % EVAL_INTERVAL == 0 or it + 1 == MAX_ITERS:
+            val_loss = estimate_loss(model, val_loader, device, amp_dtype)
+            train_loss = running * GRAD_ACCUM / EVAL_INTERVAL
+            running = 0.0
+            dt = time.time() - t0
+            t0 = time.time()
+            print(f"[iter {it + 1:>6}] train_loss={train_loss:.4f} "
+                  f"val_loss={val_loss:.4f} lr={get_lr(it):.2e} "
+                  f"({dt:.1f}s / {EVAL_INTERVAL} iters)")
+            save_ckpt(last_ckpt, model, CFG, it, best_val, optimizer)
+            if val_loss < best_val:
+                best_val = val_loss
+                save_ckpt(CKPT_DIR / "pretrain_best.pt", model, CFG, it, best_val)
+                print(f"         验证集创新低，已更新 pretrain_best.pt")
+
+    print(f"[done] 预训练完成，最优 val_loss={best_val:.4f}")
+
+
+if __name__ == "__main__":
+    main()</script>
+
+<script type="text/plain" id="code-04"># -*- coding: utf-8 -*-
+"""
+04_sft.py —— 在预训练模型上单轮对话微调（学接话）
+
+和预训练的两个关键区别：
+  1. loss 掩码：问题部分 label=-100 不算 loss，模型只学"怎么答"
+  2. 更小学习率：预训练的 1/3，避免"学新忘旧"（灾难性遗忘）
+
+运行：python 04_sft.py（需先完成 03_pretrain.py）
+"""
+import math
+import time
+from dataclasses import asdict
+from pathlib import Path
+
+import numpy as np
+import torch
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, Dataset
+
+from model import GPT, GPTConfig, amp_context, pick_device
+
+# ---------------- 超参数 ----------------
+CFG = GPTConfig(vocab_size=32000, max_seq_len=512,
+                n_layer=12, n_head=12, n_embd=768)  # 必须和预训练一致
+BATCH_SIZE = 16
+EPOCHS = 3             # SFT 数据一般刷 2-5 遍
+LR = 1e-4              # SFT 学习率 = 预训练的 1/3 左右
+MIN_LR = 1e-5
+WARMUP_ITERS = 100
+WEIGHT_DECAY = 0.1
+GRAD_CLIP = 1.0
+EVAL_ITERS = 20
+CKPT_DIR = Path("checkpoints")
+
+
+class SFTDataset(Dataset):
+    """读取 02 步生成的定长样本（ids + labels），mmap 零拷贝。"""
+
+    def __init__(self, split):
+        d = Path("sft_bin")
+        ids_path = d / f"{split}_ids.npy"
+        if not ids_path.exists():
+            raise SystemExit("[stop] 找不到 sft_bin/*.npy，请先运行 02_prepare_data.py")
+        self.ids = np.load(ids_path, mmap_mode="r")
+        self.labels = np.load(d / f"{split}_labels.npy", mmap_mode="r")
+
+    def __len__(self):
+        return len(self.ids)
+
+    def __getitem__(self, i):
+        return (torch.from_numpy(self.ids[i].astype(np.int64)),
+                torch.from_numpy(self.labels[i].astype(np.int64)))
+
+
+def get_lr(step, total_steps):
+    """线性预热 + 余弦退火（总步数按 epoch 数预先算好）。"""
+    if step < WARMUP_ITERS:
+        return LR * (step + 1) / WARMUP_ITERS
+    if step >= total_steps:
+        return MIN_LR
+    ratio = (step - WARMUP_ITERS) / max(1, total_steps - WARMUP_ITERS)
+    return MIN_LR + 0.5 * (1 + math.cos(math.pi * ratio)) * (LR - MIN_LR)
+
+
+def sft_loss(model, ids, labels):
+    """SFT 的 loss：错位一位做"下一个 token 预测"，-100 的位置不参与。"""
+    logits = model(ids)  # [B, T, V]
+    return F.cross_entropy(
+        logits[:, :-1].reshape(-1, logits.size(-1)),  # 用前 T-1 个位置
+        labels[:, 1:].reshape(-1),                     # 预测后 T-1 个位置
+        ignore_index=-100,
+    )
+
+
+@torch.no_grad()
+def estimate_loss(model, loader, device, amp_dtype):
+    model.eval()
+    losses = []
+    for i, (ids, labels) in enumerate(loader):
+        if i >= EVAL_ITERS:
+            break
+        ids, labels = ids.to(device), labels.to(device)
+        with amp_context(device, amp_dtype):
+            loss = sft_loss(model, ids, labels)
+        losses.append(loss.item())
+    model.train()
+    return sum(losses) / max(1, len(losses))
+
+
+def main():
+    device, amp_dtype = pick_device()
+    print(f"[env] device={device} amp_dtype={amp_dtype}")
+
+    model = GPT(CFG).to(device)
+
+    # ---- 加载预训练权重：优先 best，其次 last ----
+    pre_ckpt_path = CKPT_DIR / "pretrain_best.pt"
+    if not pre_ckpt_path.exists():
+        pre_ckpt_path = CKPT_DIR / "pretrain_last.pt"
+    if not pre_ckpt_path.exists():
+        raise SystemExit("[stop] 找不到预训练权重，请先运行 03_pretrain.py")
+    ckpt = torch.load(pre_ckpt_path, map_location=device, weights_only=True)
+    model.load_state_dict(ckpt["model"])
+    print(f"[load] 加载预训练权重 {pre_ckpt_path}（iter={ckpt['iter']}）")
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LR, betas=(0.9, 0.95),
+                                  weight_decay=WEIGHT_DECAY)
+    scaler = torch.cuda.amp.GradScaler(enabled=(amp_dtype == torch.float16))
+
+    train_loader = DataLoader(SFTDataset("train"), batch_size=BATCH_SIZE,
+                              shuffle=True, drop_last=True,
+                              num_workers=2, pin_memory=(device.type == "cuda"))
+    val_loader = DataLoader(SFTDataset("val"), batch_size=BATCH_SIZE,
+                            shuffle=False, drop_last=True,
+                            num_workers=2, pin_memory=(device.type == "cuda"))
+
+    steps_per_epoch = len(train_loader)
+    total_steps = EPOCHS * steps_per_epoch
+    print(f"[train] {EPOCHS} 个 epoch，每 epoch {steps_per_epoch} 步，"
+          f"共 {total_steps} 步")
+
+    best_val = float("inf")
+    step = 0
+    model.train()
+    for epoch in range(EPOCHS):
+        t0 = time.time()
+        running = 0.0
+        for ids, labels in train_loader:
+            ids, labels = ids.to(device), labels.to(device)
+            with amp_context(device, amp_dtype):
+                loss = sft_loss(model, ids, labels)
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
+            lr = get_lr(step, total_steps)
+            for g in optimizer.param_groups:
+                g["lr"] = lr
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad(set_to_none=True)
+            running += loss.item()
+            step += 1
+
+        # ---- 每个 epoch 结束：验证 + 保存 ----
+        val_loss = estimate_loss(model, val_loader, device, amp_dtype)
+        train_loss = running / steps_per_epoch
+        print(f"[epoch {epoch + 1}/{EPOCHS}] train_loss={train_loss:.4f} "
+              f"val_loss={val_loss:.4f} ({time.time() - t0:.1f}s)")
+        torch.save({"model": model.state_dict(), "cfg": asdict(CFG),
+                    "iter": step, "best_val": best_val},
+                   CKPT_DIR / "sft_last.pt")
+        if val_loss < best_val:
+            best_val = val_loss
+            torch.save({"model": model.state_dict(), "cfg": asdict(CFG),
+                        "iter": step, "best_val": best_val},
+                       CKPT_DIR / "sft_best.pt")
+            print(f"          验证集创新低，已更新 sft_best.pt")
+
+    print(f"[done] SFT 完成，最优 val_loss={best_val:.4f}")
+
+
+if __name__ == "__main__":
+    main()</script>
+
+<script type="text/plain" id="code-05"># -*- coding: utf-8 -*-
+"""
+05_chat.py —— 命令行单轮对话
+
+加载 SFT 权重，把问题套进 ChatML 模板（含 system 人设），温度 + top-p
+采样生成，遇到 <|im_end|> 自动停止。输入 quit 退出。
+
+运行：python 05_chat.py
+"""
+import json
+from pathlib import Path
+
+import torch
+from tokenizers import Tokenizer
+
+from model import GPT, GPTConfig, generate, pick_device
+
+TEMPERATURE = 0.8   # 温度：越小越保守，0 为贪心
+TOP_P = 0.9         # 核采样阈值
+MAX_NEW_TOKENS = 256
+
+
+def load_system_prompt():
+    """从对话语料第一条里取 system 人设（和 SFT 训练时保持完全一致）。
+
+    如果语料里没有 system 段，返回空字符串，模板自动省略 system。
+    """
+    sft_file = Path("data/sft_raw.jsonl")
+    if not sft_file.exists():
+        return ""
+    try:
+        with sft_file.open(encoding="utf-8") as f:
+            obj = json.loads(f.readline().strip())
+        for turn in obj.get("conversations", []):
+            if turn.get("from") == "system":
+                return turn.get("value", "").strip()
+    except (json.JSONDecodeError, AttributeError):
+        pass
+    return ""
+
+
+def main():
+    device, _ = pick_device()
+    print(f"[env] device={device}")
+
+    tok = Tokenizer.from_file("tokenizer/tokenizer.json")
+
+    # 优先加载验证集最优权重，其次最后一轮
+    ckpt_path = Path("checkpoints/sft_best.pt")
+    if not ckpt_path.exists():
+        ckpt_path = Path("checkpoints/sft_last.pt")
+    if not ckpt_path.exists():
+        raise SystemExit("[stop] 找不到 SFT 权重，请先运行 04_sft.py")
+
+    ckpt = torch.load(ckpt_path, map_location=device, weights_only=True)
+    model = GPT(GPTConfig(**ckpt["cfg"])).to(device)
+    model.load_state_dict(ckpt["model"])
+    model.eval()
+    print(f"[load] {ckpt_path}（iter={ckpt['iter']}）")
+
+    im_start = tok.token_to_id("<|im_start|>")
+    im_end = tok.token_to_id("<|im_end|>")
+    system = load_system_prompt()
+    if system:
+        print(f"[system] 已加载人设（{len(system)} 字）: {system[:30]}...")
+
+    print("\n单轮对话已就绪，输入 quit 退出。")
+    while True:
+        q = input("\n你: ").strip()
+        if q.lower() in {"quit", "exit"}:
+            break
+        if not q:
+            continue
+        # 和训练时完全一致的 ChatML 模板（含 system 人设）
+        ids = []
+        if system:
+            ids += ([im_start] + tok.encode("system\n" + system).ids + [im_end]
+                    + tok.encode("\n").ids)
+        ids += ([im_start] + tok.encode("user\n" + q).ids + [im_end]
+                + tok.encode("\nassistant\n").ids)
+        x = torch.tensor([ids], dtype=torch.long, device=device)
+        out = generate(model, x, max_new_tokens=MAX_NEW_TOKENS,
+                       temperature=TEMPERATURE, top_p=TOP_P, eos_id=im_end)
+        answer_ids = out[0, len(ids):].tolist()
+        print("AI:", tok.decode(answer_ids).strip())
+
+
+if __name__ == "__main__":
+    main()</script>
+
+<script type="text/plain" id="run-order">conda activate f10
+
+# 第 1 步：训练分词器（先确认 data/novels/*.txt 已就位）
+python 01_train_tokenizer.py
+
+# 第 2 步：数据加工（确认 data/sft_raw.jsonl 也已就位）
+python 02_prepare_data.py
+
+# 第 3 步：预训练（建议拿到 CUDA 训练机上跑；中断了直接重跑会自动续训）
+python 03_pretrain.py
+
+# 第 4 步：SFT 微调（同样需要 CUDA 机器）
+python 04_sft.py
+
+# 第 5 步：聊天（mac / cuda / cpu 都能跑）
+python 05_chat.py</script>
+
+<script>
+// 把 text/plain 脚本块中的原始代码渲染进 <code>（textContent 赋值，无需 HTML 转义）
+document.querySelectorAll("code[data-src]").forEach(function (el) {
+  var src = document.getElementById(el.getAttribute("data-src"));
+  el.textContent = src ? src.textContent.replace(/^\n+/, "") : "// 代码块缺失";
+});
+// 复制按钮：复制对应代码块的纯文本
+document.querySelectorAll(".codebox").forEach(function (box) {
+  var btn = box.querySelector(".copybtn");
+  var code = box.querySelector("code");
+  btn.addEventListener("click", function () {
+    navigator.clipboard.writeText(code.textContent).then(function () {
+      btn.textContent = "已复制 ✓";
+      setTimeout(function () { btn.textContent = "复制"; }, 1500);
+    });
+  });
+});
+mermaid.initialize({ startOnLoad: true, theme: "default" });
+</script>
+</body>
+</html>
